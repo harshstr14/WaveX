@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "849123312036",
+    "firebase_url": "https://wavex-edd95-default-rtdb.firebaseio.com",
+    "project_id": "wavex-edd95",
+    "storage_bucket": "wavex-edd95.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849123312036:android:6ca7c03acc3dbb7d5e0131",
+        "android_client_info": {
+          "package_name": "com.example.wavex"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "849123312036-guphhj6mul70pnelg8fgvhdf5g0srq35.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wavex",
+            "certificate_hash": "f5f7f08ae1867ea46232ce3ba8f47555343cbf7d"
+          }
+        },
+        {
+          "client_id": "849123312036-7a299l4binubrld3pc6dg48u9a7a29bf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuynK82McWT1z97wq2ehAyjjckJsKwkIk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849123312036-7a299l4binubrld3pc6dg48u9a7a29bf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

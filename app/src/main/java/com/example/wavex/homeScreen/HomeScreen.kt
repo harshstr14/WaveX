@@ -1,0 +1,457 @@
+package com.example.wavex.homeScreen
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.wavex.R
+import com.example.wavex.fonts
+import com.example.wavex.viewModel.AlbumSearchViewModel
+import com.example.wavex.viewModel.ArtistsSearchViewModel
+import com.example.wavex.viewModel.PlaylistSearchViewModel
+import com.example.wavex.viewModel.NewReleasesSongsViewModel
+import com.example.wavex.viewModel.TrendingSongsViewModel
+import kotlinx.coroutines.delay
+
+@Composable
+fun HomeScreen (navController: NavController) {
+    val scrollState = rememberScrollState()
+
+    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+        val(icon,profileAvatar,column) = createRefs()
+
+        Icon(painter = painterResource(R.drawable.wavex_logo), contentDescription = "Logo Icon",
+            tint = Color.Unspecified, modifier = Modifier.constrainAs(icon) {
+                top.linkTo(parent.top, margin = (-40).dp)
+                start.linkTo(parent.start)
+            }.size(158.dp)
+        )
+
+        AsyncImage(
+            model = R.drawable.logo,
+            contentDescription = "Profile Image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.constrainAs(profileAvatar) {
+                top.linkTo(parent.top, margin = 15.dp)
+                end.linkTo(parent.end, margin = 22.dp)
+            }.size(52.dp).clip(CircleShape),
+            placeholder = painterResource(R.drawable.logo),
+            error = painterResource(R.drawable.logo)
+        )
+
+        Column(modifier = Modifier.constrainAs(column) {
+            top.linkTo(profileAvatar.bottom)
+            start.linkTo(parent.start)
+            end.linkTo(parent.end)
+            bottom.linkTo(parent.bottom, margin = (-35).dp)
+            height = Dimension.fillToConstraints
+        }.verticalScroll(scrollState)) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val(row1,text1,row2,text2,row3,text4,row4,text5,row5) = createRefs()
+
+                Playlist("Top","results",modifier = Modifier.constrainAs(row1) {
+                    top.linkTo(parent.top, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                })
+
+                Text("New Releases", modifier = Modifier.constrainAs(text1) {
+                    top.linkTo(row1.bottom, margin = 20.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                )
+
+                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(row2) {
+                    top.linkTo(text1.bottom, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                })
+
+                Text("Artists", modifier = Modifier.constrainAs(text2) {
+                    top.linkTo(row2.bottom, margin = 20.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                )
+
+                Artists("top artists","results", modifier = Modifier.constrainAs(row3){
+                    top.linkTo(text2.bottom, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                })
+
+                Text("Trending Songs", modifier = Modifier.constrainAs(text4) {
+                    top.linkTo(row3.bottom, margin = 20.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                )
+
+                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(row4) {
+                    top.linkTo(text4.bottom, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                })
+
+                Text("Top Albums", modifier = Modifier.constrainAs(text5) {
+                    top.linkTo(row4.bottom, margin = 20.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                )
+
+                TopAlbums("latest","results", modifier = Modifier.constrainAs(row5) {
+                    top.linkTo(text5.bottom, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                })
+            }
+        }
+    }
+}
+
+@Composable
+fun Playlist(query: String, root: String, modifier: Modifier, viewModel: PlaylistSearchViewModel = viewModel()) {
+    val playlists by viewModel.playlists
+
+    LaunchedEffect(query) {
+        viewModel.fetchPlayListByQuery(query,root)
+    }
+
+    if (playlists.isEmpty()) return
+
+    val listSize = playlists.size
+    val infiniteItems = Int.MAX_VALUE
+    val startIndex = infiniteItems / 2 - (infiniteItems / 2) % listSize
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val itemWidth = 140.dp
+    val itemSpacing = 18.dp
+    val sidePadding = (screenWidth - itemWidth) / 2
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(4000)
+            listState.animateScrollToItem(
+                listState.firstVisibleItemIndex + 1
+            )
+        }
+    }
+
+    val scaleAlphaMap by remember(listState) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val viewportCenter =
+                (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+
+            val viewportWidth =
+                layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+
+            val maxDistance = viewportWidth / 2f
+
+            layoutInfo.visibleItemsInfo.associate { itemInfo ->
+                val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                val distance = kotlin.math.abs(viewportCenter - itemCenter)
+                val fraction = (1f - distance / maxDistance).coerceIn(0f, 1f)
+
+                val scale = 0.75f + 0.35f * fraction
+                val alpha = 0.4f + 0.6f * fraction
+
+                itemInfo.index to (scale to alpha)
+            }
+        }
+    }
+
+    LazyRow(modifier = modifier, state = listState, flingBehavior = snapFlingBehavior,
+        contentPadding = PaddingValues(horizontal = sidePadding),
+        horizontalArrangement = Arrangement.spacedBy(itemSpacing)) {
+        items(infiniteItems) { index ->
+            val realItem = playlists[index % listSize]
+
+            val scaleAndAlpha = scaleAlphaMap[index] ?: (0.75f to 0.4f)
+
+            Column(
+                modifier = Modifier
+                    .width(itemWidth)
+                    .graphicsLayer {
+                        scaleX = scaleAndAlpha.first
+                        scaleY = scaleAndAlpha.first
+                        alpha = scaleAndAlpha.second
+                    }
+                    .clickable {  }
+            ) {
+                AsyncImage(
+                    model = realItem.image,
+                    contentDescription = realItem.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(itemWidth)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                    text = realItem.name,
+                    fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewModel: NewReleasesSongsViewModel = viewModel()) {
+    val songs by viewModel.songs
+
+    LaunchedEffect(playlistId) {
+        viewModel.fetchPlaylistsByID(playlistId, root)
+    }
+
+    if (songs.isEmpty()) return
+
+    LazyRow(modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        items(songs) { song ->
+            Column(
+                modifier = Modifier
+                    .width(120.dp)
+                    .clickable {  }
+            ) {
+                AsyncImage(
+                    model = song.image[2].url,
+                    contentDescription = song.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(120.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    text = song.name,
+                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                val artistsName = song.artist
+                    .takeIf { it.isNotEmpty() }
+                    ?.joinToString(", ") { it.name }
+                    ?: "Unknown Artist"
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                    text = artistsName,
+                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFF797979), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsSearchViewModel = viewModel()) {
+    val artists = viewModel.artists.value
+
+    LaunchedEffect(query) {
+        viewModel.fetchArtistsByQuery(query, root)
+    }
+
+    if (artists.isEmpty()) return
+
+    LazyRow(modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 22.dp),
+        horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+        items(artists) { artist ->
+            Column(
+                modifier = Modifier.clickable {  } ,
+                horizontalAlignment = Alignment.CenterHorizontally
+
+            ) {
+                AsyncImage(
+                    model = artist.image,
+                    contentDescription = artist.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(78.dp)
+                        .fillMaxWidth()
+                        .clip(CircleShape)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text( modifier = Modifier.width(78.dp),
+                    text = artist.name,
+                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), maxLines = 2, textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewModel: TrendingSongsViewModel = viewModel()) {
+    val songs by viewModel.songs
+
+    LaunchedEffect(playlistId) {
+        viewModel.fetchPlaylistsByID(playlistId, root)
+    }
+
+    if (songs.isEmpty()) return
+
+    LazyRow(modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        items(songs) { song ->
+            Column(
+                modifier = Modifier
+                    .width(120.dp)
+                    .clickable {  }
+            ) {
+                AsyncImage(
+                    model = song.image[2].url,
+                    contentDescription = song.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(120.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    text = song.name,
+                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                val artistsName = song.artist
+                    .takeIf { it.isNotEmpty() }
+                    ?.joinToString(", ") { it.name }
+                    ?: "Unknown Artist"
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                    text = artistsName,
+                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFF797979), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumSearchViewModel = viewModel()) {
+    val albums = viewModel.albums.value
+
+    LaunchedEffect(query) {
+        viewModel.fetchAlbumByQuery(query, root)
+    }
+
+    if (albums.isEmpty()) return
+
+    LazyRow(modifier = modifier,
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 55.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        items(albums) { album ->
+            Column(
+                modifier = Modifier
+                    .width(120.dp)
+                    .clickable {  }
+            ) {
+                AsyncImage(
+                    model = album.image,
+                    contentDescription = album.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(120.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    text = album.name,
+                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                    text = album.artist,
+                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFF797979), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@Preview(showSystemUi = true)
+private fun HomeScreenPreview() {
+    val navController = rememberNavController()
+    HomeScreen(navController = navController)
+}

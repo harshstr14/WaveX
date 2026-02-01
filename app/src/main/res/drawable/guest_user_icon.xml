@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="43dp"
+    android:height="43dp"
+    android:viewportWidth="43"
+    android:viewportHeight="43">
+
+    <!-- User body (left side) -->
+    <path
+        android:pathData="M21.5004,25.5932
+            C17.0858,25.1807 12.5615,26.1374 8.6555,28.4632
+            C5.826,30.148 -1.5929,33.5882 2.9257,37.8931
+            C5.133,39.996 7.5914,41.5 10.6821,41.5
+            H23.5004"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#141B34"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- User head -->
+    <path
+        android:pathData="M28.5004,10.5
+            C28.5004,15.4706 24.4709,19.5 19.5004,19.5
+            C14.5298,19.5 10.5004,15.4706 10.5004,10.5
+            C10.5004,5.5294 14.5298,1.5 19.5004,1.5
+            C24.4709,1.5 28.5004,5.5294 28.5004,10.5 Z"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#141B34"
+        android:strokeWidth="3" />
+
+    <!-- Shield / verification badge -->
+    <path
+        android:pathData="M33.4989,25.5
+            C30.966,25.5 29.3237,27.1152 27.3814,27.7039
+            C26.5916,27.9433 26.1968,28.063 26.037,28.2317
+            C25.8772,28.4004 25.8304,28.647 25.7368,29.1401
+            C24.7353,34.4168 26.9243,39.2952 32.1448,41.194
+            C32.7057,41.398 32.9862,41.5 33.5016,41.5
+            C34.017,41.5 34.2975,41.398 34.8584,41.194
+            C40.0786,39.2952 42.2655,34.4168 41.2637,29.1401
+            C41.1701,28.6469 41.1233,28.4003 40.9634,28.2316
+            C40.8036,28.0629 40.4087,27.9432 39.619,27.704
+            C37.676,27.1153 36.0318,25.5 33.4989,25.5 Z"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#141B34"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+</vector>

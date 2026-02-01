@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp"
+    android:height="26dp"
+    android:viewportWidth="41.85"
+    android:viewportHeight="41.85">
+
+    <!-- Inner shape (center diamond-like icon) -->
+    <path
+        android:fillColor="#010002"
+        android:pathData="M30.914,30.913c0,0-1.326-9.307-6-13.979c-4.672-4.672-13.979-6-13.979-6s1.326,9.308,5.996,13.981 C21.605,29.587,30.914,30.913,30.914,30.913z M19.301,19.301c0.896-0.896,2.35-0.896,3.246,0c0.896,0.897,0.896,2.349,0,3.246 c-0.895,0.897-2.35,0.898-3.246,0C18.404,21.65,18.406,20.197,19.301,19.301z"/>
+
+    <!-- Outer circle with proper stroke -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#010002"
+        android:strokeWidth="2.8"
+        android:pathData="M20.926,1.5A19.426,19.426 0 1,1 20.926,40.352A19.426,19.426 0 1,1 20.926,1.5"/>
+</vector>
+
+
+
+
+
