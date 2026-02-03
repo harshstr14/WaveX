@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -41,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,11 +53,11 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.wavex.R
 import com.example.wavex.fonts
-import com.example.wavex.viewModel.AlbumSearchViewModel
-import com.example.wavex.viewModel.ArtistsSearchViewModel
-import com.example.wavex.viewModel.PlaylistSearchViewModel
-import com.example.wavex.viewModel.NewReleasesSongsViewModel
-import com.example.wavex.viewModel.TrendingSongsViewModel
+import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
+import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
+import com.example.wavex.homeScreen.viewModel.NewReleasesSongsViewModel
+import com.example.wavex.homeScreen.viewModel.PlaylistsViewModel
+import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -61,13 +65,14 @@ fun HomeScreen (navController: NavController) {
     val scrollState = rememberScrollState()
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val(icon,profileAvatar,column) = createRefs()
+        val (logoIcon, profileAvatar, contentColumn) = createRefs()
 
         Icon(painter = painterResource(R.drawable.wavex_logo), contentDescription = "Logo Icon",
-            tint = Color.Unspecified, modifier = Modifier.constrainAs(icon) {
+            tint = Color.Unspecified, modifier = Modifier.constrainAs(logoIcon) {
                 top.linkTo(parent.top, margin = (-40).dp)
                 start.linkTo(parent.start)
-            }.size(158.dp)
+            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(158.dp).zIndex(2f)
         )
 
         AsyncImage(
@@ -77,75 +82,78 @@ fun HomeScreen (navController: NavController) {
             modifier = Modifier.constrainAs(profileAvatar) {
                 top.linkTo(parent.top, margin = 15.dp)
                 end.linkTo(parent.end, margin = 22.dp)
-            }.size(52.dp).clip(CircleShape),
+            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(52.dp).clip(CircleShape).zIndex(2f),
             placeholder = painterResource(R.drawable.logo),
             error = painterResource(R.drawable.logo)
         )
 
-        Column(modifier = Modifier.constrainAs(column) {
-            top.linkTo(profileAvatar.bottom)
+        Column(modifier = Modifier.constrainAs(contentColumn) {
+            top.linkTo(parent.top, margin = 5.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom, margin = (-35).dp)
+            bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
-        }.verticalScroll(scrollState)) {
-            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val(row1,text1,row2,text2,row3,text4,row4,text5,row5) = createRefs()
+        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+            .verticalScroll(scrollState)) {
+            ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
+                val (topPlaylistRow,newReleasesTitle,newReleasesRow,artistsTitle,artistsRow,
+                    trendingTitle,trendingRow,topAlbumsTitle,topAlbumsRow) = createRefs()
 
-                Playlist("Top","results",modifier = Modifier.constrainAs(row1) {
-                    top.linkTo(parent.top, margin = 15.dp)
+                Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistRow) {
+                    top.linkTo(parent.top, margin = 80.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("New Releases", modifier = Modifier.constrainAs(text1) {
-                    top.linkTo(row1.bottom, margin = 20.dp)
+                Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
+                    top.linkTo(topPlaylistRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
                 )
 
-                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(row2) {
-                    top.linkTo(text1.bottom, margin = 15.dp)
+                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesRow) {
+                    top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("Artists", modifier = Modifier.constrainAs(text2) {
-                    top.linkTo(row2.bottom, margin = 20.dp)
+                Text("Popular Artists", modifier = Modifier.constrainAs(artistsTitle) {
+                    top.linkTo(newReleasesRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
                 )
 
-                Artists("top artists","results", modifier = Modifier.constrainAs(row3){
-                    top.linkTo(text2.bottom, margin = 15.dp)
+                Artists("top artists","results", modifier = Modifier.constrainAs(artistsRow){
+                    top.linkTo(artistsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("Trending Songs", modifier = Modifier.constrainAs(text4) {
-                    top.linkTo(row3.bottom, margin = 20.dp)
+                Text("Trending Songs", modifier = Modifier.constrainAs(trendingTitle) {
+                    top.linkTo(artistsRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
                 )
 
-                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(row4) {
-                    top.linkTo(text4.bottom, margin = 15.dp)
+                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingRow) {
+                    top.linkTo(trendingTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("Top Albums", modifier = Modifier.constrainAs(text5) {
-                    top.linkTo(row4.bottom, margin = 20.dp)
+                Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
+                    top.linkTo(trendingRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 20.sp
+                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
                 )
 
-                TopAlbums("latest","results", modifier = Modifier.constrainAs(row5) {
-                    top.linkTo(text5.bottom, margin = 15.dp)
+                TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsRow) {
+                    top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
@@ -155,7 +163,7 @@ fun HomeScreen (navController: NavController) {
 }
 
 @Composable
-fun Playlist(query: String, root: String, modifier: Modifier, viewModel: PlaylistSearchViewModel = viewModel()) {
+fun Playlist(query: String, root: String, modifier: Modifier, viewModel: PlaylistsViewModel = viewModel()) {
     val playlists by viewModel.playlists
 
     LaunchedEffect(query) {
@@ -228,7 +236,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     .clickable {  }
             ) {
                 AsyncImage(
-                    model = realItem.image,
+                    model = realItem.image[2].url,
                     contentDescription = realItem.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -266,7 +274,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
         items(songs) { song ->
             Column(
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(110.dp)
                     .clickable {  }
             ) {
                 AsyncImage(
@@ -274,14 +282,14 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
                     contentDescription = song.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .height(120.dp)
+                        .height(110.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = song.name,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = Color(0xFFF6F6F6), maxLines = 1,
@@ -293,7 +301,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
                     ?.joinToString(", ") { it.name }
                     ?: "Unknown Artist"
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = Color(0xFF797979), maxLines = 1,
@@ -305,7 +313,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
 }
 
 @Composable
-fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsSearchViewModel = viewModel()) {
+fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsViewModel = viewModel()) {
     val artists = viewModel.artists.value
 
     LaunchedEffect(query) {
@@ -321,7 +329,6 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsS
             Column(
                 modifier = Modifier.clickable {  } ,
                 horizontalAlignment = Alignment.CenterHorizontally
-
             ) {
                 AsyncImage(
                     model = artist.image,
@@ -362,7 +369,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
         items(songs) { song ->
             Column(
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(110.dp)
                     .clickable {  }
             ) {
                 AsyncImage(
@@ -370,14 +377,14 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                     contentDescription = song.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .height(120.dp)
+                        .height(110.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = song.name,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = Color(0xFFF6F6F6), maxLines = 1,
@@ -389,7 +396,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                     ?.joinToString(", ") { it.name }
                     ?: "Unknown Artist"
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = Color(0xFF797979), maxLines = 1,
@@ -401,7 +408,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 }
 
 @Composable
-fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumSearchViewModel = viewModel()) {
+fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumsViewModel = viewModel()) {
     val albums = viewModel.albums.value
 
     LaunchedEffect(query) {
@@ -411,35 +418,40 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumS
     if (albums.isEmpty()) return
 
     LazyRow(modifier = modifier,
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 55.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         items(albums) { album ->
             Column(
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(110.dp)
                     .clickable {  }
             ) {
                 AsyncImage(
-                    model = album.image,
+                    model = album.image[2].url,
                     contentDescription = album.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .height(120.dp)
+                        .height(110.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = album.name,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = Color(0xFFF6F6F6), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp ),
-                    text = album.artist,
+                val artistsName = album.artist
+                    .takeIf { it.isNotEmpty() }
+                    ?.joinToString(", ") { it.name }
+                    ?: "Unknown Artist"
+
+                Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                    text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = Color(0xFF797979), maxLines = 1,
                     overflow = TextOverflow.Ellipsis

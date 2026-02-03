@@ -1,4 +1,4 @@
-package com.example.wavex.viewModel
+package com.example.wavex.homeScreen
 
 import com.example.musify.songData.Artists
 import com.example.musify.songData.Download

@@ -1,28 +1,30 @@
-package com.example.wavex.viewModel
+package com.example.wavex.homeScreen.viewModel
 
 import android.util.Log
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.musify.songData.Artists
 import com.example.musify.songData.Download
 import com.example.musify.songData.Image
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import androidx.compose.runtime.State
 
-class NewReleasesSongsViewModel : ViewModel() {
+class TrendingSongsViewModel : ViewModel() {
     private val _songs = mutableStateOf<List<SongItem>>(emptyList())
     val songs: State<List<SongItem>> = _songs
 
     fun fetchPlaylistsByID(playListId: String, root: String) {
         viewModelScope.launch {
             try {
-                val responseBody =
+                val responseBody = withContext(Dispatchers.IO) {
                     requestWithFallback("/playlists?id=$playListId&limit=40")
+                }
 
                 if (responseBody.isEmpty()) return@launch
 

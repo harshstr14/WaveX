@@ -1,25 +1,29 @@
-package com.example.wavex.viewModel
+package com.example.wavex.homeScreen.viewModel
 
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.musify.songData.Artists
+import com.example.musify.songData.Image
+import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-class PlaylistSearchViewModel : ViewModel() {
+class PlaylistsViewModel : ViewModel() {
     private val _playlists = mutableStateOf<List<DataItem>>(emptyList())
     val playlists: State<List<DataItem>> = _playlists
 
     fun fetchPlayListByQuery(query: String, root: String) {
         viewModelScope.launch {
             try {
-                val responseBody =
+                val responseBody = withContext(Dispatchers.IO) {
                     requestWithFallback("/search/playlists?query=$query&limit=20")
+                }
 
                 if (responseBody.isEmpty()) return@launch
 
@@ -50,19 +54,36 @@ class PlaylistSearchViewModel : ViewModel() {
             val id = song.optString("id")
             val name = song.optString("name")
 
-            val imageUrl =
-                song.optJSONArray("image")
-                    ?.optJSONObject(2)
-                    ?.optString("url") ?: ""
+            val image = mutableListOf<Image>()
+            song.optJSONArray("image")?.let { arr ->
+                for (j in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(j)
+                    image.add(Image(obj.optString("quality"), obj.optString("url")))
+                }
+            }
 
-            val artistName =
-                song.optJSONObject("artists")
-                    ?.optJSONArray("primary")
-                    ?.optJSONObject(0)
-                    ?.optString("name") ?: ""
+            val primaryArtists = mutableListOf<Artists>()
+            song.optJSONObject("artists")
+                ?.optJSONArray("primary")
+                ?.let { arr ->
+                    for (j in 0 until arr.length()) {
+                        val artist = arr.getJSONObject(j)
+                        primaryArtists.add(
+                            Artists(
+                                id = artist.optString("id"),
+                                name = artist.optString("name"),
+                                role = artist.optString("role"),
+                                image = artist.optJSONArray("image")
+                                    ?.optJSONObject(2)
+                                    ?.optString("url") ?: "",
+                                type = artist.optString("type")
+                            )
+                        )
+                    }
+                }
 
             parsedPlaylist.add(
-                DataItem(id, name, artistName, imageUrl)
+                DataItem(id, name, primaryArtists, image)
             )
         }
 

@@ -1,4 +1,4 @@
-package com.example.wavex.viewModel
+package com.example.wavex.homeScreen.viewModel
 
 import android.util.Log
 import androidx.compose.runtime.State
@@ -6,28 +6,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.musify.songData.Artists
-import com.example.musify.songData.Download
 import com.example.musify.songData.Image
+import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-class TrendingSongsViewModel : ViewModel() {
-    private val _songs = mutableStateOf<List<SongItem>>(emptyList())
-    val songs: State<List<SongItem>> = _songs
+class AlbumsViewModel : ViewModel() {
+    private val _albums = mutableStateOf<List<DataItem>>(emptyList())
+    val albums: State<List<DataItem>> = _albums
 
-    fun fetchPlaylistsByID(playListId: String, root: String) {
+    fun fetchAlbumByQuery(query: String, root: String) {
         viewModelScope.launch {
             try {
-                val responseBody =
-                    requestWithFallback("/playlists?id=$playListId&limit=40")
+                val responseBody = withContext(Dispatchers.IO) {
+                    requestWithFallback("/search/albums?query=$query&limit=30")
+                }
 
                 if (responseBody.isEmpty()) return@launch
 
-                val parsed = parseNewSongsJson(responseBody, root)
-                _songs.value = parsed
+                _albums.value = parseAlbumListJson(responseBody, root)
 
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
@@ -35,41 +35,35 @@ class TrendingSongsViewModel : ViewModel() {
         }
     }
 
-    private suspend fun parseNewSongsJson(jsonString: String, root: String):
-            List<SongItem> = withContext(Dispatchers.Default) {
+    private suspend fun parseAlbumListJson(
+        jsonString: String,
+        root: String
+    ): List<DataItem> = withContext(Dispatchers.Default) {
 
-        val parsedSongs = mutableListOf<SongItem>()
+        val parsedAlbums = mutableListOf<DataItem>()
+
         val json = JSONObject(jsonString)
-
         if (!json.optBoolean("success", false)) return@withContext emptyList()
 
-        val songsArray = json.getJSONObject("data").getJSONArray(root)
+        val albumsArray =
+            json.getJSONObject("data").getJSONArray(root)
 
-        for (i in 0 until songsArray.length()) {
-            val song = songsArray.getJSONObject(i)
+        for (i in 0 until albumsArray.length()) {
+            val album = albumsArray.getJSONObject(i)
 
-            val id = song.optString("id")
-            val name = song.optString("name")
-            val duration = song.optInt("duration")
+            val id = album.optString("id")
+            val name = album.optString("name")
 
             val image = mutableListOf<Image>()
-            song.optJSONArray("image")?.let { arr ->
+            album.optJSONArray("image")?.let { arr ->
                 for (j in 0 until arr.length()) {
                     val obj = arr.getJSONObject(j)
                     image.add(Image(obj.optString("quality"), obj.optString("url")))
                 }
             }
 
-            val download = mutableListOf<Download>()
-            song.optJSONArray("downloadUrl")?.let { arr ->
-                for (j in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(j)
-                    download.add(Download(obj.optString("quality"), obj.optString("url")))
-                }
-            }
-
             val primaryArtists = mutableListOf<Artists>()
-            song.optJSONObject("artists")
+            album.optJSONObject("artists")
                 ?.optJSONArray("primary")
                 ?.let { arr ->
                     for (j in 0 until arr.length()) {
@@ -88,11 +82,16 @@ class TrendingSongsViewModel : ViewModel() {
                     }
                 }
 
-            parsedSongs.add(
-                SongItem(id, name, primaryArtists, image, duration, download)
+            parsedAlbums.add(
+                DataItem(
+                    id = id,
+                    name = name,
+                    artist = primaryArtists,
+                    image = image
+                )
             )
         }
 
-        parsedSongs
+        parsedAlbums
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -156,12 +158,13 @@ fun Main_Screen() {
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             BottomNavBar(navController)
-        }
+        },
+        contentWindowInsets = WindowInsets(0)
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = BottomNavRoute.Home.route,
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
 
             enterTransition = {
                 scaleIn(
@@ -205,13 +208,13 @@ fun Main_Screen() {
                 HomeScreen(navController)  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
-                DiscoverScreen()
+                DiscoverScreen(navController)
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen()
+                SearchScreen(navController)
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen()
+                LibraryScreen(navController)
             }
         }
     }
@@ -257,7 +260,12 @@ private fun BottomNavBar(navController: NavController) {
                 shape = RoundedCornerShape(18.dp),
                 ambientColor = Color(0xFF0D0C0C).copy(alpha = 0.2f),
                 spotColor = Color(0xFF0D0C0C).copy(alpha = 0.4f)
-            ).background(Color(0xFF0D0C0C), shape = RoundedCornerShape(18.dp)),
+            ).background(Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF0D0C0C).copy(alpha = 0.95f),
+                    Color(0xFF0D0C0C).copy(alpha = 1f)
+                )
+            ), shape = RoundedCornerShape(18.dp)),
         contentAlignment = Alignment.Center
     ) {
         Row(

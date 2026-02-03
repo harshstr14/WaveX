@@ -1,4 +1,4 @@
-package com.example.wavex.viewModel
+package com.example.wavex.discoverScreen.viewModel
 
 import android.util.Log
 import androidx.compose.runtime.State
@@ -12,15 +12,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-class ArtistsSearchViewModel : ViewModel() {
+class ExploreArtistsViewModel : ViewModel() {
     private val _artists = mutableStateOf<List<Artists>>(emptyList())
     val artists: State<List<Artists>> = _artists
+    val isLoading = mutableStateOf(false)
 
     fun fetchArtistsByQuery(query: String, root: String) {
         viewModelScope.launch {
+            isLoading.value = true
             try {
-                val responseBody =
+                val responseBody = withContext(Dispatchers.IO) {
                     requestWithFallback("/search/artists?query=$query&limit=20")
+                }
 
                 if (responseBody.isEmpty()) return@launch
 
@@ -28,6 +31,8 @@ class ArtistsSearchViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
+            } finally {
+                isLoading.value = false
             }
         }
     }
