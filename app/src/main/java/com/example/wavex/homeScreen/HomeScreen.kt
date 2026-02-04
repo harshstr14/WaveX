@@ -1,5 +1,6 @@
 package com.example.wavex.homeScreen
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +53,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.wavex.ForgotPassword
 import com.example.wavex.R
+import com.example.wavex.artistScreen.ArtistActivity
+import com.example.wavex.artistScreen.Artist_Activity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
 import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
@@ -315,6 +320,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
 @Composable
 fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsViewModel = viewModel()) {
     val artists = viewModel.artists.value
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchArtistsByQuery(query, root)
@@ -327,7 +333,13 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
         horizontalArrangement = Arrangement.spacedBy(22.dp)) {
         items(artists) { artist ->
             Column(
-                modifier = Modifier.clickable {  } ,
+                modifier = Modifier.clickable {
+                    val intent = Intent(context, ArtistActivity()::class.java).apply {
+                        putExtra("artist_id", artist.id)
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    context.startActivity(intent)
+                },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AsyncImage(

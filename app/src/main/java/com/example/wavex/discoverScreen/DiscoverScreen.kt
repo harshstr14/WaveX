@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -244,7 +245,7 @@ fun DiscoverScreen(navController: NavController) {
 
                 "Albums" -> {
                     ExploreAlbums(
-                        "latest", "results",
+                        "popular", "results",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp), gridState = albumsGridState
                     )
                 }
@@ -354,8 +355,8 @@ fun ExploreSongs(
     viewModel: ExploreSongsViewModel = viewModel(),
     listState: LazyListState
 ) {
-    val songs by viewModel.songs
-    val isLoading by viewModel.isLoading
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
@@ -455,8 +456,8 @@ fun ExploreArtists(
     viewModel: ExploreArtistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val artists = viewModel.artists.value
-    val isLoading by viewModel.isLoading
+    val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         viewModel.fetchArtistsByQuery(query, root)
@@ -518,8 +519,8 @@ fun ExploreAlbums(
     viewModel: ExploreAlbumsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val albums = viewModel.albums.value
-    val isLoading by viewModel.isLoading
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         viewModel.fetchAlbumByQuery(query, root)
@@ -593,8 +594,8 @@ fun ExplorePlaylist(
     viewModel: ExplorePlaylistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val playlists by viewModel.playlists
-    val isLoading by viewModel.isLoading
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query, root)

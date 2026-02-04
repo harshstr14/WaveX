@@ -22,6 +22,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
         <activity
+            android:name=".artistScreen.ArtistActivity"
+            android:exported="false"
+            android:label="@string/title_activity_artist"
+            android:theme="@style/Theme.WaveX" />
+        <activity
             android:name=".MainScreen"
             android:exported="false"
             android:label="@string/title_activity_main_screen"

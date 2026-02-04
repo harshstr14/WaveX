@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -419,8 +420,8 @@ fun SearchArtists(
     viewModel: SearchArtistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val artists = viewModel.artists.value
-    val isLoading by viewModel.isLoading
+    val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         if (query.length < 2) {
@@ -487,8 +488,8 @@ fun SearchSongs(
     viewModel: SearchSongsViewModel = viewModel(),
     listState: LazyListState
 ) {
-    val songs by viewModel.songs
-    val isLoading by viewModel.isLoading
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         if (query.length < 2) {
@@ -594,8 +595,8 @@ fun SearchAlbums(
     viewModel: SearchAlbumsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val albums = viewModel.albums.value
-    val isLoading by viewModel.isLoading
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         if (query.length < 2) {
@@ -674,8 +675,8 @@ fun SearchPlaylists(
     viewModel: SearchPlaylistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
-    val playlists by viewModel.playlists
-    val isLoading by viewModel.isLoading
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(query) {
         if (query.length < 2) {

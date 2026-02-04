@@ -6,4 +6,5 @@
     <string name="title_activity_verify_code">VerifyCode</string>
     <string name="web_client_id">849123312036-7a299l4binubrld3pc6dg48u9a7a29bf.apps.googleusercontent.com</string>
     <string name="title_activity_main_screen">MainScreen</string>
+    <string name="title_activity_artist">ArtistActivity</string>
 </resources>
