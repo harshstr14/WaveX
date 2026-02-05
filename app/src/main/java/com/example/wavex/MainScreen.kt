@@ -135,10 +135,10 @@ class MainScreen : ComponentActivity() {
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             )
         )
 

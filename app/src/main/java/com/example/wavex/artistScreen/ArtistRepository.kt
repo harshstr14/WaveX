@@ -14,16 +14,25 @@ class ArtistRepository {
 
     suspend fun fetchArtistById(artistId: String): ArtistDetailUiState =
         withContext(Dispatchers.IO) {
-
             val response = requestWithFallback("/artists?id=$artistId")
-            if (response.isEmpty()) return@withContext ArtistDetailUiState()
+            if (response.isEmpty()) {
+                return@withContext ArtistDetailUiState(
+                    isError = true,
+                    errorMessage = "Network error. Please try again."
+                )
+            }
 
             parseArtist(response)
         }
 
     private fun parseArtist(jsonString: String): ArtistDetailUiState {
         val json = JSONObject(jsonString)
-        if (!json.optBoolean("success", false)) return ArtistDetailUiState()
+        if (!json.optBoolean("success", false)) {
+            return ArtistDetailUiState(
+                isError = true,
+                errorMessage = "Artist not found"
+            )
+        }
 
         val data = json.getJSONObject("data")
 

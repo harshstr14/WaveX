@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -74,10 +75,10 @@ class VerifyEmail : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             )
         )
 
@@ -147,8 +148,8 @@ fun VerifyEmailScreen() {
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C).copy(alpha = 0.2f),
-                            spotColor = Color(0xFF1C1C1C).copy(alpha = 0.4f)
+                            ambientColor = Color(0xFF1C1C1C),
+                            spotColor = Color(0xFF1C1C1C)
                         ),
                     containerColor = Color(0xFF1C1C1C),
                     shape = RoundedCornerShape(9.dp)
@@ -184,7 +185,7 @@ fun VerifyEmailScreen() {
         val context = LocalContext.current
         val activity = remember(context) { context as? Activity }
 
-        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(Color(0xFF121212))) {
+        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorResource(R.color.background_color))) {
             val (backIcon,mailAnimation,titleText,descriptionText,resendSection,verifyEmailButton) = createRefs()
 
             Box(
@@ -194,14 +195,14 @@ fun VerifyEmailScreen() {
                 }.size(36.dp).clip(RoundedCornerShape(20.dp))
                     .border(
                         width = 1.5.dp,
-                        color = Color(0xFF797979),
+                        color = colorResource(R.color.secondary_text_color),
                         shape = RoundedCornerShape(20.dp)
                     ).clickable { activity?.finish() }, contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
                     contentDescription = "add Icon",
-                    tint = Color(0xFFF6F6F6),
+                    tint = colorResource(R.color.primary_text_color),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -225,7 +226,7 @@ fun VerifyEmailScreen() {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             }, fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = Color(0xFFF6F6F6), lineHeight = 26.sp
+                color = colorResource(R.color.primary_text_color), lineHeight = 26.sp
             )
 
             Text("We’ve sent a verification link to \nyour email $email.\nPlease check your inbox and \nclick the link to verify your account", modifier = Modifier.constrainAs(descriptionText) {
@@ -233,7 +234,7 @@ fun VerifyEmailScreen() {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = Color(0xFF797979), textAlign = TextAlign.Center, lineHeight = 20.sp
+                color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 20.sp
             )
 
             Row (modifier = Modifier.constrainAs(resendSection) {
@@ -242,13 +243,13 @@ fun VerifyEmailScreen() {
                 end.linkTo(parent.end)
             }) {
                 Text("Didn't receive the email?" , fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFF797979), textAlign = TextAlign.Center, lineHeight = 15.sp
+                    color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 15.sp
                 )
 
                 Spacer(modifier = Modifier.width(3.dp))
 
                 Text(if (canResend) "Resend" else "Resend in ${secondsLeft}s", fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = if (canResend) Color(0xFF34A853) else Color(0xFF555555), textAlign = TextAlign.Center, lineHeight = 15.sp, modifier = Modifier
+                    color = if (canResend) colorResource(R.color.theme_color) else Color(0xFF555555), textAlign = TextAlign.Center, lineHeight = 15.sp, modifier = Modifier
                         .clickable(enabled = canResend) {
                             val user = FirebaseAuth.getInstance().currentUser ?: return@clickable
 
@@ -271,8 +272,8 @@ fun VerifyEmailScreen() {
             }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
                 elevation = 26.dp,
                 shape = RoundedCornerShape(26.dp),
-                ambientColor = Color(0xFF34A853).copy(alpha = 0.2f),
-                spotColor = Color(0xFF34A853).copy(alpha = 0.4f)
+                ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
             ),
                 onClick = {
                     val user = FirebaseAuth.getInstance().currentUser ?: return@Button
@@ -324,8 +325,8 @@ fun VerifyEmailScreen() {
                         }
                     }
                 }, colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF34A853),
-                    contentColor = Color(0xFFF6F6F6)
+                    containerColor = colorResource(R.color.theme_color),
+                    contentColor = colorResource(R.color.background_color)
                 ) , shape = RoundedCornerShape(26.dp)) {
 
                 Text("Verify Email", fontFamily = fonts, fontWeight = FontWeight.SemiBold,

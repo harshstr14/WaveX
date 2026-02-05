@@ -12,6 +12,8 @@ data class ArtistDetailUiState(
     val imageUrl: String = "",
     val topSongs: List<SongItem> = emptyList(),
     val topAlbums: List<DataItem> = emptyList(),
-    val singles: List<DataItem> = emptyList()
+    val singles: List<DataItem> = emptyList(),
+    val isError: Boolean = false,
+    val errorMessage: String = ""
 )
 

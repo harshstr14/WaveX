@@ -2,13 +2,13 @@ package com.example.wavex.discoverScreen
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -83,7 +85,6 @@ import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
 import com.example.wavex.fonts
-import com.example.wavex.searchScreen.hideKeyboardOnClick
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -99,7 +100,7 @@ fun DiscoverScreen(navController: NavController) {
             end.linkTo(parent.end)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
             fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = Color(0xFFF6F6F6), lineHeight = 22.sp
+            color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
         Box(modifier = Modifier.constrainAs(backIcon) {
@@ -110,7 +111,7 @@ fun DiscoverScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = Color(0xFF797979),
+                color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
             ).clickable {
                 navController.popBackStack()
@@ -119,7 +120,7 @@ fun DiscoverScreen(navController: NavController) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
                 contentDescription = "add Icon",
-                tint = Color(0xFFF6F6F6),
+                tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -142,6 +143,8 @@ fun DiscoverScreen(navController: NavController) {
         val scope = rememberCoroutineScope()
         val listState = rememberLazyListState()
 
+        val interactionSource = remember { MutableInteractionSource() }
+
         LazyRow(
             state = listState,
             modifier = Modifier.constrainAs(row) {
@@ -156,20 +159,15 @@ fun DiscoverScreen(navController: NavController) {
                 val isSelected = pagerState.currentPage == index
 
                 val bgColor by animateColorAsState(
-                    if (isSelected) Color(0xFF34A853)
-                    else Color(0xFF797979).copy(alpha = 0.4f),
+                    if (isSelected) colorResource(R.color.theme_color)
+                    else colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
                     label = "bg"
                 )
 
                 val textColor by animateColorAsState(
-                    if (isSelected) Color(0xFFF6F6F6)
-                    else Color(0xFFBCBCBC),
+                    if (isSelected) colorResource(R.color.background_color)
+                    else colorResource(R.color.primary_text_color).copy(alpha = 0.6f),
                     label = "text"
-                )
-
-                val elevation by animateDpAsState(
-                    if (isSelected) 12.dp else 0.dp,
-                    label = "elevation"
                 )
 
                 val scale by animateFloatAsState(
@@ -178,10 +176,14 @@ fun DiscoverScreen(navController: NavController) {
                 )
 
                 Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = bgColor),
                     modifier = Modifier
                         .height(36.dp)
                         .selectable(
                             selected = isSelected,
+                            interactionSource = interactionSource,
+                            indication = null,
                             onClick = {
                                 scope.launch {
                                     pagerState.animateScrollToPage(
@@ -192,10 +194,7 @@ fun DiscoverScreen(navController: NavController) {
                                         )
                                     )
                             } }
-                        ),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = bgColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = elevation)
+                        )
                 ) {
                     Box(
                         modifier = Modifier
@@ -315,7 +314,7 @@ fun ExploreGrid(modifier: Modifier, gridState: LazyGridState) {
             ) {
                 Text(
                     text = item.title,
-                    color = Color(0xFFF6F6F6),
+                    color = colorResource(R.color.background_color),
                     fontSize = 15.sp, lineHeight = 16.sp,
                     fontFamily = fonts, fontWeight = FontWeight.SemiBold,
                     fontStyle = FontStyle.Normal,
@@ -362,6 +361,8 @@ fun ExploreSongs(
         viewModel.fetchPlaylistsByID(playlistId, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     when {
         isLoading -> {
             LoadingEffect()
@@ -381,7 +382,13 @@ fun ExploreSongs(
                     Row (
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 2.dp),
+                            .padding(vertical = 2.dp)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+
+                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
@@ -399,7 +406,7 @@ fun ExploreSongs(
                             Text(
                                 text = song.name,
                                 fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFFF6F6F6), maxLines = 1,
+                                color = colorResource(R.color.primary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
 
@@ -413,7 +420,7 @@ fun ExploreSongs(
                             Text(
                                 text = artistsName,
                                 fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFF797979), maxLines = 1,
+                                color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -428,7 +435,7 @@ fun ExploreSongs(
                                     modifier = Modifier.size(22.dp),
                                     painter = painterResource(R.drawable.download_icon),
                                     contentDescription = "Download",
-                                    tint = Color(0xFF9E9E9E)
+                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                 )
                             }
 
@@ -437,7 +444,7 @@ fun ExploreSongs(
                                     modifier = Modifier.size(20.dp),
                                     painter = painterResource(R.drawable.three_dots_icon),
                                     contentDescription = "Three Dots",
-                                    tint = Color(0xFF9E9E9E)
+                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -463,6 +470,8 @@ fun ExploreArtists(
         viewModel.fetchArtistsByQuery(query, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     when {
         isLoading -> {
             LoadingEffect()
@@ -483,7 +492,10 @@ fun ExploreArtists(
             ) {
                 items(artists) { artist ->
                     Column(
-                        modifier = Modifier.clickable {  } ,
+                        modifier = Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {  } ,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AsyncImage(
@@ -500,8 +512,8 @@ fun ExploreArtists(
 
                         Text( modifier = Modifier.width(78.dp),
                             text = artist.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 2, textAlign = TextAlign.Center,
+                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -526,6 +538,8 @@ fun ExploreAlbums(
         viewModel.fetchAlbumByQuery(query, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     when {
         isLoading -> {
             LoadingEffect()
@@ -548,7 +562,10 @@ fun ExploreAlbums(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {  }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {  }
                     ) {
                         AsyncImage(
                             model = album.image[2].url,
@@ -563,8 +580,8 @@ fun ExploreAlbums(
 
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = album.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 1,
+                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
@@ -576,7 +593,7 @@ fun ExploreAlbums(
                         Text( modifier = Modifier.padding(horizontal = 2.dp ),
                             text = artistsName,
                             fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFF797979), maxLines = 1,
+                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -601,6 +618,8 @@ fun ExplorePlaylist(
         viewModel.fetchPlayListByQuery(query, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     when {
         isLoading -> {
             LoadingEffect()
@@ -623,7 +642,10 @@ fun ExplorePlaylist(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .hideKeyboardOnClick {  }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {  }
                     ) {
                         AsyncImage(
                             model = playlist.image[2].url,
@@ -638,8 +660,8 @@ fun ExplorePlaylist(
 
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = playlist.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 2,
+                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -672,7 +694,7 @@ fun EmptyState(text: String) {
         Text(
             text = text,
             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = Color(0xFF797979)
+            color = colorResource(R.color.secondary_text_color)
         )
     }
 }

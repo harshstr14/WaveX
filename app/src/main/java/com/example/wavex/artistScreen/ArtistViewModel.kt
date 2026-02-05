@@ -23,7 +23,11 @@ class ArtistViewModel(
             try {
                 _artists.value = repository.fetchArtistById(artistId)
             } catch (e: Exception) {
-                Log.e("SAAVN", "Artist load failed: ${e.message}")
+                _artists.value = ArtistDetailUiState(
+                    isError = true,
+                    errorMessage = "Something went wrong"
+                )
+                Log.e("SAAVN", "Artist load failed", e)
             } finally {
                 _isLoading.value = false
             }

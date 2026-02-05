@@ -3,6 +3,7 @@ package com.example.wavex.homeScreen
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -53,10 +55,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import com.example.wavex.ForgotPassword
 import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.artistScreen.Artist_Activity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
 import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
@@ -72,7 +72,7 @@ fun HomeScreen (navController: NavController) {
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
         val (logoIcon, profileAvatar, contentColumn) = createRefs()
 
-        Icon(painter = painterResource(R.drawable.wavex_logo), contentDescription = "Logo Icon",
+        Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
             tint = Color.Unspecified, modifier = Modifier.constrainAs(logoIcon) {
                 top.linkTo(parent.top, margin = (-40).dp)
                 start.linkTo(parent.start)
@@ -114,8 +114,8 @@ fun HomeScreen (navController: NavController) {
                 Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
                     top.linkTo(topPlaylistRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
                 NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesRow) {
@@ -127,8 +127,8 @@ fun HomeScreen (navController: NavController) {
                 Text("Popular Artists", modifier = Modifier.constrainAs(artistsTitle) {
                     top.linkTo(newReleasesRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
                 Artists("top artists","results", modifier = Modifier.constrainAs(artistsRow){
@@ -140,8 +140,8 @@ fun HomeScreen (navController: NavController) {
                 Text("Trending Songs", modifier = Modifier.constrainAs(trendingTitle) {
                     top.linkTo(artistsRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
                 TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingRow) {
@@ -153,8 +153,8 @@ fun HomeScreen (navController: NavController) {
                 Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
                     top.linkTo(trendingRow.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), lineHeight = 18.sp
+                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
                 TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsRow) {
@@ -174,6 +174,8 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query,root)
     }
+
+    val interactionSource = remember { MutableInteractionSource() }
 
     if (playlists.isEmpty()) return
 
@@ -238,7 +240,10 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                         scaleY = scaleAndAlpha.first
                         alpha = scaleAndAlpha.second
                     }
-                    .clickable {  }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {  }
             ) {
                 AsyncImage(
                     model = realItem.image[2].url,
@@ -255,7 +260,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                 Text( modifier = Modifier.padding(horizontal = 8.dp ),
                     text = realItem.name,
                     fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 2,
+                    color = colorResource(R.color.primary_text_color), maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -271,6 +276,8 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
         viewModel.fetchPlaylistsByID(playlistId, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     if (songs.isEmpty()) return
 
     LazyRow(modifier = modifier,
@@ -280,7 +287,10 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
             Column(
                 modifier = Modifier
                     .width(110.dp)
-                    .clickable {  }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {  }
             ) {
                 AsyncImage(
                     model = song.image[2].url,
@@ -296,8 +306,8 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = song.name,
-                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -309,7 +319,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFF797979), maxLines = 1,
+                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -326,6 +336,8 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
         viewModel.fetchArtistsByQuery(query, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     if (artists.isEmpty()) return
 
     LazyRow(modifier = modifier,
@@ -333,7 +345,10 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
         horizontalArrangement = Arrangement.spacedBy(22.dp)) {
         items(artists) { artist ->
             Column(
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {
                     val intent = Intent(context, ArtistActivity()::class.java).apply {
                         putExtra("artist_id", artist.id)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -357,7 +372,7 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                 Text( modifier = Modifier.width(78.dp),
                     text = artist.name,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 2, textAlign = TextAlign.Center,
+                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -373,6 +388,8 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
         viewModel.fetchPlaylistsByID(playlistId, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     if (songs.isEmpty()) return
 
     LazyRow(modifier = modifier,
@@ -382,7 +399,10 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
             Column(
                 modifier = Modifier
                     .width(110.dp)
-                    .clickable {  }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {  }
             ) {
                 AsyncImage(
                     model = song.image[2].url,
@@ -398,8 +418,8 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = song.name,
-                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -411,7 +431,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFF797979), maxLines = 1,
+                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -427,6 +447,8 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
         viewModel.fetchAlbumByQuery(query, root)
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     if (albums.isEmpty()) return
 
     LazyRow(modifier = modifier,
@@ -436,7 +458,10 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
             Column(
                 modifier = Modifier
                     .width(110.dp)
-                    .clickable {  }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {  }
             ) {
                 AsyncImage(
                     model = album.image[2].url,
@@ -452,8 +477,8 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = album.name,
-                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -465,7 +490,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFF797979), maxLines = 1,
+                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }

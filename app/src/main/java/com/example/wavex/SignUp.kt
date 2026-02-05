@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -116,10 +117,10 @@ class SignUp : ComponentActivity() {
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF121212.toInt()
+                scrim = 0xFFF6F6F6.toInt()
             )
         )
 
@@ -147,8 +148,8 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C).copy(alpha = 0.2f),
-                            spotColor = Color(0xFF1C1C1C).copy(alpha = 0.4f)
+                            ambientColor = Color(0xFF1C1C1C),
+                            spotColor = Color(0xFF1C1C1C)
                         ),
                     containerColor = Color(0xFF1C1C1C),
                     shape = RoundedCornerShape(9.dp)
@@ -195,7 +196,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
         var isPasswordVisible by remember { mutableStateOf(false) }
         val scrollState = rememberScrollState()
 
-        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(Color(0xFF121212))) {
+        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorResource(R.color.background_color))) {
             val (titleText,subtitleText,formContainer) = createRefs()
 
             Text("Create Account", modifier = Modifier.constrainAs(titleText) {
@@ -203,7 +204,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             }, fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = Color(0xFFF6F6F6), lineHeight = 26.sp
+                color = colorResource(R.color.primary_text_color), lineHeight = 26.sp
             )
 
             Text("Fill your  information below or register\nwith your social account", modifier = Modifier.constrainAs(subtitleText) {
@@ -211,7 +212,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = Color(0xFF797979), textAlign = TextAlign.Center, lineHeight = 18.sp
+                color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 18.sp
             )
 
             Column(modifier = Modifier.constrainAs(formContainer) {
@@ -229,14 +230,14 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(parent.top, margin = 30.dp)
                         start.linkTo(parent.start, margin = 28.dp)
                     }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = Color(0xFFF6F6F6)
+                        color = colorResource(R.color.primary_text_color)
                     )
 
                     Box(modifier = Modifier.constrainAs(nameInputContainer) {
                         top.linkTo(nameLabel.bottom, margin = 10.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(Color(0xFF797979).copy(alpha = 0.4f),
+                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
                         shape = RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -252,10 +253,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     width = Dimension.fillToConstraints },
                                     text = "Enter Name",
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
                                     fontSize = 14.sp, lineHeight = 17.sp,
-                                    color = Color(0xFFbcbcbc)
+                                    color = colorResource(R.color.secondary_text_color)
                                 )
                             }
 
@@ -281,7 +282,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                         fontWeight = FontWeight.SemiBold,
                                         fontStyle = FontStyle.Normal,
                                         fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = Color(0xFFbcbcbc)
+                                        color = colorResource(R.color.secondary_text_color)
                                     ),
                                     singleLine = true,
                                     cursorBrush = SolidColor(Color(0xFF1C1C1C))
@@ -294,14 +295,14 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(nameInputContainer.bottom, margin = 20.dp)
                         start.linkTo(parent.start, margin = 28.dp)
                     }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = Color(0xFFF6F6F6)
+                        color = colorResource(R.color.primary_text_color)
                     )
 
                     Box(modifier = Modifier.constrainAs(emailInputContainer) {
                         top.linkTo(emailLabel.bottom, margin = 10.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(Color(0xFF797979).copy(alpha = 0.4f),
+                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
                         shape = RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -317,10 +318,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     width = Dimension.fillToConstraints },
                                     text = "Enter Email",
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
                                     fontSize = 14.sp, lineHeight = 17.sp,
-                                    color = Color(0xFFbcbcbc)
+                                    color = colorResource(R.color.secondary_text_color)
                                 )
                             }
 
@@ -346,7 +347,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                         fontWeight = FontWeight.SemiBold,
                                         fontStyle = FontStyle.Normal,
                                         fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = Color(0xFFbcbcbc)
+                                        color = colorResource(R.color.secondary_text_color)
                                     ),
                                     singleLine = true,
                                     cursorBrush = SolidColor(Color(0xFF1C1C1C))
@@ -359,14 +360,14 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(emailInputContainer.bottom, margin = 20.dp)
                         start.linkTo(parent.start, margin = 28.dp)
                     }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = Color(0xFFF6F6F6)
+                        color = colorResource(R.color.primary_text_color)
                     )
 
                     Box(modifier = Modifier.constrainAs(passwordInputContainer) {
                         top.linkTo(passwordLabel.bottom, margin = 10.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(Color(0xFF797979).copy(alpha = 0.4f),
+                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
                         shape = RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -382,10 +383,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     width = Dimension.fillToConstraints },
                                     text = "Enter Password",
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
                                     fontSize = 14.sp, lineHeight = 17.sp,
-                                    color = Color(0xFFbcbcbc)
+                                    color = colorResource(R.color.secondary_text_color)
                                 )
                             }
 
@@ -411,7 +412,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                         fontWeight = FontWeight.SemiBold,
                                         fontStyle = FontStyle.Normal,
                                         fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = Color(0xFFbcbcbc)
+                                        color = colorResource(R.color.secondary_text_color)
                                     ),
                                     singleLine = true,
                                     cursorBrush = SolidColor(Color(0xFF1C1C1C)),
@@ -429,7 +430,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                         R.drawable.eye_closed_icon
                                 ),
                                 contentDescription = "Toggle password",
-                                tint = Color(0xFFF8F9FA),
+                                tint = colorResource(R.color.primary_text_color),
                                 modifier = Modifier
                                     .size(20.dp)
                                     .constrainAs(toggleIcon) {
@@ -449,8 +450,8 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                     }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
                         elevation = 26.dp,
                         shape = RoundedCornerShape(26.dp),
-                        ambientColor = Color(0xFF34A853).copy(alpha = 0.2f),
-                        spotColor = Color(0xFF34A853).copy(alpha = 0.4f)
+                        ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                        spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
                     ),
                         onClick = {
                             keyboardController?.hide()
@@ -569,8 +570,8 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                 }
                             }
                         }, colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF34A853),
-                            contentColor = Color(0xFFF6F6F6)
+                            containerColor = colorResource(R.color.theme_color),
+                            contentColor = colorResource(R.color.background_color)
                         ) , shape = RoundedCornerShape(26.dp)) {
 
                         Text("Sign Up", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
@@ -598,7 +599,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = Color(0xFF797979), textAlign = TextAlign.Center, lineHeight = 15.sp
+                        color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 15.sp
                     )
 
                     Box(modifier = Modifier.constrainAs(dividerRight) {
@@ -635,7 +636,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                             Spacer(modifier = Modifier.width(5.dp))
 
                             Text("Sign in with google", fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFFF6F6F6)
+                                color = colorResource(R.color.background_color)
                             )
                         }
                     }
@@ -696,12 +697,12 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                     ) {
                         Row {
                             Icon(painter = painterResource(R.drawable.guest_user_icon), contentDescription = "Google Icon",
-                                tint = Color(0xFF34A853), modifier = Modifier.size(24.dp))
+                                tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp))
 
                             Spacer(modifier = Modifier.width(5.dp))
 
                             Text("Continue as Guest", fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFFF6F6F6)
+                                color = colorResource(R.color.background_color)
                             )
                         }
                     }
@@ -712,13 +713,13 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         end.linkTo(parent.end)
                     }.padding(bottom = 45.dp)) {
                         Text("Already have an account?" , fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFF797979), textAlign = TextAlign.Center, lineHeight = 15.sp
+                            color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 15.sp
                         )
 
                         Spacer(modifier = Modifier.width(3.dp))
 
                         Text("Sign In", fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFF34A853), textAlign = TextAlign.Center, lineHeight = 15.sp, modifier = Modifier
+                            color = colorResource(R.color.theme_color), textAlign = TextAlign.Center, lineHeight = 15.sp, modifier = Modifier
                                 .clickable {
                                     val intent = Intent(context, SignIn::class.java).apply {
                                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP

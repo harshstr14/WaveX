@@ -70,6 +70,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -125,7 +126,7 @@ fun SearchScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = Color(0xFF797979),
+                color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
             ).clickable {
                 navController.popBackStack()
@@ -134,7 +135,7 @@ fun SearchScreen(navController: NavController) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
                 contentDescription = "add Icon",
-                tint = Color(0xFFF6F6F6),
+                tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -177,7 +178,12 @@ fun SearchScreen(navController: NavController) {
 fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    return clickable {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    return clickable(
+        interactionSource = interactionSource,
+        indication = null
+    ) {
         focusManager.clearFocus()
         keyboardController?.hide()
         onClick()
@@ -196,7 +202,7 @@ private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange:
             value = query,
             onValueChange = onQueryChange,
             placeholder = { Text("Search", fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
-                fontSize = 16.sp, lineHeight = 18.sp, color = Color(0xFFBCBCBC)) },
+                fontSize = 16.sp, lineHeight = 18.sp, color = colorResource(R.color.secondary_text_color)) },
             singleLine = true,
             leadingIcon = {
                 Box(
@@ -206,7 +212,7 @@ private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange:
                         painter = painterResource(R.drawable.search_outline),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF34A853)
+                        tint = colorResource(R.color.theme_color)
                     )
                 }
             },
@@ -223,15 +229,15 @@ private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange:
                                     selection = TextRange(0)
                                 )
                             ) },
-                        tint = Color(0xFF34A853)
+                        tint = colorResource(R.color.theme_color)
                     )
                 }
             },
             modifier = modifier,
             shape = RoundedCornerShape(16.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF797979).copy(alpha = 0.4f),
-                unfocusedContainerColor = Color(0xFF797979).copy(alpha = 0.4f),
+                focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 cursorColor = Color(0xFF121212)
@@ -240,7 +246,7 @@ private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange:
                 fontWeight = FontWeight.Normal,
                 fontStyle = FontStyle.Normal,
                 fontSize = 16.sp, lineHeight = 18.sp,
-                color = Color(0xFFBCBCBC)
+                color = colorResource(R.color.secondary_text_color)
             )
         )
     }
@@ -272,7 +278,7 @@ fun SearchTabs(modifier: Modifier, searchText: String) {
             selectedTabIndex = pagerState.currentPage,
             containerColor = Color.Transparent,
             edgePadding = 20.dp,
-            contentColor = Color(0xFF34A853),
+            contentColor = colorResource(R.color.theme_color),
             indicator = { tabPositions ->
                 val indicatorExtraPadding = 12.dp
 
@@ -307,7 +313,7 @@ fun SearchTabs(modifier: Modifier, searchText: String) {
                         .width(indicatorWidth)
                         .height(3.dp)
                         .background(
-                            color = Color(0xFF34A853),
+                            color = colorResource(R.color.theme_color),
                             shape = RoundedCornerShape(2.dp)
                         )
                 )
@@ -375,7 +381,7 @@ fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
     val density = LocalDensity.current
 
     val animatedColor by animateColorAsState(
-        if (selected) Color(0xFF34A853) else Color(0xFF797979),
+        if (selected) colorResource(R.color.theme_color) else colorResource(R.color.secondary_text_color),
         label = "tabColor"
     )
 
@@ -469,8 +475,8 @@ fun SearchArtists(
 
                         Text( modifier = Modifier.width(78.dp),
                             text = artist.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 2, textAlign = TextAlign.Center,
+                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -538,7 +544,7 @@ fun SearchSongs(
                             Text(
                                 text = song.name,
                                 fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFFF6F6F6), maxLines = 1,
+                                color = colorResource(R.color.primary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
 
@@ -552,7 +558,7 @@ fun SearchSongs(
                             Text(
                                 text = artistsName,
                                 fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = Color(0xFF797979), maxLines = 1,
+                                color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -567,7 +573,7 @@ fun SearchSongs(
                                     modifier = Modifier.size(22.dp),
                                     painter = painterResource(R.drawable.download_icon),
                                     contentDescription = "Download",
-                                    tint = Color(0xFF9E9E9E)
+                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                 )
                             }
 
@@ -576,7 +582,7 @@ fun SearchSongs(
                                     modifier = Modifier.size(20.dp),
                                     painter = painterResource(R.drawable.three_dots_icon),
                                     contentDescription = "Three Dots",
-                                    tint = Color(0xFF9E9E9E)
+                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -644,8 +650,8 @@ fun SearchAlbums(
 
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = album.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 1,
+                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
@@ -657,7 +663,7 @@ fun SearchAlbums(
                         Text( modifier = Modifier.padding(horizontal = 2.dp ),
                             text = artistsName,
                             fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFF797979), maxLines = 1,
+                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -724,8 +730,8 @@ fun SearchPlaylists(
 
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = playlist.name,
-                            fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = Color(0xFFF6F6F6), maxLines = 2,
+                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -745,7 +751,7 @@ fun EmptyState(text: String) {
         Text(
             text = text,
             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = Color(0xFF797979)
+            color = colorResource(R.color.secondary_text_color)
         )
     }
 }

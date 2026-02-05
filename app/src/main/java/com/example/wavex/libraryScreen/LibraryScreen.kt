@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +50,7 @@ fun LibraryScreen(navController: NavController) {
             end.linkTo(parent.end)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
             fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = Color(0xFFF6F6F6), lineHeight = 22.sp
+            color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
         Box(modifier = Modifier.constrainAs(backIcon) {
@@ -60,7 +61,7 @@ fun LibraryScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = Color(0xFF797979),
+                color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
             ).clickable {
                 navController.popBackStack()
@@ -69,7 +70,7 @@ fun LibraryScreen(navController: NavController) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
                 contentDescription = "add Icon",
-                tint = Color(0xFFF6F6F6),
+                tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -82,7 +83,7 @@ fun LibraryScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = Color(0xFF797979),
+                color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
             ).clickable {
 
@@ -91,7 +92,7 @@ fun LibraryScreen(navController: NavController) {
             Icon(
                 painter = painterResource(R.drawable.plus_icon),
                 contentDescription = "add Icon",
-                tint = Color(0xFFF6F6F6),
+                tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -130,7 +131,7 @@ fun LibraryScreen(navController: NavController) {
                 Text(
                     text = "Liked Songs",
                     fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFFF6F6F6), maxLines = 1,
+                    color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -139,7 +140,7 @@ fun LibraryScreen(navController: NavController) {
                 Text(
                     text = "total songs",
                     fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = Color(0xFF797979), maxLines = 1,
+                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -154,7 +155,7 @@ fun LibraryScreen(navController: NavController) {
                         modifier = Modifier.size(20.dp),
                         painter = painterResource(R.drawable.three_dots_icon),
                         contentDescription = "Three Dots",
-                        tint = Color(0xFF9E9E9E)
+                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                     )
                 }
             }

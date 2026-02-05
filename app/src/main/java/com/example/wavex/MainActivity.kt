@@ -81,7 +81,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize()
         .background( Color(0xFF0D0C0C))) {
-        Image(painter = painterResource(R.drawable.wavex_logo), contentDescription = "Logo",
+        Image(painter = painterResource(R.drawable.wavex_logo_light), contentDescription = "Logo",
             modifier = Modifier.align(Alignment.Center).size(280.dp))
     }
 }
