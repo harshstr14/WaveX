@@ -7,4 +7,6 @@
     <string name="web_client_id">849123312036-7a299l4binubrld3pc6dg48u9a7a29bf.apps.googleusercontent.com</string>
     <string name="title_activity_main_screen">MainScreen</string>
     <string name="title_activity_artist">ArtistActivity</string>
+    <string name="title_activity_all_songs">AllSongsActivity</string>
+    <string name="title_activity_all_albums_screen">AllAlbumsScreen</string>
 </resources>

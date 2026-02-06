@@ -22,6 +22,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
         <activity
+            android:name=".artistScreen.allAlbumsScreen.AllAlbumsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_all_albums_screen"
+            android:theme="@style/Theme.WaveX" />
+        <activity
+            android:name=".artistScreen.allSongsScreen.AllSongsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_all_songs"
+            android:theme="@style/Theme.WaveX" />
+        <activity
             android:name=".artistScreen.ArtistActivity"
             android:exported="false"
             android:label="@string/title_activity_artist"

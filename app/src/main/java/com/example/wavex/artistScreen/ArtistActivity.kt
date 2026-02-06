@@ -1,6 +1,7 @@
 package com.example.wavex.artistScreen
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -28,16 +30,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -69,6 +76,8 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
+import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
@@ -97,10 +106,13 @@ class ArtistActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -116,6 +128,79 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = { activity?.finish() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_icon),
+                            contentDescription = "Back Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(
+                            model = artists.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            text = artists.name,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (artists.isVerified) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                painter = painterResource(R.drawable.verified_icon),
+                                contentDescription = "Verified Icon",
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            painter = painterResource(R.drawable.share_icon),
+                            contentDescription = "Share Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                        )
+                    }
+                    IconButton(onClick = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Click on like")
+                        }
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.heart_outline),
+                            contentDescription = "Like Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = colorResource(R.color.background_color),
+                    scrolledContainerColor = colorResource(R.color.background_color)
+                )
+            )
+        },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
                 Snackbar(
@@ -184,199 +269,222 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                         val (backIcon, shareIcon, likeIcon, image, text1, text2, text4, songlist) = createRefs()
 
-                        Box(
-                            modifier = Modifier.constrainAs(backIcon) {
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start, margin = 25.dp)
-                            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .size(36.dp).clip(RoundedCornerShape(20.dp))
-                                .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    shape = RoundedCornerShape(20.dp)
-                                ).clickable {
-                                    activity?.finish()
-                                }, contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_icon),
-                                contentDescription = "Back Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier.constrainAs(shareIcon) {
-                                top.linkTo(parent.top)
-                                end.linkTo(likeIcon.start, margin = 15.dp)
-                            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .size(36.dp).clip(RoundedCornerShape(20.dp))
-                                .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    shape = RoundedCornerShape(20.dp)
-                                ).clickable {
-
-                                }, contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.share_icon),
-                                contentDescription = "Share Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier.constrainAs(likeIcon) {
-                                top.linkTo(parent.top)
-                                end.linkTo(parent.end, margin = 25.dp)
-                            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .size(36.dp).clip(RoundedCornerShape(20.dp))
-                                .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    shape = RoundedCornerShape(20.dp)
-                                ).clickable {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Click on like",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }, contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.heart_outline),
-                                contentDescription = "Like Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        AsyncImage(
-                            model = artists.imageUrl,
-                            contentDescription = "Profile Image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.constrainAs(image) {
-                                top.linkTo(backIcon.bottom)
-                                start.linkTo(parent.start, margin = 15.dp)
-                            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .size(112.dp).clip(CircleShape).zIndex(2f),
-                            placeholder = painterResource(R.drawable.logo),
-                            error = painterResource(R.drawable.logo)
-                        )
-
-                        Row(
-                            modifier = Modifier.constrainAs(text1){
-                                top.linkTo(image.top, margin = 15.dp)
-                                start.linkTo(image.end)
-                                end.linkTo(parent.end)
-                                width = Dimension.fillToConstraints
-                            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), start = 15.dp, end = 15.dp)) {
-                            Text(
-                                text = artists.name,
-                                fontSize = 18.sp,
-                                lineHeight = 18.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.Bold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            if (artists.isVerified) {
-                                Icon(
-                                    painter = painterResource(R.drawable.verified_icon),
-                                    contentDescription = "Verified Icon",
-                                    tint = Color.Unspecified,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.constrainAs(text2){
-                                top.linkTo(text1.bottom, margin = 15.dp)
-                                start.linkTo(image.end)
-                                end.linkTo(parent.end)
-                                width = Dimension.fillToConstraints
-                            }.padding(start = 15.dp, end = 15.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.followers_icon),
-                                contentDescription = "Followers Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(18.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            Text(
-                                text = "Followers : ${
-                                    formatCount(artists.followerCount.toLong())
-                                }",
-                                fontSize = 12.sp,
-                                lineHeight = 12.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.constrainAs(text4){
-                                top.linkTo(text2.bottom, margin = 5.dp)
-                                start.linkTo(image.end)
-                                end.linkTo(parent.end)
-                                width = Dimension.fillToConstraints
-                            }.padding(start = 15.dp, end = 15.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.headset_icon),
-                                contentDescription = "Followers Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(18.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            Text(
-                                text = "Listeners : ${
-                                    formatCount(artists.fanCount.toLongOrNull() ?: 0L)
-                                }",
-                                fontSize = 12.sp,
-                                lineHeight = 12.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+//                        Box(
+//                            modifier = Modifier
+//                                .constrainAs(backIcon) {
+//                                    top.linkTo(parent.top)
+//                                    start.linkTo(parent.start, margin = 25.dp)
+//                                }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+//                                .size(36.dp).clip(RoundedCornerShape(20.dp))
+//                                .border(
+//                                    width = 1.5.dp,
+//                                    color = colorResource(R.color.secondary_text_color),
+//                                    shape = RoundedCornerShape(20.dp)
+//                                ).clickable {
+//                                    activity?.finish()
+//                                },
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            Icon(
+//                                painter = painterResource(R.drawable.arrow_icon),
+//                                contentDescription = "Back Icon",
+//                                tint = colorResource(R.color.primary_text_color),
+//                                modifier = Modifier.size(20.dp)
+//                            )
+//                        }
+//
+//                        Box(
+//                            modifier = Modifier
+//                                .constrainAs(shareIcon) {
+//                                    top.linkTo(parent.top)
+//                                    end.linkTo(likeIcon.start, margin = 15.dp)
+//                                }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+//                                ).size(36.dp)
+//                                .clip(RoundedCornerShape(20.dp))
+//                                .border(
+//                                    width = 1.5.dp,
+//                                    color = colorResource(R.color.secondary_text_color),
+//                                    shape = RoundedCornerShape(20.dp)
+//                                ).clickable {
+//
+//                                },
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            Icon(
+//                                painter = painterResource(R.drawable.share_icon),
+//                                contentDescription = "Share Icon",
+//                                tint = colorResource(R.color.primary_text_color),
+//                                modifier = Modifier.padding(end = 2.dp).size(18.dp)
+//                            )
+//                        }
+//
+//                        Box(
+//                            modifier = Modifier
+//                                .constrainAs(likeIcon) {
+//                                    top.linkTo(parent.top)
+//                                    end.linkTo(parent.end, margin = 25.dp)
+//                                }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+//                                .size(36.dp)
+//                                .clip(RoundedCornerShape(20.dp))
+//                                .border(
+//                                    width = 1.5.dp,
+//                                    color = colorResource(R.color.secondary_text_color),
+//                                    shape = RoundedCornerShape(20.dp)
+//                                ).clickable {
+//                                    scope.launch {
+//                                        snackbarHostState.showSnackbar(
+//                                            message = "Click on like",
+//                                            duration = SnackbarDuration.Short
+//                                        )
+//                                    }
+//                                },
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            Icon(
+//                                painter = painterResource(R.drawable.heart_outline),
+//                                contentDescription = "Like Icon",
+//                                tint = colorResource(R.color.primary_text_color),
+//                                modifier = Modifier.size(18.dp)
+//                            )
+//                        }
 
                         LazyColumn (
+                            state = listState,
                             modifier = Modifier.constrainAs(songlist){
-                                top.linkTo(image.bottom, margin = 20.dp)
+                                top.linkTo(parent.top)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             }) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp)
+                                ) {
+                                    AsyncImage(
+                                        model = artists.imageUrl,
+                                        contentDescription = "Profile Image",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .clip(CircleShape).zIndex(2f),
+                                        placeholder = painterResource(R.drawable.logo),
+                                        error = painterResource(R.drawable.logo)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), start = 15.dp, end = 15.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = artists.name,
+                                            fontSize = 18.sp,
+                                            lineHeight = 18.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        if (artists.isVerified) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.verified_icon),
+                                                contentDescription = "Verified Icon",
+                                                tint = Color.Unspecified,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.padding(start = 15.dp, end = 15.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.followers_icon),
+                                            contentDescription = "Followers Icon",
+                                            tint = colorResource(R.color.primary_text_color),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+
+                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                        Text(
+                                            text = "Followers : ${
+                                                formatCount(artists.followerCount.toLong())
+                                            }",
+                                            fontSize = 12.sp,
+                                            lineHeight = 12.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.padding(start = 15.dp, end = 15.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.headset_icon),
+                                            contentDescription = "Followers Icon",
+                                            tint = colorResource(R.color.primary_text_color),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+
+                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                        Text(
+                                            text = "Listeners : ${
+                                                formatCount(artists.fanCount.toLongOrNull() ?: 0L)
+                                            }",
+                                            fontSize = 12.sp,
+                                            lineHeight = 12.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
 
                             item {
-                                Text("Top Songs", modifier = Modifier.padding(start = 24.dp, top = 5.dp, bottom = 10.dp)
-                                    , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 24.dp, end = 24.dp, top = 5.dp, bottom = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                    )
+
+                                    Text(modifier = Modifier.clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null
+                                    ) {
+                                        val intent = Intent(context, AllSongsActivity::class.java).apply {
+                                            putExtra("artist_id", artists.id)
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+                                        context.startActivity(intent)
+                                    }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                    )
+                                }
                             }
 
                             items(
@@ -454,10 +562,30 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                             }
 
                             item {
-                                Text("Top Albums", modifier = Modifier.padding(start = 24.dp, top = 15.dp, bottom = 8.dp)
-                                    , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                    )
+
+                                    Text(modifier = Modifier.clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null
+                                    ) {
+                                        val intent = Intent(context, AllAlbumsActivity::class.java).apply {
+                                            putExtra("artist_id", artists.id)
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+                                        context.startActivity(intent)
+                                    }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                    )
+                                }
                             }
 
                             item {
@@ -582,36 +710,38 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        Icon(
-            painter = painterResource(R.drawable.alert_icon),
-            contentDescription = null,
-            tint = colorResource(R.color.secondary_text_color),
-            modifier = Modifier.size(48.dp)
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.size(144.dp)
+        )
+
+        Spacer(modifier = Modifier.height(0.dp))
 
         Text(
+            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontFamily = fonts,
-            fontSize = 14.sp,
-            color = colorResource(R.color.secondary_text_color)
+            fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 
         Spacer(modifier = Modifier.height(18.dp))
 
         Box(
-            modifier = Modifier
+            modifier = Modifier.offset(y = (-8).dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(colorResource(R.color.theme_color))
                 .clickable { onRetry() }
-                .padding(horizontal = 24.dp, vertical = 10.dp)
+                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Retry",
-                fontFamily = fonts,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.background_color)
             )
         }
     }
