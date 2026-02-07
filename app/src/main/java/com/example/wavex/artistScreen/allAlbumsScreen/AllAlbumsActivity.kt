@@ -6,18 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -76,7 +78,8 @@ class AllAlbumsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(
+            statusBarStyle = SystemBarStyle.light(
+                darkScrim = 0xFF121212.toInt(),
                 scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
@@ -112,6 +115,17 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
             viewModel.fetchAlbumsByArtistID(it, "albums")
         }
     }
+
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
 
     Scaffold(
         snackbarHost = {
@@ -180,18 +194,15 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (backIcon, text, albumList) = createRefs()
+                        val (backButton, titleText, albumsGrid) = createRefs()
 
                         Text(
                             "All Albums",
-                            modifier = Modifier.constrainAs(text) {
-                                top.linkTo(parent.top)
+                            modifier = Modifier.constrainAs(titleText) {
+                                top.linkTo(parent.top, margin = 20.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
-                            }.padding(
-                                top = WindowInsets.statusBars.asPaddingValues()
-                                    .calculateTopPadding()
-                            ),
+                            },
                             fontSize = 20.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.Bold,
@@ -201,20 +212,19 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
                         )
 
                         Box(
-                            modifier = Modifier.constrainAs(backIcon) {
-                                top.linkTo(text.top)
-                                bottom.linkTo(text.bottom)
+                            modifier = Modifier.constrainAs(backButton) {
+                                top.linkTo(titleText.top)
+                                bottom.linkTo(titleText.bottom)
                                 start.linkTo(parent.start, margin = 25.dp)
-                            }.padding(
-                                top = WindowInsets.statusBars.asPaddingValues()
-                                    .calculateTopPadding()
-                            )
-                                .size(36.dp).clip(RoundedCornerShape(20.dp))
+                            }.size(36.dp).clip(RoundedCornerShape(20.dp))
                                 .border(
                                     width = 1.5.dp,
                                     color = colorResource(R.color.secondary_text_color),
                                     shape = RoundedCornerShape(20.dp)
-                                ).clickable {
+                                ).clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
                                     activity?.finish()
                                 }, contentAlignment = Alignment.Center
                         ) {
@@ -223,14 +233,18 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
                                 contentDescription = "add Icon",
                                 tint = colorResource(R.color.primary_text_color),
                                 modifier = Modifier.size(20.dp)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
                             )
                         }
 
                         LazyVerticalGrid(
                             state = albumsGridState,
                             columns = GridCells.Fixed(3),
-                            modifier = Modifier.constrainAs(albumList){
-                                top.linkTo(text.bottom, margin = 15.dp)
+                            modifier = Modifier.constrainAs(albumsGrid){
+                                top.linkTo(titleText.bottom, margin = 15.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)

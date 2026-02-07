@@ -70,7 +70,7 @@ fun HomeScreen (navController: NavController) {
     val scrollState = rememberScrollState()
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (logoIcon, profileAvatar, contentColumn) = createRefs()
+        val (logoIcon, profileAvatar, mainContent) = createRefs()
 
         Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
             tint = Color.Unspecified, modifier = Modifier.constrainAs(logoIcon) {
@@ -93,7 +93,7 @@ fun HomeScreen (navController: NavController) {
             error = painterResource(R.drawable.logo)
         )
 
-        Column(modifier = Modifier.constrainAs(contentColumn) {
+        Column(modifier = Modifier.constrainAs(mainContent) {
             top.linkTo(parent.top, margin = 5.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
@@ -102,62 +102,62 @@ fun HomeScreen (navController: NavController) {
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .verticalScroll(scrollState)) {
             ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
-                val (topPlaylistRow,newReleasesTitle,newReleasesRow,artistsTitle,artistsRow,
-                    trendingTitle,trendingRow,topAlbumsTitle,topAlbumsRow) = createRefs()
+                val (topPlaylistsSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,popularArtistsSection,
+                    trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
 
-                Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistRow) {
+                Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
                     top.linkTo(parent.top, margin = 80.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
                 Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
-                    top.linkTo(topPlaylistRow.bottom, margin = 20.dp)
+                    top.linkTo(topPlaylistsSection.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
                 }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
-                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesRow) {
+                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesSection) {
                     top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("Popular Artists", modifier = Modifier.constrainAs(artistsTitle) {
-                    top.linkTo(newReleasesRow.bottom, margin = 20.dp)
+                Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
+                    top.linkTo(newReleasesSection.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
                 }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
-                Artists("top artists","results", modifier = Modifier.constrainAs(artistsRow){
-                    top.linkTo(artistsTitle.bottom, margin = 15.dp)
+                Artists("top artists","results", modifier = Modifier.constrainAs(popularArtistsSection){
+                    top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
-                Text("Trending Songs", modifier = Modifier.constrainAs(trendingTitle) {
-                    top.linkTo(artistsRow.bottom, margin = 20.dp)
+                Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
+                    top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
                 }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
-                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingRow) {
-                    top.linkTo(trendingTitle.bottom, margin = 15.dp)
+                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingSongsSection) {
+                    top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 })
 
                 Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
-                    top.linkTo(trendingRow.bottom, margin = 20.dp)
+                    top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
                 }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                 )
 
-                TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsRow) {
+                TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsSection) {
                     top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)

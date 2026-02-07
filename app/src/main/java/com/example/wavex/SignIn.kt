@@ -103,7 +103,8 @@ class SignIn : ComponentActivity() {
         auth = FirebaseAuth.getInstance()
 
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(
+            statusBarStyle = SystemBarStyle.light(
+                darkScrim = 0xFF121212.toInt(),
                 scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(

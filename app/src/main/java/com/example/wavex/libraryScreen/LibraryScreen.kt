@@ -1,8 +1,13 @@
 package com.example.wavex.libraryScreen
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,10 +25,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -41,10 +49,14 @@ import com.example.wavex.fonts
 
 @Composable
 fun LibraryScreen(navController: NavController) {
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val(backIcon,text,addIcon,logo,row) = createRefs()
+    val (backInteraction, backScale) = pressScale()
+    val (addInteraction, addScale) = pressScale()
+    val (spotifyInteraction, spotifyScale) = pressScale(1.12f)
 
-        Text("Library", modifier = Modifier.constrainAs(text) {
+    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+        val(backButton,titleText,addButton,spotifyLogo,likedSongsRow) = createRefs()
+
+        Text("Library", modifier = Modifier.constrainAs(titleText) {
             top.linkTo(parent.top, margin = 22.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
@@ -53,9 +65,9 @@ fun LibraryScreen(navController: NavController) {
             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
-        Box(modifier = Modifier.constrainAs(backIcon) {
-            top.linkTo(text.top)
-            bottom.linkTo(text.bottom)
+        Box(modifier = Modifier.constrainAs(backButton) {
+            top.linkTo(titleText.top)
+            bottom.linkTo(titleText.bottom)
             start.linkTo(parent.start, margin = 25.dp)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .size(36.dp).clip(RoundedCornerShape(20.dp))
@@ -63,7 +75,10 @@ fun LibraryScreen(navController: NavController) {
                 width = 1.5.dp,
                 color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
-            ).clickable {
+            ).clickable(
+                interactionSource = backInteraction,
+                indication = null
+            ) {
                 navController.popBackStack()
             }, contentAlignment = Alignment.Center
         ) {
@@ -72,12 +87,16 @@ fun LibraryScreen(navController: NavController) {
                 contentDescription = "add Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
+                    .graphicsLayer {
+                        scaleX = backScale
+                        scaleY = backScale
+                    }
             )
         }
 
-        Box(modifier = Modifier.constrainAs(addIcon) {
-            top.linkTo(text.top)
-            bottom.linkTo(text.bottom)
+        Box(modifier = Modifier.constrainAs(addButton) {
+            top.linkTo(titleText.top)
+            bottom.linkTo(titleText.bottom)
             end.linkTo(parent.end, margin = 25.dp)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .size(36.dp).clip(RoundedCornerShape(20.dp))
@@ -85,7 +104,10 @@ fun LibraryScreen(navController: NavController) {
                 width = 1.5.dp,
                 color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
-            ).clickable {
+            ).clickable(
+                interactionSource = addInteraction,
+                indication = null
+            ) {
 
             }, contentAlignment = Alignment.Center
         ) {
@@ -94,6 +116,10 @@ fun LibraryScreen(navController: NavController) {
                 contentDescription = "add Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(22.dp)
+                    .graphicsLayer {
+                        scaleX = addScale
+                        scaleY = addScale
+                    }
             )
         }
 
@@ -101,16 +127,23 @@ fun LibraryScreen(navController: NavController) {
             painter = painterResource(R.drawable.spotify_logo),
             contentDescription = "add Icon",
             tint = Color.Unspecified,
-            modifier = Modifier.constrainAs(logo){
-                top.linkTo(text.top)
-                bottom.linkTo(text.bottom)
-                end.linkTo(addIcon.start, margin = 15.dp)
-            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()).size(38.dp)
+            modifier = Modifier.constrainAs(spotifyLogo){
+                top.linkTo(titleText.top)
+                bottom.linkTo(titleText.bottom)
+                end.linkTo(addButton.start, margin = 15.dp)
+            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(38.dp).graphicsLayer {
+                    scaleX = spotifyScale
+                    scaleY = spotifyScale
+                }.clickable(
+                    interactionSource = spotifyInteraction,
+                    indication = null
+                ) { }
         )
 
         Row (
-            modifier = Modifier.constrainAs(row){
-                top.linkTo(text.bottom, margin = 35.dp)
+            modifier = Modifier.constrainAs(likedSongsRow){
+                top.linkTo(titleText.bottom, margin = 35.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             }.padding(start = 24.dp, end = 12.dp),
@@ -161,6 +194,25 @@ fun LibraryScreen(navController: NavController) {
             }
         }
     }
+}
+
+@Composable
+fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

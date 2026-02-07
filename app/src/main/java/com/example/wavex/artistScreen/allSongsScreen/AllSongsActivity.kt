@@ -6,10 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -75,7 +80,8 @@ class AllSongsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(
+            statusBarStyle = SystemBarStyle.light(
+                darkScrim = 0xFF121212.toInt(),
                 scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
@@ -111,6 +117,17 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
             viewModel.fetchSongsByArtistID(it, "songs")
         }
     }
+
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
 
     Scaffold(
         snackbarHost = {
@@ -179,28 +196,29 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val(backIcon, text, songList) = createRefs()
+                        val(backButton, titleText, songList) = createRefs()
 
-                        Text("All Songs", modifier = Modifier.constrainAs(text) {
-                            top.linkTo(parent.top)
+                        Text("All Songs", modifier = Modifier.constrainAs(titleText) {
+                            top.linkTo(parent.top, margin = 20.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
-                        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
-                            fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        }, fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
                         )
 
-                        Box(modifier = Modifier.constrainAs(backIcon) {
-                            top.linkTo(text.top)
-                            bottom.linkTo(text.bottom)
+                        Box(modifier = Modifier.constrainAs(backButton) {
+                            top.linkTo(titleText.top)
+                            bottom.linkTo(titleText.bottom)
                             start.linkTo(parent.start, margin = 25.dp)
-                        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                            .size(36.dp).clip(RoundedCornerShape(20.dp))
+                        }.size(36.dp).clip(RoundedCornerShape(20.dp))
                             .border(
                                 width = 1.5.dp,
                                 color = colorResource(R.color.secondary_text_color),
                                 shape = RoundedCornerShape(20.dp)
-                            ).clickable {
+                            ).clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
                                 activity?.finish()
                             }, contentAlignment = Alignment.Center
                         ) {
@@ -209,13 +227,17 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                                 contentDescription = "add Icon",
                                 tint = colorResource(R.color.primary_text_color),
                                 modifier = Modifier.size(20.dp)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
                             )
                         }
 
                         LazyColumn (
                             state = songsListState,
                             modifier = Modifier.constrainAs(songList){
-                                top.linkTo(text.bottom, margin = 15.dp)
+                                top.linkTo(titleText.bottom, margin = 15.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)

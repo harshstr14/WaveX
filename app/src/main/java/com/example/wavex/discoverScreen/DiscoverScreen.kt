@@ -1,5 +1,6 @@
 package com.example.wavex.discoverScreen
 
+import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +61,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -80,6 +83,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.viewModel.ExploreAlbumsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
@@ -91,10 +95,22 @@ import kotlin.math.absoluteValue
 @Composable
 fun DiscoverScreen(navController: NavController) {
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val(backIcon,text,row,pager) = createRefs()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
 
-        Text("Explore", modifier = Modifier.constrainAs(text) {
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
+
+    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+        val(backButton, titleText, categoryTabs, contentPager) = createRefs()
+
+        Text("Explore", modifier = Modifier.constrainAs(titleText) {
             top.linkTo(parent.top, margin = 22.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
@@ -103,9 +119,9 @@ fun DiscoverScreen(navController: NavController) {
             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
-        Box(modifier = Modifier.constrainAs(backIcon) {
-            top.linkTo(text.top)
-            bottom.linkTo(text.bottom)
+        Box(modifier = Modifier.constrainAs(backButton) {
+            top.linkTo(titleText.top)
+            bottom.linkTo(titleText.bottom)
             start.linkTo(parent.start, margin = 25.dp)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .size(36.dp).clip(RoundedCornerShape(20.dp))
@@ -113,7 +129,10 @@ fun DiscoverScreen(navController: NavController) {
                 width = 1.5.dp,
                 color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
-            ).clickable {
+            ).clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
                 navController.popBackStack()
             }, contentAlignment = Alignment.Center
         ) {
@@ -122,6 +141,10 @@ fun DiscoverScreen(navController: NavController) {
                 contentDescription = "add Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
             )
         }
 
@@ -147,8 +170,8 @@ fun DiscoverScreen(navController: NavController) {
 
         LazyRow(
             state = listState,
-            modifier = Modifier.constrainAs(row) {
-                top.linkTo(text.bottom, margin = 22.dp)
+            modifier = Modifier.constrainAs(categoryTabs) {
+                top.linkTo(titleText.bottom, margin = 22.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
             },
@@ -215,8 +238,8 @@ fun DiscoverScreen(navController: NavController) {
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.constrainAs(pager) {
-                top.linkTo(row.bottom, margin = 15.dp)
+            modifier = Modifier.constrainAs(contentPager) {
+                top.linkTo(categoryTabs.bottom, margin = 8.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
                 bottom.linkTo(parent.bottom)
@@ -465,6 +488,7 @@ fun ExploreArtists(
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchArtistsByQuery(query, root)
@@ -495,7 +519,13 @@ fun ExploreArtists(
                         modifier = Modifier.clickable(
                             interactionSource = interactionSource,
                             indication = null
-                        ) {  } ,
+                        ) {
+                            val intent = Intent(context, ArtistActivity()::class.java).apply {
+                                putExtra("artist_id", artist.id)
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        } ,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AsyncImage(

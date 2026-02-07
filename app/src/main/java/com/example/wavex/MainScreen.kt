@@ -37,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -134,7 +133,8 @@ class MainScreen : ComponentActivity() {
         apiUrl3 = BuildConfig.API_BASE_URL3
 
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(
+            statusBarStyle = SystemBarStyle.light(
+                darkScrim = 0xFF121212.toInt(),
                 scrim = 0xFFF6F6F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
@@ -258,12 +258,12 @@ private fun BottomNavBar(navController: NavController) {
             .padding(start = 18.dp, end = 18.dp, bottom = 8.dp)
             .navigationBarsPadding().height(68.dp).shadow( elevation = 18.dp,
                 shape = RoundedCornerShape(18.dp),
-                ambientColor = Color(0xFF0D0C0C).copy(alpha = 0.2f),
-                spotColor = Color(0xFF0D0C0C).copy(alpha = 0.4f)
+                ambientColor = Color(0xFF313131).copy(alpha = 0.2f),
+                spotColor = Color(0xFF313131).copy(alpha = 0.4f)
             ).background(Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF0D0C0C).copy(alpha = 0.95f),
-                    Color(0xFF0D0C0C).copy(alpha = 1f)
+                    Color(0xFF313131).copy(alpha = 0.95f),
+                    Color(0xFF313131).copy(alpha = 1f)
                 )
             ), shape = RoundedCornerShape(18.dp)),
         contentAlignment = Alignment.Center

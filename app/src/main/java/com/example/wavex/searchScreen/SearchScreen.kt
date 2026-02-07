@@ -1,6 +1,7 @@
 package com.example.wavex.searchScreen
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +68,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -96,6 +100,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.searchScreen.viewModel.SearchAlbumsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchArtistsViewModel
@@ -115,12 +120,24 @@ fun SearchScreen(navController: NavController) {
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
     var debouncedQuery by remember { mutableStateOf("") }
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val(searchBar,backIcon,searchTab) = createRefs()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
 
-        Box(modifier = Modifier.constrainAs(backIcon) {
-            top.linkTo(searchBar.top)
-            bottom.linkTo(searchBar.bottom)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
+
+    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+        val(searchField,backButton,searchResults) = createRefs()
+
+        Box(modifier = Modifier.constrainAs(backButton) {
+            top.linkTo(searchField.top)
+            bottom.linkTo(searchField.bottom)
             start.linkTo(parent.start, margin = 25.dp)
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .size(36.dp).clip(RoundedCornerShape(20.dp))
@@ -128,7 +145,10 @@ fun SearchScreen(navController: NavController) {
                 width = 1.5.dp,
                 color = colorResource(R.color.secondary_text_color),
                 shape = RoundedCornerShape(20.dp)
-            ).clickable {
+            ).clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
                 navController.popBackStack()
             }, contentAlignment = Alignment.Center
         ) {
@@ -137,13 +157,17 @@ fun SearchScreen(navController: NavController) {
                 contentDescription = "add Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
             )
         }
 
         SearchBar(
-            modifier = Modifier.constrainAs(searchBar) {
+            modifier = Modifier.constrainAs(searchField) {
                 top.linkTo(parent.top, margin = 20.dp)
-                start.linkTo(backIcon.end)
+                start.linkTo(backButton.end)
                 end.linkTo(parent.end)
                 width = Dimension.fillToConstraints
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), start = 20.dp, end = 20.dp)
@@ -154,8 +178,8 @@ fun SearchScreen(navController: NavController) {
             }
         )
 
-        SearchTabs(modifier = Modifier.constrainAs(searchTab){
-            top.linkTo(searchBar.bottom, margin = 12.dp)
+        SearchTabs(modifier = Modifier.constrainAs(searchResults){
+            top.linkTo(searchField.bottom, margin = 12.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
             bottom.linkTo(parent.bottom)
@@ -428,6 +452,7 @@ fun SearchArtists(
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         if (query.length < 2) {
@@ -458,7 +483,13 @@ fun SearchArtists(
             ) {
                 items(artists) { artist ->
                     Column(
-                        modifier = Modifier.hideKeyboardOnClick {  } ,
+                        modifier = Modifier.hideKeyboardOnClick {
+                            val intent = Intent(context, ArtistActivity()::class.java).apply {
+                                putExtra("artist_id", artist.id)
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        } ,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AsyncImage(
