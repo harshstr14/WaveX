@@ -9,4 +9,6 @@
     <string name="title_activity_artist">ArtistActivity</string>
     <string name="title_activity_all_songs">AllSongsActivity</string>
     <string name="title_activity_all_albums_screen">AllAlbumsScreen</string>
+    <string name="title_activity_album">AlbumActivity</string>
+    <string name="title_activity_playlist_activtiy">PlaylistActivtiy</string>
 </resources>

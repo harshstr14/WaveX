@@ -56,6 +56,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.wavex.R
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
@@ -63,6 +64,7 @@ import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
 import com.example.wavex.homeScreen.viewModel.NewReleasesSongsViewModel
 import com.example.wavex.homeScreen.viewModel.PlaylistsViewModel
 import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
+import com.example.wavex.playlistScreen.PlaylistActivity
 import kotlinx.coroutines.delay
 
 @Composable
@@ -170,6 +172,7 @@ fun HomeScreen (navController: NavController) {
 @Composable
 fun Playlist(query: String, root: String, modifier: Modifier, viewModel: PlaylistsViewModel = viewModel()) {
     val playlists by viewModel.playlists
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query,root)
@@ -243,7 +246,13 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
-                    ) {  }
+                    ) {
+                        val intent = Intent(context, PlaylistActivity::class.java).apply {
+                            putExtra("playlist_id", realItem.id)
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        context.startActivity(intent)
+                    }
             ) {
                 AsyncImage(
                     model = realItem.image[2].url,
@@ -358,12 +367,13 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AsyncImage(
-                    model = artist.image,
+                    model = artist.image.takeIf { it.isNotBlank() },
                     contentDescription = artist.name,
                     contentScale = ContentScale.Crop,
+                    placeholder = painterResource(R.drawable.default_artist),
+                    error = painterResource(R.drawable.default_artist),
                     modifier = Modifier
                         .size(78.dp)
-                        .fillMaxWidth()
                         .clip(CircleShape)
                 )
 
@@ -442,6 +452,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 @Composable
 fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumsViewModel = viewModel()) {
     val albums = viewModel.albums.value
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchAlbumByQuery(query, root)
@@ -461,7 +472,13 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
-                    ) {  }
+                    ) {
+                        val intent = Intent(context, AlbumActivity()::class.java).apply {
+                            putExtra("album_id", album.id)
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        context.startActivity(intent)
+                    }
             ) {
                 AsyncImage(
                     model = album.image[2].url,

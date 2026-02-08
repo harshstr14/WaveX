@@ -83,12 +83,14 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.viewModel.ExploreAlbumsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
 import com.example.wavex.fonts
+import com.example.wavex.playlistScreen.PlaylistActivity
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -428,7 +430,7 @@ fun ExploreSongs(
                         ) {
                             Text(
                                 text = song.name,
-                                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.primary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -442,7 +444,7 @@ fun ExploreSongs(
 
                             Text(
                                 text = artistsName,
-                                fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -529,12 +531,13 @@ fun ExploreArtists(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AsyncImage(
-                            model = artist.image,
+                            model = artist.image.takeIf { it.isNotBlank() },
                             contentDescription = artist.name,
                             contentScale = ContentScale.Crop,
+                            placeholder = painterResource(R.drawable.default_artist),
+                            error = painterResource(R.drawable.default_artist),
                             modifier = Modifier
                                 .size(82.dp)
-                                .fillMaxWidth()
                                 .clip(CircleShape)
                         )
 
@@ -563,6 +566,7 @@ fun ExploreAlbums(
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchAlbumByQuery(query, root)
@@ -595,7 +599,13 @@ fun ExploreAlbums(
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null
-                            ) {  }
+                            ) {
+                                val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                    putExtra("album_id", album.id)
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                }
+                                context.startActivity(intent)
+                            }
                     ) {
                         AsyncImage(
                             model = album.image[2].url,
@@ -643,6 +653,7 @@ fun ExplorePlaylist(
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query, root)
@@ -675,7 +686,13 @@ fun ExplorePlaylist(
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null
-                            ) {  }
+                            ) {
+                                val intent = Intent(context, PlaylistActivity::class.java).apply {
+                                    putExtra("playlist_id", playlist.id)
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                }
+                                context.startActivity(intent)
+                            }
                     ) {
                         AsyncImage(
                             model = playlist.image[2].url,

@@ -11,7 +11,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class ArtistRepository {
-
     suspend fun fetchArtistById(artistId: String): ArtistDetailUiState =
         withContext(Dispatchers.IO) {
             val response = requestWithFallback("/artists?id=$artistId")

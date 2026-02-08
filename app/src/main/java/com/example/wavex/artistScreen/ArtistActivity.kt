@@ -91,6 +91,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
@@ -157,12 +158,21 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
 
-    val progress by remember {
+    val rawProgress by remember {
         derivedStateOf {
-            val firstOffset = listState.firstVisibleItemScrollOffset
-            (firstOffset / 600f).coerceIn(0f, 1f)
+            val offset = listState.firstVisibleItemScrollOffset
+            (offset / 600f).coerceIn(0f, 1f)
         }
     }
+
+    val smoothProgress by animateFloatAsState(
+        targetValue = rawProgress,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "ImageCollapseSpring"
+    )
 
     val titleVisible by remember {
         derivedStateOf {
@@ -179,18 +189,18 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
     val endOffsetX = 12.dp
     val endOffsetY = 0.dp
 
-    val size = lerpDp(startSize, endSize, progress)
-    val offsetX = lerpDp(startOffsetX, endOffsetX, progress)
-    val offsetY = lerpDp(startOffsetY, endOffsetY, progress)
+    val size = lerpDp(startSize, endSize, smoothProgress)
+    val offsetX = lerpDp(startOffsetX, endOffsetX, smoothProgress)
+    val offsetY = lerpDp(startOffsetY, endOffsetY, smoothProgress)
 
-    val cornerRadius = lerpDp(60.dp, 60.dp, progress)
-    val showMetaInfo = progress < 0.3f
-    val metaAlpha = (1f - progress * 1.3f).coerceIn(0f, 1f)
-    val titleTopPadding = lerpDp(15.dp, 0.dp, progress)
-    val titleStartPadding = lerpDp(25.dp, 8.dp, progress)
-    val titleFontSize = lerpDp(20.dp, 18.dp, progress)
-    val iconScale = lerpDp(1.dp, 0.95.dp, progress).value
-    val titleOffsetY = lerpDp((-12).dp, 0.dp, progress)
+    val cornerRadius = lerpDp(60.dp, 60.dp, smoothProgress)
+    val showMetaInfo = smoothProgress < 0.3f
+    val metaAlpha = (1f - smoothProgress * 1.3f).coerceIn(0f, 1f)
+    val titleTopPadding = lerpDp(15.dp, 0.dp, smoothProgress)
+    val titleStartPadding = lerpDp(25.dp, 8.dp, smoothProgress)
+    val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
+    val iconScale = lerpDp(1.dp, 0.95.dp, smoothProgress).value
+    val titleOffsetY = lerpDp((-12).dp, 0.dp, smoothProgress)
 
     val isTitleVisible = !isLoading && !artists.isError
 
@@ -272,11 +282,9 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                         .size(48.dp)
                                         .clip(RoundedCornerShape(cornerRadius))
                                         .graphicsLayer {
-                                            shadowElevation = 8f * (1f - progress)
+                                            shadowElevation = 8f * (1f - smoothProgress)
                                         }
-                                        .zIndex(10f),
-                                    placeholder = painterResource(R.drawable.logo),
-                                    error = painterResource(R.drawable.logo)
+                                        .zIndex(10f)
                                 )
 
                                 Row(
@@ -383,7 +391,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = colorResource(R.color.background_color),
                         scrolledContainerColor = colorResource(R.color.background_color)
                     )
@@ -470,7 +478,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
 
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
@@ -483,11 +491,8 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                             .clip(RoundedCornerShape(cornerRadius))
                                             .graphicsLayer {
                                                 alpha = metaAlpha
-                                                shadowElevation = 8f * (1f - progress)
                                             }
-                                            .zIndex(10f),
-                                        placeholder = painterResource(R.drawable.logo),
-                                        error = painterResource(R.drawable.logo)
+                                            .zIndex(10f)
                                     )
 
                                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
@@ -529,8 +534,8 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                 modifier = Modifier.padding(top = 12.dp, start = 25.dp)
                                                     .graphicsLayer {
                                                         alpha = metaAlpha
-                                                        scaleX = 1f - progress * 0.04f
-                                                        scaleY = 1f - progress * 0.04f
+                                                        scaleX = 1f - smoothProgress * 0.04f
+                                                        scaleY = 1f - smoothProgress * 0.04f
                                                     },
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
@@ -564,7 +569,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                             ) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.headset_icon),
-                                                    contentDescription = "Followers Icon",
+                                                    contentDescription = "Headset Icon",
                                                     tint = colorResource(R.color.primary_text_color),
                                                     modifier = Modifier.size(18.dp)
                                                 )
@@ -645,7 +650,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                     ) {
                                         Text(
                                             text = song.name,
-                                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -659,7 +664,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
 
                                         Text(
                                             text = artistsName,
-                                            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -730,7 +735,12 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                 .clickable(
                                                     interactionSource = interactionSource,
                                                     indication = null
-                                                ) {  }
+                                                ) {
+                                                    val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                                        putExtra("album_id", album.id)
+                                                    }
+                                                    context.startActivity(intent)
+                                                }
                                         ) {
                                             AsyncImage(
                                                 model = album.image[2].url,
@@ -786,7 +796,12 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                 .clickable(
                                                     interactionSource = interactionSource,
                                                     indication = null
-                                                ) {  }
+                                                ) {
+                                                    val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                                        putExtra("album_id", album.id)
+                                                    }
+                                                    context.startActivity(intent)
+                                                }
                                         ) {
                                             AsyncImage(
                                                 model = album.image[2].url,

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,9 H6.88306 C8.15645,9 9.41145,9.30398 10.5437,9.88666
+                          C11.676,10.4693 12.6528,11.3139 13.3929,12.3501
+                          L18.6071,19.6499
+                          C19.3472,20.6861 20.324,21.5307 21.4563,22.1133
+                          C22.5886,22.696 23.8436,23 25.1169,23 H29" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M26,6 L29,9 L26,12" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M26,20 L29,23 L26,26" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M18.4579,12.559 L18.6072,12.3501
+                          C19.3473,11.3139 20.3241,10.4693 21.4564,9.88666
+                          C22.5887,9.30398 23.8437,9 25.117,9 H29.0001" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,22.9999 H6.88306
+                          C8.15645,22.9999 9.41145,22.696 10.5437,22.1133
+                          C11.676,21.5306 12.6528,20.686 13.3929,19.6498
+                          L13.5422,19.4409" />
+
+</vector>

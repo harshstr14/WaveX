@@ -63,6 +63,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.palette.ktx)
     implementation(libs.coil.compose)
     implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.androidx.core.ktx)
@@ -88,6 +89,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.ui.unit)
+    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

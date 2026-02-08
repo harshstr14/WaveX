@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="21dp"
+    android:height="21dp"
+    android:viewportWidth="21"
+    android:viewportHeight="21">
+
+    <!-- Outer Circle -->
+    <path
+        android:pathData="M21,10.5
+                          C21,16.299 16.299,21 10.5,21
+                          C4.70101,21 0,16.299 0,10.5
+                          C0,4.70101 4.70101,0 10.5,0
+                          C16.299,0 21,4.70101 21,10.5 Z"
+        android:fillColor="#34A853"
+        android:fillType="evenOdd"/>
+
+    <!-- Transparent Play Triangle -->
+    <path
+        android:pathData="M9.41964,6.89494
+                          L14.1681,9.63376
+                          C14.8353,10.0186 14.8353,10.9814 14.1681,11.3662
+                          L9.41964,14.1051
+                          C8.75297,14.4896 7.92001,14.0084 7.92001,13.2388
+                          V7.76119
+                          C7.92001,6.99158 8.75297,6.51043 9.41964,6.89494 Z"
+        android:fillColor="#d7d7d7"
+        android:fillType="evenOdd"/>
+</vector>
