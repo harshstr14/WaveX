@@ -95,6 +95,7 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -633,7 +634,9 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
-
+                                            scope.launch {
+                                                RecentlyPlayedManager.add(context, song)
+                                            }
                                         }, verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(

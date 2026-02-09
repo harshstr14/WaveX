@@ -1,7 +1,7 @@
 package com.example.wavex.playlistScreen
 
-import com.example.musify.songData.Artists
-import com.example.musify.songData.Image
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 
 data class PlaylistDetailUiState(

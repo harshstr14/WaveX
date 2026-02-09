@@ -71,6 +71,7 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.ui.theme.WaveXTheme
 
 class AllAlbumsActivity : ComponentActivity() {
@@ -276,17 +277,21 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
+                                    val albumName = htmlToText(album.name)
+
                                     Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                                        text = album.name,
+                                        text = albumName,
                                         fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
 
-                                    val artistsName = album.artist
+                                    val artistsList = album.artist
                                         .takeIf { it.isNotEmpty() }
                                         ?.joinToString(", ") { it.name }
                                         ?: "Unknown Artist"
+
+                                    val artistsName = htmlToText(artistsList)
 
                                     Text( modifier = Modifier.padding(horizontal = 2.dp ),
                                         text = artistsName,

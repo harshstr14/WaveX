@@ -88,6 +88,8 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -202,7 +204,7 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                 .clip(RoundedCornerShape(20.dp))
                                 .border(
                                     width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
@@ -238,7 +240,7 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
                                         width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color),
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
@@ -268,7 +270,7 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
                                         width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color),
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = interactionSource,
@@ -413,9 +415,11 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                             .padding(horizontal = 15.dp)
                                             .animateContentSize()
                                     ) {
+                                        val albumName = htmlToText(albums.albumName)
+
                                         Text(
-                                            modifier = Modifier.padding(top = titleTopPadding,start = titleStartPadding),
-                                            text = albums.albumName,
+                                            modifier = Modifier.padding(top = titleTopPadding,start = titleStartPadding, end = 10.dp),
+                                            text = albumName,
                                             fontSize = titleFontSize.value.sp,
                                             lineHeight = 22.sp,
                                             fontFamily = fonts,
@@ -426,9 +430,11 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                             overflow = TextOverflow.Ellipsis
                                         )
 
+                                        val description = htmlToText(albums.description)
+
                                         Text(
-                                            modifier = Modifier.padding(top = 6.dp,start = titleStartPadding),
-                                            text = albums.description,
+                                            modifier = Modifier.padding(top = 6.dp,start = titleStartPadding, end = 10.dp),
+                                            text = description,
                                             fontSize = 12.sp,
                                             lineHeight = 14.sp,
                                             fontFamily = fonts,
@@ -511,7 +517,7 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                 ) {
                                     Box(
                                         modifier = Modifier.width(148.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(24.dp))
+                                            .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.theme_color))
                                             .clickable { }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -541,7 +547,7 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
 
                                     Box(
                                         modifier = Modifier.width(148.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(24.dp))
+                                            .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                                             .clickable { }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -609,8 +615,10 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
 
                                             Spacer(modifier = Modifier.height(8.dp))
 
+                                            val artistName = htmlToText(artist.name)
+
                                             Text( modifier = Modifier.width(78.dp),
-                                                text = artist.name,
+                                                text = artistName,
                                                 fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                                                 overflow = TextOverflow.Ellipsis
@@ -639,7 +647,9 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
-
+                                            scope.launch {
+                                                RecentlyPlayedManager.add(context, song)
+                                            }
                                         }, verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
@@ -654,8 +664,10 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                     Column(
                                         modifier = Modifier.weight(1f)
                                     ) {
+                                        val songName = htmlToText(song.name)
+
                                         Text(
-                                            text = song.name,
+                                            text = songName,
                                             fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -663,10 +675,12 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
 
                                         Spacer(modifier = Modifier.height(6.dp))
 
-                                        val artistsName = song.artist
+                                        val artistsList = song.artist
                                             .takeIf { it.isNotEmpty() }
                                             ?.joinToString(", ") { it.name }
                                             ?: "Unknown Artist"
+
+                                        val artistsName = htmlToText(artistsList)
 
                                         Text(
                                             text = artistsName,

@@ -1,7 +1,7 @@
 package com.example.wavex.searchScreen.repository
 
-import com.example.musify.songData.Artists
-import com.example.musify.songData.Image
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers

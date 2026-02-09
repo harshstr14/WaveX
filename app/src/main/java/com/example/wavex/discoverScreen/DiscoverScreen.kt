@@ -90,6 +90,8 @@ import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playlistScreen.PlaylistActivity
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -129,7 +131,7 @@ fun DiscoverScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                 shape = RoundedCornerShape(20.dp)
             ).clickable(
                 interactionSource = interactionSource,
@@ -381,6 +383,8 @@ fun ExploreSongs(
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
@@ -412,7 +416,9 @@ fun ExploreSongs(
                                 interactionSource = interactionSource,
                                 indication = null
                             ) {
-
+                                scope.launch {
+                                    RecentlyPlayedManager.add(context, song)
+                                }
                             },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -428,8 +434,10 @@ fun ExploreSongs(
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
+                            val songName = htmlToText(song.name)
+
                             Text(
-                                text = song.name,
+                                text = songName,
                                 fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.primary_text_color), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -437,10 +445,12 @@ fun ExploreSongs(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            val artistsName = song.artist
+                            val artistsList = song.artist
                                 .takeIf { it.isNotEmpty() }
                                 ?.joinToString(", ") { it.name }
                                 ?: "Unknown Artist"
+
+                            val artistsName = htmlToText(artistsList)
 
                             Text(
                                 text = artistsName,
@@ -543,8 +553,10 @@ fun ExploreArtists(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val artistName = htmlToText(artist.name)
+
                         Text( modifier = Modifier.width(78.dp),
-                            text = artist.name,
+                            text = artistName,
                             fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                             overflow = TextOverflow.Ellipsis
@@ -618,17 +630,21 @@ fun ExploreAlbums(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val albumName = htmlToText(album.name)
+
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                            text = album.name,
+                            text = albumName,
                             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        val artistsName = album.artist
+                        val artistsList = album.artist
                             .takeIf { it.isNotEmpty() }
                             ?.joinToString(", ") { it.name }
                             ?: "Unknown Artist"
+
+                        val artistsName = htmlToText(artistsList)
 
                         Text( modifier = Modifier.padding(horizontal = 2.dp ),
                             text = artistsName,
@@ -705,8 +721,10 @@ fun ExplorePlaylist(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val playlistName = htmlToText(playlist.name)
+
                         Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                            text = playlist.name,
+                            text = playlistName,
                             fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 2,
                             overflow = TextOverflow.Ellipsis

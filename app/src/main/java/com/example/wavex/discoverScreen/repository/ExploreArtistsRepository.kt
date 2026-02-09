@@ -1,6 +1,6 @@
 package com.example.wavex.discoverScreen.repository
 
-import com.example.musify.songData.Artists
+import com.example.wavex.songData.Artists
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

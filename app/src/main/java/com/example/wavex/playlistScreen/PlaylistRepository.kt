@@ -1,8 +1,8 @@
 package com.example.wavex.playlistScreen
 
-import com.example.musify.songData.Artists
-import com.example.musify.songData.Download
-import com.example.musify.songData.Image
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Download
+import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers

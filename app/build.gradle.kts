@@ -3,6 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.gms.google.services)
 }
 
@@ -63,6 +64,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.gson)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.media)
     implementation(libs.androidx.palette.ktx)
     implementation(libs.coil.compose)
     implementation(libs.androidx.constraintlayout.compose)
@@ -90,6 +94,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.ui.unit)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.lifecycle.service)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

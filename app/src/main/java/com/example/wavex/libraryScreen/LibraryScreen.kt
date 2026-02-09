@@ -6,7 +6,6 @@ import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,6 +68,11 @@ import com.example.wavex.fonts
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import kotlinx.coroutines.launch
 
+enum class SheetType {
+    CREATE_PLAYLIST,
+    ADD_PLAYLIST
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(navController: NavController) {
@@ -76,6 +80,8 @@ fun LibraryScreen(navController: NavController) {
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
+    val currentSheet = remember { mutableStateOf<SheetType?>(null) }
+
     val scope = rememberCoroutineScope()
 
     val (backInteraction, backScale) = pressScale()
@@ -96,15 +102,31 @@ fun LibraryScreen(navController: NavController) {
             containerColor = colorResource(R.color.background_color),
             dragHandle = null
         ) {
-            MusicPlayerBottomSheet(
-                onClose = {
-                    scope.launch {
-                        sheetState.hide()
-                    }.invokeOnCompletion {
-                        showSheet.value = false
-                    }
+            when (currentSheet.value) {
+                SheetType.CREATE_PLAYLIST -> {
+                    CreatePlaylistBottomSheet(
+                        onClose = {
+                            scope.launch {
+                                sheetState.hide()
+                                showSheet.value = false
+                            }
+                        }
+                    )
                 }
-            )
+
+                SheetType.ADD_PLAYLIST -> {
+                    AddPlaylistBottomSheet(
+                        onClose = {
+                            scope.launch {
+                                sheetState.hide()
+                                showSheet.value = false
+                            }
+                        }
+                    )
+                }
+
+                null -> {}
+            }
         }
     }
 
@@ -145,7 +167,7 @@ fun LibraryScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                 shape = RoundedCornerShape(20.dp)
             ).clickable(
                 interactionSource = backInteraction,
@@ -174,16 +196,15 @@ fun LibraryScreen(navController: NavController) {
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                 shape = RoundedCornerShape(20.dp)
             ).clickable(
                 interactionSource = addInteraction,
                 indication = null
             ) {
+                currentSheet.value = SheetType.CREATE_PLAYLIST
                 showSheet.value = true
-                scope.launch {
-                    sheetState.show()
-                }
+                scope.launch { sheetState.show() }
             }, contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -213,7 +234,11 @@ fun LibraryScreen(navController: NavController) {
                 }.clickable(
                     interactionSource = spotifyInteraction,
                     indication = null
-                ) { }
+                ) {
+                    currentSheet.value = SheetType.ADD_PLAYLIST
+                    showSheet.value = true
+                    scope.launch { sheetState.show() }
+                }
         )
 
         Row (
@@ -272,7 +297,138 @@ fun LibraryScreen(navController: NavController) {
 }
 
 @Composable
-fun MusicPlayerBottomSheet(onClose: () -> Unit) {
+fun AddPlaylistBottomSheet(onClose: () -> Unit) {
+    var url by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(text = "Import Spotify Playlist", modifier = Modifier.align(Alignment.CenterHorizontally),
+            fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Url", modifier = Modifier.padding(start = 28.dp),
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(modifier = Modifier.padding(horizontal = 25.dp).height(52.dp)
+            .fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (inputField, placeholderText) = createRefs()
+
+                if (url.isEmpty()) {
+                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start, margin = 15.dp)
+                        end.linkTo(parent.end, margin = 15.dp)
+                        width = Dimension.fillToConstraints },
+                        text = "Enter Url",
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Normal,
+                        fontStyle = FontStyle.Normal,
+                        fontSize = 14.sp, lineHeight = 17.sp,
+                        color = colorResource(R.color.secondary_text_color)
+                    )
+                }
+
+                val selectionColors = TextSelectionColors(
+                    handleColor = Color(0xFF1C1C1C),
+                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                )
+
+                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                    BasicTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        modifier = Modifier
+                            .constrainAs(inputField) {
+                                top.linkTo(parent.top)
+                                bottom.linkTo(parent.bottom)
+                                start.linkTo(parent.start, margin = 15.dp)
+                                end.linkTo(parent.end, margin = 15.dp)
+                                width = Dimension.fillToConstraints
+                            },
+                        textStyle = TextStyle(
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 14.sp, lineHeight = 17.sp,
+                            color = colorResource(R.color.secondary_text_color)
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                    .clickable { onClose() }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Cancel",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.theme_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Box(
+                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.theme_color))
+                    .clickable { }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Import",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.background_color)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+    }
+}
+
+@Composable
+fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
@@ -301,11 +457,11 @@ fun MusicPlayerBottomSheet(onClose: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(text = "Title", modifier = Modifier.padding(start = 28.dp),
-            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Box(modifier = Modifier.padding(horizontal = 25.dp).height(52.dp)
             .fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -365,11 +521,11 @@ fun MusicPlayerBottomSheet(onClose: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(text = "Description", modifier = Modifier.padding(start = 28.dp),
-            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Box(modifier = Modifier.padding(horizontal = 25.dp).height(52.dp)
             .fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -431,8 +587,8 @@ fun MusicPlayerBottomSheet(onClose: () -> Unit) {
             horizontalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.width(132.dp).padding(top = 25.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
                     .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -448,8 +604,8 @@ fun MusicPlayerBottomSheet(onClose: () -> Unit) {
             Spacer(modifier = Modifier.width(18.dp))
 
             Box(
-                modifier = Modifier.width(132.dp).padding(top = 25.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable { }
                     .padding(horizontal = 24.dp, vertical = 12.dp),

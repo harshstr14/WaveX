@@ -1,4 +1,4 @@
-package com.example.musify.songData
+package com.example.wavex.songData
 
 data class Song(
     val id: String,

@@ -222,7 +222,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(emailLabel.bottom, margin = 10.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
+                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -287,7 +287,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(passwordLabel.bottom, margin = 10.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
+                    }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {

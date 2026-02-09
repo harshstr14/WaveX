@@ -147,7 +147,7 @@ fun ForgotPasswordScreen() {
             }.size(36.dp).clip(RoundedCornerShape(20.dp))
                 .border(
                     width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color),
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                     shape = RoundedCornerShape(20.dp)
                 ).clickable { activity?.finish() }, contentAlignment = Alignment.Center
             ) {
@@ -186,7 +186,7 @@ fun ForgotPasswordScreen() {
                 top.linkTo(emailLabel.bottom, margin = 10.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
+            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
                 shape = RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {

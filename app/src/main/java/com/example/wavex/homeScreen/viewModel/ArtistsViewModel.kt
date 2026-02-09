@@ -2,11 +2,13 @@ package com.example.wavex.homeScreen.viewModel
 
 import android.util.Log
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musify.songData.Artists
 import com.example.wavex.requestWithFallback
+import com.example.wavex.songData.Artists
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -16,8 +18,12 @@ class ArtistsViewModel : ViewModel() {
     private val _artists = mutableStateOf<List<Artists>>(emptyList())
     val artists: State<List<Artists>> = _artists
 
+    var isLoading by mutableStateOf(false)
+        private set
+
     fun fetchArtistsByQuery(query: String, root: String) {
         viewModelScope.launch {
+            isLoading = true
             try {
                 val responseBody = withContext(Dispatchers.IO) {
                     requestWithFallback("/search/artists?query=$query&limit=20")
@@ -29,6 +35,8 @@ class ArtistsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
+            } finally {
+                isLoading = false
             }
         }
     }

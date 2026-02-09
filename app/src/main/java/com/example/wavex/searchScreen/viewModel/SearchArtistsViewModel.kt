@@ -3,7 +3,7 @@ package com.example.wavex.searchScreen.viewModel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musify.songData.Artists
+import com.example.wavex.songData.Artists
 import com.example.wavex.searchScreen.repository.SearchArtistsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

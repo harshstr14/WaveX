@@ -197,7 +197,7 @@ fun VerifyEmailScreen() {
                 }.size(36.dp).clip(RoundedCornerShape(20.dp))
                     .border(
                         width = 1.5.dp,
-                        color = colorResource(R.color.secondary_text_color),
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                         shape = RoundedCornerShape(20.dp)
                     ).clickable { activity?.finish() }, contentAlignment = Alignment.Center
             ) {

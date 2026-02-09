@@ -20,15 +20,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -73,7 +70,10 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.ui.theme.WaveXTheme
+import kotlinx.coroutines.launch
 
 class AllSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -255,7 +255,9 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
-
+                                            scope.launch {
+                                                RecentlyPlayedManager.add(context, song)
+                                            }
                                         },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -271,23 +273,27 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                                     Column(
                                         modifier = Modifier.weight(1f)
                                     ) {
+                                        val songName = htmlToText(song.name)
+
                                         Text(
-                                            text = song.name,
-                                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = songName,
+                                            fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
                                         Spacer(modifier = Modifier.height(6.dp))
 
-                                        val artistsName = song.artist
+                                        val artistsList = song.artist
                                             .takeIf { it.isNotEmpty() }
                                             ?.joinToString(", ") { it.name }
                                             ?: "Unknown Artist"
 
+                                        val artistsName = htmlToText(artistsList)
+
                                         Text(
                                             text = artistsName,
-                                            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )

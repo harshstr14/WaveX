@@ -1,12 +1,17 @@
 package com.example.wavex.homeScreen
 
+import android.content.Context
 import android.content.Intent
+import android.text.Html
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -31,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,10 +57,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
@@ -65,21 +79,80 @@ import com.example.wavex.homeScreen.viewModel.NewReleasesSongsViewModel
 import com.example.wavex.homeScreen.viewModel.PlaylistsViewModel
 import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+val Context.musicDataStore by preferencesDataStore("waveX_datastore")
+
+object RecentlyPlayedManager {
+    private val RECENTLY_PLAYED_KEY = stringPreferencesKey("recently_played")
+
+    private val gson = Gson()
+    private val type = object : TypeToken<List<SongItem>>() {}.type
+
+    suspend fun add(context: Context, song: SongItem, maxSize: Int = 20) {
+        context.musicDataStore.edit { prefs ->
+
+            val currentList = prefs[RECENTLY_PLAYED_KEY]
+                ?.let { gson.fromJson<List<SongItem>>(it, type) }
+                ?.toMutableList()
+                ?: mutableListOf()
+
+            // Remove duplicate
+            currentList.removeAll { it.id == song.id }
+
+            // Add to top
+            currentList.add(0, song)
+
+            // Limit size
+            if (currentList.size > maxSize) {
+                currentList.subList(maxSize, currentList.size).clear()
+            }
+
+            prefs[RECENTLY_PLAYED_KEY] = gson.toJson(currentList)
+        }
+    }
+
+    fun flow(context: Context) =
+        context.musicDataStore.data.map { prefs ->
+            prefs[RECENTLY_PLAYED_KEY]
+                ?.let { gson.fromJson<List<SongItem>>(it, type) }
+                ?: emptyList()
+        }
+}
 
 @Composable
 fun HomeScreen (navController: NavController) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+
+    val playlistsVM: PlaylistsViewModel = viewModel()
+    val newReleasesVM: NewReleasesSongsViewModel = viewModel()
+    val trendingVM: TrendingSongsViewModel = viewModel()
+    val albumsVM: AlbumsViewModel = viewModel()
+    val artistsVM: ArtistsViewModel = viewModel()
+
+    val recentSongs by RecentlyPlayedManager
+        .flow(context)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+
+    val isLoading by derivedStateOf {
+        playlistsVM.isLoading || newReleasesVM.isLoading ||
+                trendingVM.isLoading || albumsVM.isLoading || artistsVM.isLoading
+    }
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (logoIcon, profileAvatar, mainContent) = createRefs()
+        val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
         Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
             tint = Color.Unspecified, modifier = Modifier.constrainAs(logoIcon) {
                 top.linkTo(parent.top, margin = (-40).dp)
                 start.linkTo(parent.start)
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(158.dp).zIndex(2f)
+                .size(158.dp).zIndex(20f)
         )
 
         AsyncImage(
@@ -90,7 +163,7 @@ fun HomeScreen (navController: NavController) {
                 top.linkTo(parent.top, margin = 15.dp)
                 end.linkTo(parent.end, margin = 22.dp)
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(52.dp).clip(CircleShape).zIndex(2f),
+                .size(52.dp).clip(CircleShape).zIndex(20f),
             placeholder = painterResource(R.drawable.logo),
             error = painterResource(R.drawable.logo)
         )
@@ -102,19 +175,34 @@ fun HomeScreen (navController: NavController) {
             bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .verticalScroll(scrollState)) {
+            .verticalScroll(scrollState))
+        {
             ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
-                val (topPlaylistsSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,popularArtistsSection,
-                    trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
+                val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
+                    popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
 
                 Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
                     top.linkTo(parent.top, margin = 80.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                })
+                }, playlistsVM)
+
+                if (recentSongs.isNotEmpty()) {
+                    Text("Recently Played", modifier = Modifier.constrainAs(recentlyPlayedTitle) {
+                        top.linkTo(topPlaylistsSection.bottom, margin = 25.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                    )
+
+                    RecentlyPlayedSongs(recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
+                        top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
+                        start.linkTo(parent.start)
+                    })
+                }
 
                 Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
-                    top.linkTo(topPlaylistsSection.bottom, margin = 20.dp)
+                    top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
                     start.linkTo(parent.start, margin = 25.dp)
                 }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
@@ -124,7 +212,7 @@ fun HomeScreen (navController: NavController) {
                     top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                })
+                }, newReleasesVM)
 
                 Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
                     top.linkTo(newReleasesSection.bottom, margin = 20.dp)
@@ -137,7 +225,7 @@ fun HomeScreen (navController: NavController) {
                     top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                })
+                }, artistsVM)
 
                 Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
                     top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
@@ -150,7 +238,7 @@ fun HomeScreen (navController: NavController) {
                     top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                })
+                }, trendingVM)
 
                 Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
                     top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
@@ -163,7 +251,25 @@ fun HomeScreen (navController: NavController) {
                     top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                })
+                }, albumsVM)
+            }
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .constrainAs(loader) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                    .fillMaxSize()
+                    .background(colorResource(R.color.background_color))
+                    .zIndex(10f),
+                contentAlignment = Alignment.Center
+            ) {
+                LoadingEffect()
             }
         }
     }
@@ -194,7 +300,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
     val itemSpacing = 18.dp
     val sidePadding = (screenWidth - itemWidth) / 2
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(listState, listSize) {
         while (true) {
             delay(4000)
             listState.animateScrollToItem(
@@ -266,8 +372,10 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val playlistName = htmlToText(realItem.name)
+
                 Text( modifier = Modifier.padding(horizontal = 8.dp ),
-                    text = realItem.name,
+                    text = playlistName,
                     fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -278,8 +386,97 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 }
 
 @Composable
+fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val columns = remember(recentSongs) {
+        recentSongs.chunked(3)
+    }
+
+    LazyRow(
+        modifier = modifier.height(230.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        items(items = columns,
+            key = { column -> column.firstOrNull()?.id ?: column.hashCode() }
+        ) { columnSongs ->
+            Column(
+                modifier = Modifier.width(200.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                columnSongs.forEach { song ->
+                    Row (
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = song.image[2].url,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val songName = htmlToText(song.name)
+
+                            Text(
+                                text = songName,
+                                fontSize = 15.sp,
+                                lineHeight = 16.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            val artistsList = song.artist
+                                .takeIf { it.isNotEmpty() }
+                                ?.joinToString(", ") { it.name }
+                                ?: "Unknown Artist"
+
+                            val artistsName = htmlToText(artistsList)
+
+                            Text(
+                                text = artistsName,
+                                fontSize = 13.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewModel: NewReleasesSongsViewModel = viewModel()) {
     val songs by viewModel.songs
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
@@ -292,14 +489,18 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        items(songs) { song ->
+        items(songs, key = { it.id }) { song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
-                    ) {  }
+                    ) {
+                        scope.launch {
+                            RecentlyPlayedManager.add(context, song)
+                        }
+                    }
             ) {
                 AsyncImage(
                     model = song.image[2].url,
@@ -313,17 +514,21 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val songName = htmlToText(song.name)
+
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                    text = song.name,
+                    text = songName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                val artistsName = song.artist
+                val artistsList = song.artist
                     .takeIf { it.isNotEmpty() }
                     ?.joinToString(", ") { it.name }
                     ?: "Unknown Artist"
+
+                val artistsName = htmlToText(artistsList)
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
@@ -352,7 +557,7 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 22.dp),
         horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-        items(artists) { artist ->
+        items(artists, key = { it.id }) { artist ->
             Column(
                 modifier = Modifier.clickable(
                     interactionSource = interactionSource,
@@ -379,8 +584,10 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val artistName = htmlToText(artist.name)
+
                 Text( modifier = Modifier.width(78.dp),
-                    text = artist.name,
+                    text = artistName,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                     overflow = TextOverflow.Ellipsis
@@ -393,6 +600,8 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
 @Composable
 fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewModel: TrendingSongsViewModel = viewModel()) {
     val songs by viewModel.songs
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
@@ -405,14 +614,18 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        items(songs) { song ->
+        items(songs, key = { it.id }) { song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
-                    ) {  }
+                    ) {
+                        scope.launch {
+                            RecentlyPlayedManager.add(context, song)
+                        }
+                    }
             ) {
                 AsyncImage(
                     model = song.image[2].url,
@@ -426,17 +639,21 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val songName = htmlToText(song.name)
+
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                    text = song.name,
+                    text = songName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                val artistsName = song.artist
+                val artistsList = song.artist
                     .takeIf { it.isNotEmpty() }
                     ?.joinToString(", ") { it.name }
                     ?: "Unknown Artist"
+
+                val artistsName = htmlToText(artistsList)
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
@@ -465,7 +682,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        items(albums) { album ->
+        items(albums, key = { it.id }) { album ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
@@ -492,17 +709,21 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val albumName = htmlToText(album.name)
+
                 Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                    text = album.name,
+                    text = albumName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                val artistsName = album.artist
+                val artistsList = album.artist
                     .takeIf { it.isNotEmpty() }
                     ?.joinToString(", ") { it.name }
                     ?: "Unknown Artist"
+
+                val artistsName = htmlToText(artistsList)
 
                 Text( modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
@@ -513,6 +734,25 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
             }
         }
     }
+}
+
+fun htmlToText(html: String?): String {
+    if (html.isNullOrBlank()) return ""
+
+    return Html.fromHtml(html,Html.FROM_HTML_MODE_LEGACY).toString().trim()
+}
+
+@Composable
+fun LoadingEffect() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
+    )
+
+    LottieAnimation(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        modifier = Modifier.fillMaxWidth().size(144.dp)
+    )
 }
 
 @Composable

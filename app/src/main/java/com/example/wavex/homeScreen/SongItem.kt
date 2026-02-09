@@ -1,9 +1,12 @@
 package com.example.wavex.homeScreen
 
-import com.example.musify.songData.Artists
-import com.example.musify.songData.Download
-import com.example.musify.songData.Image
+import android.os.Parcelable
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Download
+import com.example.wavex.songData.Image
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class SongItem(
     val id: String = "",
     val name: String = "",
@@ -12,4 +15,4 @@ data class SongItem(
     val duration: Int = 0,
     val downloadUrl: MutableList<Download> = mutableListOf(),
     var isFav: Boolean = false
-)
+) : Parcelable

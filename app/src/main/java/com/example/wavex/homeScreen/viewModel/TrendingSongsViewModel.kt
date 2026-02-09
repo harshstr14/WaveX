@@ -2,12 +2,14 @@ package com.example.wavex.homeScreen.viewModel
 
 import android.util.Log
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musify.songData.Artists
-import com.example.musify.songData.Download
-import com.example.musify.songData.Image
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Download
+import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +21,12 @@ class TrendingSongsViewModel : ViewModel() {
     private val _songs = mutableStateOf<List<SongItem>>(emptyList())
     val songs: State<List<SongItem>> = _songs
 
+    var isLoading by mutableStateOf(false)
+        private set
+
     fun fetchPlaylistsByID(playListId: String, root: String) {
         viewModelScope.launch {
+            isLoading = true
             try {
                 val responseBody = withContext(Dispatchers.IO) {
                     requestWithFallback("/playlists?id=$playListId&limit=40")
@@ -33,6 +39,8 @@ class TrendingSongsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
+            } finally {
+                isLoading = false
             }
         }
     }
