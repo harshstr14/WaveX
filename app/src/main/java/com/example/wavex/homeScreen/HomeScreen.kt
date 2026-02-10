@@ -3,6 +3,9 @@ package com.example.wavex.homeScreen
 import android.content.Context
 import android.content.Intent
 import android.text.Html
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -24,6 +27,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,8 +39,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -65,6 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -77,13 +87,18 @@ import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
 import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
 import com.example.wavex.homeScreen.viewModel.NewReleasesSongsViewModel
 import com.example.wavex.homeScreen.viewModel.PlaylistsViewModel
+import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.example.wavex.profileScreen.ProfileActivity
+import com.example.wavex.service.MusicPlayerService
+import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 val Context.musicDataStore by preferencesDataStore("waveX_datastore")
 
@@ -124,10 +139,52 @@ object RecentlyPlayedManager {
         }
 }
 
+object ProfilePrefs {
+    val Context.dataStore by preferencesDataStore("profile")
+
+    val PROFILE_URL = stringPreferencesKey("profile_url")
+
+    suspend fun saveProfileUrl(context: Context, url: String) {
+        context.dataStore.edit {
+            it[PROFILE_URL] = url
+        }
+    }
+
+    fun getProfileUrl(context: Context) =
+        context.dataStore.data.map {
+            it[PROFILE_URL]
+        }
+}
+
+
+val auth = FirebaseAuth.getInstance()
+val userID = auth.currentUser?.uid
+
 @Composable
 fun HomeScreen (navController: NavController) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+
+    val viewModel: ProfileViewModel = viewModel()
+
+    val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userID) {
+        userID?.let { viewModel.silentRefresh(it) }
+    }
+
+    var isScrollingDown by remember { mutableStateOf(false) }
+    var lastScrollValue by remember { mutableIntStateOf(0) }
+    val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }
+            .collect { current ->
+                val hideAfter = 40
+                isScrollingDown = current > lastScrollValue && current > hideAfter
+                lastScrollValue = current
+            }
+    }
 
     val playlistsVM: PlaylistsViewModel = viewModel()
     val newReleasesVM: NewReleasesSongsViewModel = viewModel()
@@ -135,37 +192,75 @@ fun HomeScreen (navController: NavController) {
     val albumsVM: AlbumsViewModel = viewModel()
     val artistsVM: ArtistsViewModel = viewModel()
 
+    val playlists by playlistsVM.playlists
+    val newReleases by newReleasesVM.songs
+    val trending by trendingVM.songs
+    val albums by albumsVM.albums
+    val artists by artistsVM.artists
+
     val recentSongs by RecentlyPlayedManager
         .flow(context)
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
-    val isLoading by derivedStateOf {
-        playlistsVM.isLoading || newReleasesVM.isLoading ||
-                trendingVM.isLoading || albumsVM.isLoading || artistsVM.isLoading
+    val isLoading by remember(playlistsVM.isLoading, newReleasesVM.isLoading,
+        trendingVM.isLoading, albumsVM.isLoading, artistsVM.isLoading) {
+        derivedStateOf {
+            playlistsVM.isLoading || newReleasesVM.isLoading ||
+                    trendingVM.isLoading || albumsVM.isLoading || artistsVM.isLoading
+        }
     }
+
+    val logoAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = 300,
+            easing = FastOutSlowInEasing
+        ),
+        label = "Logo Fade"
+    )
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
         val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
         Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
-            tint = Color.Unspecified, modifier = Modifier.constrainAs(logoIcon) {
+            tint = Color.Unspecified,
+            modifier = Modifier.constrainAs(logoIcon) {
                 top.linkTo(parent.top, margin = (-40).dp)
                 start.linkTo(parent.start)
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(158.dp).zIndex(20f)
+                .size(158.dp)
+                .graphicsLayer {
+                    alpha = logoAlpha
+                }.zIndex(20f)
         )
 
         AsyncImage(
-            model = R.drawable.logo,
+            model = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .memoryCacheKey(userID?.let { "profile_$it" })
+                .diskCacheKey(userID?.let { "profile_$it" })
+                .crossfade(true)
+                .build(),
             contentDescription = "Profile Image",
             contentScale = ContentScale.Crop,
             modifier = Modifier.constrainAs(profileAvatar) {
                 top.linkTo(parent.top, margin = 15.dp)
                 end.linkTo(parent.end, margin = 22.dp)
+            }.clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                val intent = Intent(context, ProfileActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                context.startActivity(intent)
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(52.dp).clip(CircleShape).zIndex(20f),
-            placeholder = painterResource(R.drawable.logo),
-            error = painterResource(R.drawable.logo)
+                .size(52.dp)
+                .clip(CircleShape)
+                .graphicsLayer {
+                    alpha = logoAlpha
+                }
+                .zIndex(20f)
         )
 
         Column(modifier = Modifier.constrainAs(mainContent) {
@@ -187,7 +282,7 @@ fun HomeScreen (navController: NavController) {
                     end.linkTo(parent.end)
                 }, playlistsVM)
 
-                if (recentSongs.isNotEmpty()) {
+                if (recentSongs.isNotEmpty() && playlists.isNotEmpty()) {
                     Text("Recently Played", modifier = Modifier.constrainAs(recentlyPlayedTitle) {
                         top.linkTo(topPlaylistsSection.bottom, margin = 25.dp)
                         start.linkTo(parent.start, margin = 25.dp)
@@ -201,12 +296,14 @@ fun HomeScreen (navController: NavController) {
                     })
                 }
 
-                Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
-                    top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                )
+                if (newReleases.isNotEmpty()) {
+                    Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
+                        top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                    )
+                }
 
                 NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesSection) {
                     top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
@@ -214,12 +311,14 @@ fun HomeScreen (navController: NavController) {
                     end.linkTo(parent.end)
                 }, newReleasesVM)
 
-                Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
-                    top.linkTo(newReleasesSection.bottom, margin = 20.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                )
+                if (artists.isNotEmpty()) {
+                    Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
+                        top.linkTo(newReleasesSection.bottom, margin = 20.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                    )
+                }
 
                 Artists("top artists","results", modifier = Modifier.constrainAs(popularArtistsSection){
                     top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
@@ -227,12 +326,14 @@ fun HomeScreen (navController: NavController) {
                     end.linkTo(parent.end)
                 }, artistsVM)
 
-                Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
-                    top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                )
+                if (trending.isNotEmpty()) {
+                    Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
+                        top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                    )
+                }
 
                 TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingSongsSection) {
                     top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
@@ -240,12 +341,14 @@ fun HomeScreen (navController: NavController) {
                     end.linkTo(parent.end)
                 }, trendingVM)
 
-                Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
-                    top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                )
+                if (albums.isNotEmpty()) {
+                    Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
+                        top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                    )
+                }
 
                 TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsSection) {
                     top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
@@ -388,6 +491,8 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 @Composable
 fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val columns = remember(recentSongs) {
         recentSongs.chunked(3)
@@ -414,7 +519,20 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                                 interactionSource = interactionSource,
                                 indication = null
                             ) {
+                                val songIndex = recentSongs.indexOfFirst { it.id == song.id }
+                                if (songIndex == -1) return@clickable
 
+                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                    action = MusicPlayerService.ACTION_PLAY_NEW
+                                    putParcelableArrayListExtra("playlist", ArrayList(recentSongs))
+                                    putExtra("index", songIndex)
+                                }
+
+                                ContextCompat.startForegroundService(context, intent)
+
+                                scope.launch {
+                                    RecentlyPlayedManager.add(context, song)
+                                }
                             },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -428,7 +546,8 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                         Spacer(modifier = Modifier.width(14.dp))
 
                         Column(
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
                         ) {
                             val songName = htmlToText(song.name)
 
@@ -444,7 +563,7 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             val artistsList = song.artist
                                 .takeIf { it.isNotEmpty() }
@@ -464,6 +583,20 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = formatDuration(song.duration),
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -473,7 +606,10 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
 }
 
 @Composable
-fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewModel: NewReleasesSongsViewModel = viewModel()) {
+fun NewReleasesSongs(
+    playlistId: String, root: String, modifier: Modifier,
+    viewModel: NewReleasesSongsViewModel = viewModel())
+{
     val songs by viewModel.songs
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -489,7 +625,7 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        items(songs, key = { it.id }) { song ->
+        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
@@ -497,6 +633,14 @@ fun NewReleasesSongs(playlistId: String, root: String, modifier: Modifier, viewM
                         interactionSource = interactionSource,
                         indication = null
                     ) {
+                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_PLAY_NEW
+                            putParcelableArrayListExtra("playlist", ArrayList(songs))
+                            putExtra("index", index)
+                        }
+
+                        ContextCompat.startForegroundService(context, intent)
+
                         scope.launch {
                             RecentlyPlayedManager.add(context, song)
                         }
@@ -614,7 +758,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        items(songs, key = { it.id }) { song ->
+        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
@@ -622,6 +766,14 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                         interactionSource = interactionSource,
                         indication = null
                     ) {
+                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_PLAY_NEW
+                            putParcelableArrayListExtra("playlist", ArrayList(songs))
+                            putExtra("index", index)
+                        }
+
+                        ContextCompat.startForegroundService(context, intent)
+
                         scope.launch {
                             RecentlyPlayedManager.add(context, song)
                         }
@@ -740,6 +892,12 @@ fun htmlToText(html: String?): String {
     if (html.isNullOrBlank()) return ""
 
     return Html.fromHtml(html,Html.FROM_HTML_MODE_LEGACY).toString().trim()
+}
+
+fun formatDuration(seconds: Int): String {
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format(Locale.US,"%02d : %02d", minutes, remainingSeconds)
 }
 
 @Composable

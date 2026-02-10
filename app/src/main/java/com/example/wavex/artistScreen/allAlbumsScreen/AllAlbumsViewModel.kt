@@ -22,8 +22,7 @@ class AllAlbumsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _albums.value =
-                    repository.fetchAlbums(query, root)
+                _albums.value = repository.fetchAlbums(query, root)
             } catch (e: Exception) {
                 _albums.value = AllAlbumsUiState(
                     isError = true,

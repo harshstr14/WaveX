@@ -23,6 +23,10 @@ class AlbumViewModel(
             try {
                 _albums.value = repository.fetchAlbumById(albumId)
             } catch (e: Exception) {
+                _albums.value = AlbumDetailUiState(
+                    isError = true,
+                    errorMessage = "Something went wrong"
+                )
                 Log.e("SAAVN", "Album load failed: ${e.message}")
             } finally {
                 _isLoading.value = false

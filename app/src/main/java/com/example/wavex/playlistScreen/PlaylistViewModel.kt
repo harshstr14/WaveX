@@ -23,6 +23,10 @@ class PlaylistViewModel(
             try {
                 _playlists.value = repository.fetchPlaylistById(playlistId)
             } catch (e: Exception) {
+                _playlists.value = PlaylistDetailUiState(
+                    isError = true,
+                    errorMessage = "Something went wrong"
+                )
                 Log.e("SAAVN", "Playlist load failed: ${e.message}")
             } finally {
                 _isLoading.value = false

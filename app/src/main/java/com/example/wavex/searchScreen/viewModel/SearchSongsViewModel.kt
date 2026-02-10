@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
+import com.example.wavex.searchScreen.uiState.SearchSongsUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +19,9 @@ class SearchSongsViewModel(
     private val _songs = MutableStateFlow<List<SongItem>>(emptyList())
     val songs = _songs.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+    private val _uiState =
+        MutableStateFlow<SearchSongsUiState>(SearchSongsUiState.Idle)
+    val uiState = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
 
@@ -27,27 +29,36 @@ class SearchSongsViewModel(
         if (query.length < 2) {
             searchJob?.cancel()
             clearResults()
+            _uiState.value = SearchSongsUiState.Idle
             return
         }
 
         searchJob?.cancel()
 
         searchJob = viewModelScope.launch {
-            _isLoading.value = true
+            _uiState.value = SearchSongsUiState.Loading
             try {
-                _songs.value = repository.searchSongs(query, root)
+                val result = repository.searchSongs(query, root)
+                _songs.value = result
+
+                _uiState.value =
+                    if (result.isEmpty()) SearchSongsUiState.Empty
+                    else SearchSongsUiState.Success
+
             } catch (_: CancellationException) {
-                // expected cancellation
             } catch (e: Exception) {
-                Log.e("SAAVN", "Song search failed: ${e.message}")
-            } finally {
-                _isLoading.value = false
+                _uiState.value =
+                    SearchSongsUiState.Error("Something went wrong")
+                Log.e("SAAVN", "Artist search failed", e)
             }
         }
     }
 
     fun clearResults() {
         _songs.value = emptyList()
-        _isLoading.value = false
+    }
+
+    fun setIdle() {
+        _uiState.value = SearchSongsUiState.Idle
     }
 }

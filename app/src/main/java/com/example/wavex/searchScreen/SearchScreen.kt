@@ -36,7 +36,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
@@ -90,6 +90,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -104,12 +105,18 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
+import com.example.wavex.searchScreen.uiState.SearchArtistsUiState
+import com.example.wavex.searchScreen.uiState.SearchPlaylistUiState
+import com.example.wavex.searchScreen.uiState.SearchSongsUiState
 import com.example.wavex.searchScreen.viewModel.SearchAlbumsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchArtistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchPlaylistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchSongsViewModel
+import com.example.wavex.service.MusicPlayerService
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -455,28 +462,45 @@ fun SearchArtists(
     gridState: LazyGridState
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(query) {
-        if (query.length < 2) {
-            viewModel.clearResults()
-            return@LaunchedEffect
-        }
+        when {
+            query.isBlank() -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
 
-        viewModel.fetchArtistsByQuery(query, root)
+            query.length < 2 -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
+
+            else -> {
+                viewModel.fetchArtistsByQuery(query, root)
+            }
+        }
     }
 
     when {
-        isLoading -> {
+        query.length < 2 -> {
+            EmptyState("Search for artists")
+        }
+
+        uiState is SearchArtistsUiState.Loading -> {
             LoadingEffect()
         }
 
-        artists.isEmpty() -> {
-            EmptyState("No artists found")
+        uiState is SearchArtistsUiState.Empty -> {
+            ErrorState("No artists found")
         }
 
-        else -> {
+        uiState is SearchArtistsUiState.Error -> {
+            ErrorState((uiState as SearchArtistsUiState.Error).message)
+        }
+
+        uiState is SearchArtistsUiState.Success -> {
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(3),
@@ -533,38 +557,63 @@ fun SearchSongs(
     listState: LazyListState
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(query) {
-        if (query.length < 2) {
-            viewModel.clearResults()
-            return@LaunchedEffect
-        }
+        when {
+            query.isBlank() -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
 
-        viewModel.fetchSongByQuery(query, root)
+            query.length < 2 -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
+
+            else -> {
+                viewModel.fetchSongByQuery(query, root)
+            }
+        }
     }
 
     when {
-        isLoading -> {
+        query.length < 2 -> {
+            EmptyState("Search for songs")
+        }
+
+        uiState is SearchSongsUiState.Loading -> {
             LoadingEffect()
         }
 
-        songs.isEmpty() -> {
-            EmptyState("No songs found")
+        uiState is SearchSongsUiState.Empty -> {
+            ErrorState("No songs found")
         }
 
-        else -> {
+        uiState is SearchSongsUiState.Error -> {
+            ErrorState((uiState as SearchSongsUiState.Error).message)
+        }
+
+        uiState is SearchSongsUiState.Success -> {
             LazyColumn (
                 state = listState,
                 modifier = modifier,
                 contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-                items(songs) { song ->
+                itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                     Row (
                         modifier = Modifier.hideKeyboardOnClick {
+                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                putParcelableArrayListExtra("playlist", ArrayList(songs))
+                                putExtra("index", index)
+                            }
+
+                            ContextCompat.startForegroundService(context, intent)
+
                             scope.launch {
                                 RecentlyPlayedManager.add(context, song)
                             }
@@ -583,18 +632,24 @@ fun SearchSongs(
                         Spacer(modifier = Modifier.width(14.dp))
 
                         Column(
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
                         ) {
                             val songName = htmlToText(song.name)
 
                             Text(
                                 text = songName,
-                                fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                fontSize = 15.sp,
+                                lineHeight = 16.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color),
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             val artistsList = song.artist
                                 .takeIf { it.isNotEmpty() }
@@ -605,8 +660,27 @@ fun SearchSongs(
 
                             Text(
                                 text = artistsName,
-                                fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                fontSize = 13.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = formatDuration(song.duration),
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -650,28 +724,45 @@ fun SearchAlbums(
     gridState: LazyGridState
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(query) {
-        if (query.length < 2) {
-            viewModel.clearResults()
-            return@LaunchedEffect
-        }
+        when {
+            query.isBlank() -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
 
-        viewModel.fetchAlbumByQuery(query, root)
+            query.length < 2 -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
+
+            else -> {
+                viewModel.fetchAlbumByQuery(query, root)
+            }
+        }
     }
 
     when {
-        isLoading -> {
+        query.length < 2 -> {
+            EmptyState("Search for albums")
+        }
+
+        uiState is SearchAlbumsUiState.Loading -> {
             LoadingEffect()
         }
 
-        albums.isEmpty() -> {
-            EmptyState("No albums found")
+        uiState is SearchAlbumsUiState.Empty -> {
+            ErrorState("No albums found")
         }
 
-        else -> {
+        uiState is SearchAlbumsUiState.Error -> {
+            ErrorState((uiState as SearchAlbumsUiState.Error).message)
+        }
+
+        uiState is SearchAlbumsUiState.Success -> {
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(3),
@@ -739,28 +830,45 @@ fun SearchPlaylists(
     gridState: LazyGridState
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(query) {
-        if (query.length < 2) {
-            viewModel.clearResults()
-            return@LaunchedEffect
-        }
+        when {
+            query.isBlank() -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
 
-        viewModel.fetchPlayListByQuery(query, root)
+            query.length < 2 -> {
+                viewModel.clearResults()
+                viewModel.setIdle()
+            }
+
+            else -> {
+                viewModel.fetchPlayListByQuery(query, root)
+            }
+        }
     }
 
     when {
-        isLoading -> {
+        query.length < 2 -> {
+            EmptyState("Search for playlists")
+        }
+
+        uiState is SearchPlaylistUiState.Loading -> {
             LoadingEffect()
         }
 
-        playlists.isEmpty() -> {
-            EmptyState("No playlists found")
+        uiState is SearchPlaylistUiState.Empty -> {
+            ErrorState("No playlists found")
         }
 
-        else -> {
+        uiState is SearchPlaylistUiState.Error -> {
+            ErrorState((uiState as SearchPlaylistUiState.Error).message)
+        }
+
+        uiState is SearchPlaylistUiState.Success -> {
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(3),
@@ -818,6 +926,37 @@ fun EmptyState(text: String) {
             text = text,
             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color)
+        )
+    }
+}
+
+@Composable
+fun ErrorState(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 100.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
+        )
+
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.size(134.dp)
+        )
+
+        Spacer(modifier = Modifier.height(0.dp))
+
+        Text(
+            modifier = Modifier.offset(y = (-8).dp),
+            text = message,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
 }

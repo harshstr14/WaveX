@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.songData.Artists
 import com.example.wavex.searchScreen.repository.SearchArtistsRepository
+import com.example.wavex.searchScreen.uiState.SearchArtistsUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +19,9 @@ class SearchArtistsViewModel(
     private val _artists = MutableStateFlow<List<Artists>>(emptyList())
     val artists = _artists.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+    private val _uiState =
+        MutableStateFlow<SearchArtistsUiState>(SearchArtistsUiState.Idle)
+    val uiState = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
 
@@ -27,27 +29,36 @@ class SearchArtistsViewModel(
         if (query.length < 2) {
             searchJob?.cancel()
             clearResults()
+            _uiState.value = SearchArtistsUiState.Idle
             return
         }
 
         searchJob?.cancel()
 
         searchJob = viewModelScope.launch {
-            _isLoading.value = true
+            _uiState.value = SearchArtistsUiState.Loading
             try {
-                _artists.value = repository.searchArtists(query, root)
+                val result = repository.searchArtists(query, root)
+                _artists.value = result
+
+                _uiState.value =
+                    if (result.isEmpty()) SearchArtistsUiState.Empty
+                    else SearchArtistsUiState.Success
+
             } catch (_: CancellationException) {
-                // normal cancellation
             } catch (e: Exception) {
-                Log.e("SAAVN", "Artist search failed: ${e.message}")
-            } finally {
-                _isLoading.value = false
+                _uiState.value =
+                    SearchArtistsUiState.Error("Something went wrong")
+                Log.e("SAAVN", "Artist search failed", e)
             }
         }
     }
 
     fun clearResults() {
         _artists.value = emptyList()
-        _isLoading.value = false
+    }
+
+    fun setIdle() {
+        _uiState.value = SearchArtistsUiState.Idle
     }
 }

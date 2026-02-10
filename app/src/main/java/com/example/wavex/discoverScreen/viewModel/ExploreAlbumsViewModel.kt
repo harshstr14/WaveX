@@ -24,8 +24,7 @@ class ExploreAlbumsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _albums.value =
-                    repository.fetchAlbums(query, root)
+                _albums.value = repository.fetchAlbums(query, root)
             } catch (e: Exception) {
                 Log.e("SAAVN", "Album fetch failed", e)
             } finally {

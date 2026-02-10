@@ -296,10 +296,8 @@ class  MusicPlayerService : LifecycleService() {
         val song = playlist[index]
         currentSongLive.postValue(song)
         prepareAndPlay(song)
-        if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-            serviceScope.launch {
-                RecentlyPlayedManager.add(this@MusicPlayerService, song)
-            }
+        serviceScope.launch {
+            RecentlyPlayedManager.add(this@MusicPlayerService, song)
         }
     }
     private fun prepareAndPlay(song: SongItem) {
@@ -538,19 +536,19 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun buildNotification(song: SongItem, bitmap: Bitmap): Notification {
-        val playIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PLAY)
-        val pauseIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PAUSE)
-        val nextIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_NEXT)
-        val prevIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PREV)
-        val shuffleIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_SHUFFLE)
-        val repeatIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_REPEAT)
+//        val playIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PLAY)
+//        val pauseIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PAUSE)
+//        val nextIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_NEXT)
+//        val prevIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PREV)
+//        val shuffleIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_SHUFFLE)
+//        val repeatIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_REPEAT)
 
-        val playPending    = PendingIntent.getBroadcast(this, 100, playIntent, PendingIntent.FLAG_IMMUTABLE)
-        val pausePending   = PendingIntent.getBroadcast(this, 101, pauseIntent, PendingIntent.FLAG_IMMUTABLE)
-        val nextPending    = PendingIntent.getBroadcast(this, 102, nextIntent, PendingIntent.FLAG_IMMUTABLE)
-        val prevPending    = PendingIntent.getBroadcast(this, 103, prevIntent, PendingIntent.FLAG_IMMUTABLE)
-        val shufflePending = PendingIntent.getBroadcast(this, 104, shuffleIntent, PendingIntent.FLAG_IMMUTABLE)
-        val repeatPending  = PendingIntent.getBroadcast(this, 105, repeatIntent, PendingIntent.FLAG_IMMUTABLE)
+        val playPending    = servicePendingIntent(ACTION_PLAY)
+        val pausePending   = servicePendingIntent(ACTION_PAUSE)
+        val nextPending    = servicePendingIntent(ACTION_NEXT)
+        val prevPending    = servicePendingIntent(ACTION_PREV)
+        val shufflePending = servicePendingIntent(ACTION_SHUFFLE)
+        val repeatPending  = servicePendingIntent(ACTION_REPEAT)
 
         //val openIntent = Intent(this, PlaySong::class.java)
         //val openPending = PendingIntent.getActivity(this, 200, openIntent, PendingIntent.FLAG_IMMUTABLE)
@@ -619,15 +617,21 @@ class  MusicPlayerService : LifecycleService() {
         return notifBuilder.build()
     }
     private fun createNotificationChannel() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(CHANNEL_ID, "Music player", NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Music playback controls"
-            // Show full content on lockscreen
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Music Playback",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Music player notifications"
+            }
+
+            val manager =
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
-        nm.createNotificationChannel(channel)
     }
+
     private fun updateMetadata(song: SongItem, bitmap: Bitmap) {
         val duration = if (::player.isInitialized && player.duration > 0) player.duration else song.duration.toLong()
         val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)
@@ -676,5 +680,18 @@ class  MusicPlayerService : LifecycleService() {
             )
             .build()
         mediaSession.setPlaybackState(playbackState)
+    }
+
+    private fun servicePendingIntent(action: String): PendingIntent {
+        val intent = Intent(this, MusicPlayerService::class.java).apply {
+            this.action = action
+        }
+
+        return PendingIntent.getService(
+            this,
+            action.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }

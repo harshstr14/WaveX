@@ -334,7 +334,7 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
         Text(
             modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.searchScreen.repository.SearchAlbumsRepository
+import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,45 +13,51 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
 class SearchAlbumsViewModel(
-    private val repository: SearchAlbumsRepository =
-        SearchAlbumsRepository()
+    private val repository: SearchAlbumsRepository = SearchAlbumsRepository()
 ) : ViewModel() {
 
     private val _albums = MutableStateFlow<List<DataItem>>(emptyList())
     val albums = _albums.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+    private val _uiState =
+        MutableStateFlow<SearchAlbumsUiState>(SearchAlbumsUiState.Idle)
+    val uiState = _uiState.asStateFlow()
     private var searchJob: Job? = null
 
     fun fetchAlbumByQuery(query: String, root: String) {
         if (query.length < 2) {
             searchJob?.cancel()
-            _albums.value = emptyList()
-            _isLoading.value = false
+            clearResults()
+            _uiState.value = SearchAlbumsUiState.Idle
             return
         }
 
         searchJob?.cancel()
 
         searchJob = viewModelScope.launch {
-            _isLoading.value = true
+            _uiState.value = SearchAlbumsUiState.Loading
             try {
-                _albums.value =
-                    repository.searchAlbums(query, root)
+                val result = repository.searchAlbums(query, root)
+                _albums.value = result
+
+                _uiState.value =
+                    if (result.isEmpty()) SearchAlbumsUiState.Empty
+                    else SearchAlbumsUiState.Success
+
             } catch (_: CancellationException) {
-                // expected — ignore
             } catch (e: Exception) {
-                Log.e("SAAVN", "Album search failed", e)
-            } finally {
-                _isLoading.value = false
+                _uiState.value =
+                    SearchAlbumsUiState.Error("Something went wrong")
+                Log.e("SAAVN", "Artist search failed", e)
             }
         }
     }
 
     fun clearResults() {
-        searchJob?.cancel()
         _albums.value = emptyList()
-        _isLoading.value = false
+    }
+
+    fun setIdle() {
+        _uiState.value = SearchAlbumsUiState.Idle
     }
 }

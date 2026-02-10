@@ -1,6 +1,7 @@
 package com.example.wavex.artistScreen.allSongsScreen
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -28,7 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -71,7 +73,9 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -246,7 +250,7 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                             contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 25.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-                            items(songs.songs) { song ->
+                            itemsIndexed(songs.songs, key = { _, song -> song.id }) { index, song ->
                                 Row (
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -255,6 +259,14 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
+                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                                putParcelableArrayListExtra("playlist", ArrayList(songs.songs))
+                                                putExtra("index", index)
+                                            }
+
+                                            ContextCompat.startForegroundService(context, intent)
+
                                             scope.launch {
                                                 RecentlyPlayedManager.add(context, song)
                                             }
@@ -271,18 +283,24 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
                                     Spacer(modifier = Modifier.width(14.dp))
 
                                     Column(
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
                                         val songName = htmlToText(song.name)
 
                                         Text(
                                             text = songName,
-                                            fontSize = 15.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                            fontSize = 15.sp,
+                                            lineHeight = 16.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Spacer(modifier = Modifier.height(4.dp))
 
                                         val artistsList = song.artist
                                             .takeIf { it.isNotEmpty() }
@@ -293,8 +311,27 @@ fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewMod
 
                                         Text(
                                             text = artistsName,
-                                            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                            fontSize = 13.sp,
+                                            lineHeight = 14.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = formatDuration(song.duration),
+                                            fontSize = 12.sp,
+                                            lineHeight = 14.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color),
+                                            maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
@@ -357,7 +394,7 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
         Text(
             modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 

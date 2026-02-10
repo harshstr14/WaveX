@@ -228,7 +228,7 @@ fun LibraryScreen(navController: NavController) {
                 bottom.linkTo(titleText.bottom)
                 end.linkTo(addButton.start, margin = 15.dp)
             }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(38.dp).graphicsLayer {
+                .size(42.dp).graphicsLayer {
                     scaleX = spotifyScale
                     scaleY = spotifyScale
                 }.clickable(
@@ -324,7 +324,7 @@ fun AddPlaylistBottomSheet(onClose: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Url", modifier = Modifier.padding(start = 28.dp),
+        Text(text = "Playlist Url", modifier = Modifier.padding(start = 28.dp),
             fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color)
         )
@@ -391,7 +391,7 @@ fun AddPlaylistBottomSheet(onClose: () -> Unit) {
             horizontalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                modifier = Modifier.width(148.dp).padding(top = 25.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
@@ -408,7 +408,7 @@ fun AddPlaylistBottomSheet(onClose: () -> Unit) {
             Spacer(modifier = Modifier.width(18.dp))
 
             Box(
-                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                modifier = Modifier.width(148.dp).padding(top = 25.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable { }
@@ -587,7 +587,7 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
             horizontalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                modifier = Modifier.width(148.dp).padding(top = 25.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
@@ -604,7 +604,7 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
             Spacer(modifier = Modifier.width(18.dp))
 
             Box(
-                modifier = Modifier.width(142.dp).padding(top = 25.dp)
+                modifier = Modifier.width(148.dp).padding(top = 25.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable { }

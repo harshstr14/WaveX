@@ -1,0 +1,49 @@
+package com.example.wavex.homeScreen.viewModel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.wavex.homeScreen.ProfilePrefs
+import com.example.wavex.homeScreen.ProfilePrefs.dataStore
+import com.example.wavex.homeScreen.ProfilePrefs.getProfileUrl
+import com.example.wavex.homeScreen.ProfilePrefs.saveProfileUrl
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class ProfileViewModel(
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val appContext = application.applicationContext
+
+    private val database: DatabaseReference =
+        FirebaseDatabase.getInstance().getReference("Users")
+
+    val profileImageUrl = getProfileUrl(appContext)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            null
+        )
+
+    fun silentRefresh(uid: String) {
+        database.child(uid).get().addOnSuccessListener { snapshot ->
+            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
+
+            if (!newUrl.isNullOrEmpty()) {
+                viewModelScope.launch {
+                    val cachedUrl =
+                        appContext.dataStore.data.first()[ProfilePrefs.PROFILE_URL]
+
+                    if (cachedUrl != newUrl) {
+                        saveProfileUrl(appContext, newUrl)
+                    }
+                }
+            }
+        }
+    }
+}
