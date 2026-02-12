@@ -1,0 +1,865 @@
+package com.example.wavex.profileScreen.yourProfileScreen
+
+import android.app.Activity
+import android.content.Context
+import android.net.Uri
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.UploadCallback
+import com.example.wavex.R
+import com.example.wavex.fonts
+import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.ui.theme.WaveXTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
+import com.yalantis.ucrop.UCrop
+import java.io.File
+
+class YourProfileActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                darkScrim = 0xFF121212.toInt(),
+                scrim = 0xFFF6F6F6.toInt()
+            ),
+            navigationBarStyle = SystemBarStyle.dark(
+                scrim = 0xFFF6F6F6.toInt()
+            )
+        )
+
+        setContent {
+            WaveXTheme {
+                Your_Profile_Activity()
+            }
+        }
+    }
+}
+
+@Composable
+fun Your_Profile_Activity() {
+    val viewModel: ProfileViewModel = viewModel()
+
+    val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
+    val name by viewModel.userName.collectAsState()
+    var mail by remember { mutableStateOf("") }
+    var phoneNo by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+
+    val uid = FirebaseAuth.getInstance().currentUser?.uid
+
+    val database: DatabaseReference =
+        FirebaseDatabase.getInstance().getReference("Users")
+
+    LaunchedEffect(uid) {
+        uid?.let {
+            database.child(it).get().addOnSuccessListener { snapshot ->
+                mail = snapshot.child("mail").getValue(String::class.java) ?: ""
+                phoneNo = snapshot.child("phoneNo").getValue(String::class.java) ?: ""
+                gender = snapshot.child("gender").getValue(String::class.java) ?: ""
+            }
+        }
+    }
+
+    YourProfileScreen(
+        imageUrl = imageUrl,
+        savedName = name,
+        savedEmail = mail,
+        savedPhoneNO = phoneNo,
+        savedGender = gender,
+        onUpdateClick = { updatedName, updatedPhone, updatedGender ->
+
+            uid?.let { it ->
+                val updates = mutableMapOf<String, Any>()
+
+                updatedName.takeIf { it.isNotBlank() }?.let { updates["name"] = it }
+                updatedPhone.takeIf { it.isNotBlank() }?.let { updates["phoneNo"] = it }
+                updatedGender.takeIf { it.isNotBlank() }?.let { updates["gender"] = it }
+
+                if (updates.isNotEmpty()) {
+                    database.child(it).updateChildren(updates)
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun YourProfileScreen(
+    imageUrl: String?,
+    savedName: String,
+    savedEmail: String,
+    savedPhoneNO: String,
+    savedGender: String,
+    onUpdateClick: (String, String, String) -> Unit
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val interactionSource = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val viewModel: ProfileViewModel = viewModel()
+
+    var name by remember { mutableStateOf("") }
+    var phoneNo by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+    var isPhoneEditable by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var expanded by remember { mutableStateOf(false) }
+    val genderOptions = listOf("Male", "Female", "Other")
+
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 270f else 90f,
+        animationSpec = tween(durationMillis = 300),
+        label = "ArrowRotation"
+    )
+
+    LaunchedEffect(savedName) {
+        name = savedName
+    }
+    LaunchedEffect(savedEmail) {
+        email = savedEmail
+    }
+    LaunchedEffect(savedPhoneNO) {
+        phoneNo = savedPhoneNO
+    }
+    LaunchedEffect(savedGender) {
+        gender = savedGender
+    }
+
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
+
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val resultUri = UCrop.getOutput(result.data!!)
+            resultUri?.let { uri ->
+                // Upload to Cloudinary and save URL
+                val database = FirebaseDatabase.getInstance().getReference("Users")
+                uploadToCloudinary(uri, database, context, viewModel)
+            }
+        }
+    }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { sourceUri ->
+            val destinationUri = Uri.fromFile(
+                File(context.cacheDir, "crop_${System.currentTimeMillis()}.jpg")
+            )
+            val options = UCrop.Options().apply {
+                setCircleDimmedLayer(true)
+                setShowCropFrame(false)
+                setShowCropGrid(false)
+            }
+            val intent = UCrop.of(sourceUri, destinationUri)
+                .withAspectRatio(1f, 1f)
+                .withMaxResultSize(512, 512)
+                .withOptions(options)
+                .getIntent(context)
+            cropLauncher.launch(intent)
+        }
+    }
+
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(10.dp),
+                            ambientColor = Color(0xFF1C1C1C),
+                            spotColor = Color(0xFF1C1C1C)
+                        ),
+                    containerColor = Color(0xFF1C1C1C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("email") -> R.drawable.email_icon
+                                    data.visuals.message.contains("name") -> R.drawable.user_icon
+                                    data.visuals.message.contains("Phone") -> R.drawable.phone_icon
+                                    else -> {
+                                        R.drawable.alert_icon
+                                    }
+                                }
+                            ),
+                            contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.background_color)
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(colorResource(R.color.background_color)),
+            contentAlignment = Alignment.Center
+        ) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (backButton, titleText, profileAvatar, column, editIcon, updateButton) = createRefs()
+
+                Text(
+                    text = "Your Profile",
+                    modifier = Modifier.constrainAs(titleText) {
+                        top.linkTo(parent.top, margin = 20.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                    fontSize = 20.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color),
+                    lineHeight = 22.sp
+                )
+
+                Box(
+                    modifier = Modifier.constrainAs(backButton) {
+                        top.linkTo(titleText.top)
+                        bottom.linkTo(titleText.bottom)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                        .border(
+                            width = 1.5.dp,
+                            color = colorResource(R.color.secondary_text_color),
+                            shape = RoundedCornerShape(20.dp)
+                        ).clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            activity?.finish()
+                        }, contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_icon),
+                        contentDescription = "add Icon",
+                        tint = colorResource(R.color.primary_text_color),
+                        modifier = Modifier.size(20.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .memoryCacheKey("profile_image")
+                        .diskCacheKey("profile_image")
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Profile Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.constrainAs(profileAvatar) {
+                        top.linkTo(backButton.bottom, margin = 25.dp)
+                        end.linkTo(parent.end)
+                        start.linkTo(parent.start)
+                    }.size(162.dp)
+                        .clip(CircleShape),
+                    placeholder = painterResource(R.drawable.logo)
+                )
+
+                Box(
+                    modifier = Modifier.constrainAs(editIcon) {
+                        bottom.linkTo(profileAvatar.bottom)
+                        end.linkTo(profileAvatar.end, margin = 8.dp)
+                    }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.theme_color))
+                        .border(
+                            width = 1.5.dp,
+                            color = colorResource(R.color.background_color),
+                            shape = RoundedCornerShape(20.dp)
+                        ).clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            imagePickerLauncher.launch("image/*")
+                        }, contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.edit_icon),
+                        contentDescription = "Edit Icon",
+                        tint = colorResource(R.color.background_color),
+                        modifier = Modifier.size(18.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+
+                Column(modifier = Modifier.constrainAs(column){
+                    top.linkTo(profileAvatar.bottom, margin = 30.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    bottom.linkTo(updateButton.bottom, margin = 8.dp)
+                    height = Dimension.fillToConstraints
+                }) {
+                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                        val (genderLabel, genderInputContainer,
+                            nameLabel, nameInputContainer, phoneNoLabel, phoneNoInputContainer,
+                            emailLabel, emailInputContainer) = createRefs()
+
+                        Text("Name", modifier = Modifier.constrainAs(nameLabel) {
+                            top.linkTo(parent.top)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        Box(modifier = Modifier.constrainAs(nameInputContainer) {
+                            top.linkTo(nameLabel.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText) = createRefs()
+
+                                if (name.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                                        top.linkTo(parent.top)
+                                        bottom.linkTo(parent.bottom)
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(parent.end, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Name",
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                }
+
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
+
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = name,
+                                        onValueChange = { name = it },
+                                        modifier = Modifier
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            color = colorResource(R.color.secondary_text_color)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                    )
+                                }
+                            }
+                        }
+
+                        Text("Phone Number", modifier = Modifier.constrainAs(phoneNoLabel) {
+                            top.linkTo(nameInputContainer.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        Box(modifier = Modifier.constrainAs(phoneNoInputContainer) {
+                            top.linkTo(phoneNoLabel.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText, text) = createRefs()
+
+                                if (phoneNo.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                                        top.linkTo(parent.top)
+                                        bottom.linkTo(parent.bottom)
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(text.start, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Phone Number",
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                }
+
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
+
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = phoneNo,
+                                        onValueChange = {
+                                            if (it.all { char -> char.isDigit() } && it.length <= 10) {
+                                                phoneNo = it
+                                            }
+                                        },
+                                        enabled = isPhoneEditable,
+                                        modifier = Modifier
+                                            .focusRequester(focusRequester)
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(text.start, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            color = colorResource(R.color.secondary_text_color)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C)),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            imeAction = ImeAction.Done
+                                        ),
+
+                                        keyboardActions = KeyboardActions(
+                                            onDone = {
+                                                keyboardController?.hide()
+                                                isPhoneEditable = false
+                                            }
+                                        )
+                                    )
+                                }
+
+                                Text(modifier = Modifier.constrainAs(text) {
+                                    top.linkTo(parent.top)
+                                    bottom.linkTo(parent.bottom)
+                                    end.linkTo(parent.end, margin = 15.dp) }
+                                    .clickable {
+                                        isPhoneEditable = !isPhoneEditable
+                                    },
+                                    text = if (isPhoneEditable) "Done" else "Change",
+                                    fontFamily = fonts,
+                                    fontWeight = FontWeight.Normal,
+                                    fontStyle = FontStyle.Normal,
+                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    color = colorResource(R.color.theme_color)
+                                )
+                            }
+                        }
+
+                        Text("Email", modifier = Modifier.constrainAs(emailLabel) {
+                            top.linkTo(phoneNoInputContainer.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        Box(modifier = Modifier.constrainAs(emailInputContainer) {
+                            top.linkTo(emailLabel.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText) = createRefs()
+
+                                if (email.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                                        top.linkTo(parent.top)
+                                        bottom.linkTo(parent.bottom)
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(parent.end, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Email",
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                }
+
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
+
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = email,
+                                        onValueChange = { email = it },
+                                        enabled = false,
+                                        modifier = Modifier
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            color = colorResource(R.color.secondary_text_color)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                    )
+                                }
+                            }
+                        }
+
+                        Text("Gender", modifier = Modifier.constrainAs(genderLabel) {
+                            top.linkTo(emailInputContainer.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.constrainAs(genderInputContainer) {
+                                top.linkTo(genderLabel.bottom, margin = 10.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            }.padding(horizontal = 25.dp)
+                                .fillMaxWidth().zIndex(1f)
+                        ) {
+                            TextField(
+                                value = gender.ifEmpty{ "" },
+                                onValueChange = {},
+                                readOnly = true,
+                                placeholder = {
+                                    Text(
+                                        "Select",
+                                        fontSize = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                },
+                                textStyle = TextStyle(
+                                    fontFamily = fonts,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontStyle = FontStyle.Normal,
+                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    color = colorResource(R.color.secondary_text_color)
+                                ),
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.right_arrow_icon),
+                                        contentDescription = null,
+                                        tint = colorResource(R.color.theme_color),
+                                        modifier = Modifier
+                                            .rotate(rotation)
+                                            .size(22.dp)
+                                    )
+                                },
+                                colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                    focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                                    unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .height(52.dp)
+                                    .fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                containerColor = colorResource(R.color.secondary_text_color),
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                genderOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = option,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                fontSize = 14.sp, lineHeight = 17.sp,
+                                                color = colorResource(R.color.background_color)
+                                            ) },
+                                        onClick = {
+                                            gender = option
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button(modifier = Modifier.constrainAs(updateButton) {
+                    bottom.linkTo(parent.bottom, margin = 35.dp)
+                }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
+                    elevation = 26.dp,
+                    shape = RoundedCornerShape(26.dp),
+                    ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                    spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                ),
+                    onClick = {
+                        when {
+                            phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Phone number must be 10 digits",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                return@Button
+                            }
+
+                            name.isBlank() -> {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Please enter your name",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                return@Button
+                            }
+                        }
+
+                        onUpdateClick(name, phoneNo, gender)
+                    }, colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.theme_color),
+                        contentColor = colorResource(R.color.background_color)
+                    ) , shape = RoundedCornerShape(26.dp)) {
+
+                    Text("Update", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal, fontSize = 18.sp
+                    )
+                }
+            }
+        }
+
+        LaunchedEffect(isPhoneEditable) {
+            if (isPhoneEditable) {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
+        }
+    }
+}
+
+private fun uploadToCloudinary(imageUri: Uri,
+                               database: DatabaseReference, context: Context,
+                               profileViewModel: ProfileViewModel) {
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+    MediaManager.get().upload(imageUri)
+        .option("folder", "profile_pics")
+        .option("public_id", userId)
+        .option("overwrite", true)
+        .callback(object : UploadCallback {
+            override fun onStart(requestId: String?) {}
+
+            override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+
+            override fun onSuccess(requestId: String?, resultData: Map<*, *>?) {
+                val secureUrl = resultData?.get("secure_url").toString()
+                val version = resultData?.get("version").toString()
+
+                val finalUrl = "$secureUrl?v=$version"
+
+                // Save URL in Firebase Realtime Database
+                database.child(userId).child("photoUrl").setValue(finalUrl)
+                    .addOnSuccessListener {
+                        Toast.makeText(
+                            context,
+                            "Profile photo updated",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        profileViewModel.refreshProfileImage(userId)
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            context,
+                            "Failed to update profile: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            }
+
+            override fun onError(requestId: String, p1: com.cloudinary.android.callback.ErrorInfo) {
+                Toast.makeText(context, "Upload failed: ${p1.description}", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onReschedule(requestId: String, p1: com.cloudinary.android.callback.ErrorInfo) {
+                // You can leave this empty if you don’t need it
+            }
+        })
+        .dispatch()
+}
+
+@Preview(showSystemUi = true)
+@Composable
+fun YourProfileActivityPreview() {
+    WaveXTheme {
+        YourProfileScreen(
+            imageUrl = "",
+            savedName = "",
+            savedEmail = "",
+            savedPhoneNO = "",
+            savedGender = "",
+            onUpdateClick = { _, _, _ -> }
+        )
+    }
+}

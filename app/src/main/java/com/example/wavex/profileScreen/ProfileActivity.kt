@@ -1,6 +1,7 @@
 package com.example.wavex.profileScreen
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -32,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +60,11 @@ import coil.request.ImageRequest
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity
+import com.example.wavex.profileScreen.artistsScreen.ArtistsActivity
+import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongsActivity
+import com.example.wavex.profileScreen.settingScreen.SettingActivity
+import com.example.wavex.profileScreen.yourProfileScreen.YourProfileActivity
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -85,12 +92,10 @@ class ProfileActivity : ComponentActivity() {
 
 @Composable
 fun Profile_Activity() {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
     val viewModel: ProfileViewModel = viewModel()
 
     val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
+    val name by viewModel.userName.collectAsState()
 
     val uid = FirebaseAuth.getInstance().currentUser?.uid
 
@@ -98,7 +103,16 @@ fun Profile_Activity() {
         uid?.let { viewModel.silentRefresh(it) }
     }
 
+    ProfileScreen(
+        imageUrl = imageUrl,
+        name = name
+    )
+}
 
+@Composable
+private fun ProfileScreen(imageUrl: String?, name: String) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
@@ -167,7 +181,8 @@ fun Profile_Activity() {
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                 val (backButton, titleText, profileAvatar, userIcon, text1, row2
-                , row3, row4, row5, row6) = createRefs()
+                        , row3, row4, row5, editIcon
+                ) = createRefs()
 
                 Text(
                     text = "Profile",
@@ -216,8 +231,8 @@ fun Profile_Activity() {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(imageUrl)
-                        .memoryCacheKey(uid?.let { "profile_$it" })
-                        .diskCacheKey(uid?.let { "profile_$it" })
+                        .memoryCacheKey("profile_image")
+                        .diskCacheKey("profile_image")
                         .crossfade(true)
                         .build(),
                     contentDescription = "Profile Image",
@@ -227,11 +242,44 @@ fun Profile_Activity() {
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
                     }.size(162.dp)
-                     .clip(CircleShape)
+                        .clip(CircleShape),
+                    placeholder = painterResource(R.drawable.logo)
                 )
 
+                Box(
+                    modifier = Modifier.constrainAs(editIcon) {
+                        bottom.linkTo(profileAvatar.bottom)
+                        end.linkTo(profileAvatar.end, margin = 8.dp)
+                    }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.theme_color))
+                        .border(
+                            width = 1.5.dp,
+                            color = colorResource(R.color.background_color),
+                            shape = RoundedCornerShape(20.dp)
+                        ).clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, YourProfileActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        }, contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.edit_icon),
+                        contentDescription = "Edit Icon",
+                        tint = colorResource(R.color.background_color),
+                        modifier = Modifier.size(18.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+
                 Text(
-                    text = "Harsh Suthar",
+                    text = name,
                     modifier = Modifier.constrainAs(text1) {
                         top.linkTo(profileAvatar.bottom, margin = 20.dp)
                         start.linkTo(parent.start)
@@ -247,8 +295,17 @@ fun Profile_Activity() {
 
                 Row(
                     modifier = Modifier.constrainAs(userIcon){
-                    top.linkTo(text1.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp),
+                        top.linkTo(text1.bottom, margin = 30.dp)
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, YourProfileActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -291,21 +348,30 @@ fun Profile_Activity() {
                 Row(
                     modifier = Modifier.constrainAs(row2){
                         top.linkTo(userIcon.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp),
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, FavouriteSongsActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.user_icon),
-                        contentDescription = "User Icon",
+                        painter = painterResource(R.drawable.song_icon),
+                        contentDescription = "Song Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(15.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
                         text = "Favourite Songs",
@@ -321,7 +387,7 @@ fun Profile_Activity() {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "User Icon",
+                        contentDescription = "Arrow Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
@@ -334,21 +400,30 @@ fun Profile_Activity() {
                 Row(
                     modifier = Modifier.constrainAs(row3){
                         top.linkTo(row2.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp),
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, ArtistsActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.user_icon),
-                        contentDescription = "User Icon",
+                        painter = painterResource(R.drawable.mic_icon),
+                        contentDescription = "Mic Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(15.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
                         text = "Artists",
@@ -364,7 +439,7 @@ fun Profile_Activity() {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "User Icon",
+                        contentDescription = "Arrow Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
@@ -377,21 +452,30 @@ fun Profile_Activity() {
                 Row(
                     modifier = Modifier.constrainAs(row4){
                         top.linkTo(row3.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp),
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, AlbumsActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.user_icon),
-                        contentDescription = "User Icon",
+                        painter = painterResource(R.drawable.album_icon),
+                        contentDescription = "Album Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(15.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
                         text = "Albums",
@@ -407,7 +491,7 @@ fun Profile_Activity() {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "User Icon",
+                        contentDescription = "Arrow Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
@@ -420,21 +504,30 @@ fun Profile_Activity() {
                 Row(
                     modifier = Modifier.constrainAs(row5){
                         top.linkTo(row4.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp),
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, SettingActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.user_icon),
-                        contentDescription = "User Icon",
+                        painter = painterResource(R.drawable.setting_icon),
+                        contentDescription = "Setting Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(15.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
                         text = "Settings",
@@ -450,7 +543,7 @@ fun Profile_Activity() {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "User Icon",
+                        contentDescription = "Arrow Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
@@ -466,8 +559,11 @@ fun Profile_Activity() {
 
 @Preview(showSystemUi = true)
 @Composable
-fun GreetingPreview() {
+fun Profile_ActivityPreview() {
     WaveXTheme {
-        Profile_Activity()
+        ProfileScreen(
+            imageUrl = "",
+            name = ""
+        )
     }
 }

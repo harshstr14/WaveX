@@ -214,7 +214,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                     Text("Email", modifier = Modifier.constrainAs(emailLabel) {
                         top.linkTo(parent.top, margin = 30.dp)
                         start.linkTo(parent.start, margin = 28.dp)
-                    }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color)
                     )
 
@@ -279,7 +279,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                     Text("Password", modifier = Modifier.constrainAs(passwordLabel) {
                         top.linkTo(emailInputContainer.bottom, margin = 20.dp)
                         start.linkTo(parent.start, margin = 28.dp)
-                    }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color)
                     )
 

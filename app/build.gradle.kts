@@ -64,6 +64,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.ucrop)
+    implementation(libs.cloudinary.android)
     implementation(libs.gson)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.media)

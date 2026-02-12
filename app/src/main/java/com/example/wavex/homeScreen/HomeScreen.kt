@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -143,6 +144,7 @@ object ProfilePrefs {
     val Context.dataStore by preferencesDataStore("profile")
 
     val PROFILE_URL = stringPreferencesKey("profile_url")
+    val USER_NAME = stringPreferencesKey("user_name")
 
     suspend fun saveProfileUrl(context: Context, url: String) {
         context.dataStore.edit {
@@ -150,18 +152,32 @@ object ProfilePrefs {
         }
     }
 
+    suspend fun saveUserName(context: Context, name: String) {
+        context.dataStore.edit {
+            it[USER_NAME] = name
+        }
+    }
+
     fun getProfileUrl(context: Context) =
         context.dataStore.data.map {
             it[PROFILE_URL]
         }
+
+    fun getUserName(context: Context) =
+        context.dataStore.data.map {
+            it[USER_NAME]
+        }
 }
-
-
-val auth = FirebaseAuth.getInstance()
-val userID = auth.currentUser?.uid
 
 @Composable
 fun HomeScreen (navController: NavController) {
+    val isPreview = LocalInspectionMode.current
+
+    val auth = remember(isPreview) {
+        if (!isPreview) FirebaseAuth.getInstance() else null
+    }
+    val userID = auth?.currentUser?.uid
+
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 

@@ -6,11 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.ProfilePrefs
 import com.example.wavex.homeScreen.ProfilePrefs.dataStore
 import com.example.wavex.homeScreen.ProfilePrefs.getProfileUrl
+import com.example.wavex.homeScreen.ProfilePrefs.getUserName
 import com.example.wavex.homeScreen.ProfilePrefs.saveProfileUrl
+import com.example.wavex.homeScreen.ProfilePrefs.saveUserName
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,18 +33,39 @@ class ProfileViewModel(
             null
         )
 
+    val userName = getUserName(appContext)
+        .map { it ?: "Your Name" }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            "Your Name"
+        )
+
     fun silentRefresh(uid: String) {
         database.child(uid).get().addOnSuccessListener { snapshot ->
+
             val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
+            val newName = snapshot.child("name").getValue(String::class.java)
 
-            if (!newUrl.isNullOrEmpty()) {
-                viewModelScope.launch {
-                    val cachedUrl =
-                        appContext.dataStore.data.first()[ProfilePrefs.PROFILE_URL]
+            viewModelScope.launch {
 
-                    if (cachedUrl != newUrl) {
-                        saveProfileUrl(appContext, newUrl)
-                    }
+                if (!newUrl.isNullOrEmpty()) {
+                    saveProfileUrl(appContext, newUrl)
+                }
+
+                if (!newName.isNullOrEmpty()) {
+                    saveUserName(appContext, newName)
+                }
+            }
+        }
+    }
+
+    fun refreshProfileImage(uid: String) {
+        database.child(uid).get().addOnSuccessListener { snapshot ->
+            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
+            viewModelScope.launch {
+                if (!newUrl.isNullOrEmpty()) {
+                    saveProfileUrl(getApplication(), newUrl)
                 }
             }
         }

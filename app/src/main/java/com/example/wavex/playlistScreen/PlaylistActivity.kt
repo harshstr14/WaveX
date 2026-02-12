@@ -95,6 +95,11 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 
 class PlaylistActivity : ComponentActivity() {
@@ -137,6 +142,11 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
     val context = LocalContext.current
     val activity = context as? Activity
 
+    val userID = FirebaseAuth.getInstance().currentUser?.uid
+
+    val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
+        .child(userID!!).child("Favourites").child("Playlists").child(playlistId.toString())
+
     LaunchedEffect(playlistId) {
         playlistId?.let {
             viewModel.loadPlaylist(it)
@@ -144,6 +154,16 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
     }
 
     var isLiked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                isLiked = snapshot.exists()
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
 
     val heartScale by animateFloatAsState(
         targetValue = if (isLiked) 1.15f else 1f,
@@ -280,14 +300,58 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                                         interactionSource = interactionSource,
                                         indication = null
                                     ) {
-                                        isLiked = !isLiked
+                                        favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
 
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar(
-                                                message = "Click on like",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
+                                            override fun onDataChange(snapshot: DataSnapshot) {
+
+                                                if (!snapshot.exists()) {
+
+                                                    val songData = mapOf(
+                                                        "id" to playlistId,
+                                                        "albumName" to playlists.name,
+                                                        "isFavourite" to true
+                                                    )
+
+                                                    favouriteReference.setValue(songData)
+                                                        .addOnSuccessListener {
+                                                            isLiked = true
+                                                            scope.launch {
+                                                                snackbarHostState.showSnackbar(
+                                                                    message = "Added To Favourite",
+                                                                    duration = SnackbarDuration.Short
+                                                                )
+                                                            }
+                                                        }
+                                                        .addOnFailureListener {
+                                                            scope.launch {
+                                                                snackbarHostState.showSnackbar(
+                                                                    message = "Failed To Add in Favourite",
+                                                                    duration = SnackbarDuration.Short
+                                                                )
+                                                            }
+                                                        }
+
+                                                } else {
+
+                                                    favouriteReference.removeValue()
+                                                        .addOnSuccessListener {
+                                                            isLiked = false
+                                                            scope.launch {
+                                                                snackbarHostState.showSnackbar(
+                                                                    message = "Removed From Favourite",
+                                                                    duration = SnackbarDuration.Short
+                                                                )
+                                                            }
+                                                        }
+                                                }
+                                            }
+
+                                            override fun onCancelled(error: DatabaseError) {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Database Error: ${error.message}")
+                                                }
+                                            }
+                                        })
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -330,10 +394,7 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(painter = painterResource(when {
-                            data.visuals.message.contains("like") -> R.drawable.heart_outline
-                            data.visuals.message.contains("email") -> R.drawable.email_icon
-                            data.visuals.message.contains("Welcome") -> R.drawable.logo2
-                            data.visuals.message.contains("password") -> R.drawable.password_icon
+                            data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
                             else -> {
                                 R.drawable.alert_icon
                             }

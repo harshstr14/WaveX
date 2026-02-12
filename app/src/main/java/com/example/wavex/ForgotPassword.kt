@@ -178,7 +178,7 @@ fun ForgotPasswordScreen() {
             Text("Email", modifier = Modifier.constrainAs(emailLabel) {
                 top.linkTo(descriptionText.bottom, margin = 25.dp)
                 start.linkTo(parent.start, margin = 28.dp)
-            }, fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color)
             )
 

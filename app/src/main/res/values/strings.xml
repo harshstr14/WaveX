@@ -12,4 +12,9 @@
     <string name="title_activity_album">AlbumActivity</string>
     <string name="title_activity_playlist_activtiy">PlaylistActivtiy</string>
     <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_your_profile">YourProfileActivity</string>
+    <string name="title_activity_favourite_songs">FavouriteSongsActivity</string>
+    <string name="title_activity_artists_activtiy">ArtistsActivtiy</string>
+    <string name="title_activity_albums">AlbumsActivity</string>
+    <string name="title_activity_setting">SettingActivity</string>
 </resources>
