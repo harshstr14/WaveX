@@ -125,10 +125,11 @@ class ArtistActivity : ComponentActivity() {
         )
 
         val artistId = intent.getStringExtra("artist_id")
+        val artistImageUrl = intent.getStringExtra("artist_imageUrl")
 
         setContent {
             WaveXTheme {
-                Artist_Activity(artistId)
+                Artist_Activity(artistId, artistImageUrl)
             }
         }
     }
@@ -136,7 +137,7 @@ class ArtistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) {
+fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewModel: ArtistViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -396,14 +397,14 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                             override fun onDataChange(snapshot: DataSnapshot) {
 
                                                 if (!snapshot.exists()) {
-
-                                                    val songData = mapOf(
-                                                        "id" to artistId,
-                                                        "albumName" to artists.name,
+                                                    val artistData = mapOf(
+                                                        "artistId" to artistId,
+                                                        "artistName" to artists.name,
+                                                        "artistImageUrl" to artistImageUrl,
                                                         "isFavourite" to true
                                                     )
 
-                                                    favouriteReference.setValue(songData)
+                                                    favouriteReference.setValue(artistData)
                                                         .addOnSuccessListener {
                                                             isLiked = true
                                                             scope.launch {
@@ -549,7 +550,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = artists.imageUrl,
+                                        model = artistImageUrl ?: R.drawable.default_artist,
                                         contentDescription = "Profile Image",
                                         contentScale = ContentScale.Crop,
                                         modifier =  Modifier
@@ -839,8 +840,9 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                     interactionSource = interactionSource,
                                                     indication = null
                                                 ) {
-                                                    val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                                    val intent = Intent(context, AlbumActivity::class.java).apply {
                                                         putExtra("album_id", album.id)
+                                                        putExtra("album_imageUrl", album.image[2].url)
                                                     }
                                                     context.startActivity(intent)
                                                 }
@@ -849,6 +851,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                 model = album.image[2].url,
                                                 contentDescription = album.name,
                                                 contentScale = ContentScale.Crop,
+                                                error = painterResource(R.drawable.default_image),
                                                 modifier = Modifier
                                                     .height(110.dp)
                                                     .fillMaxWidth()
@@ -900,8 +903,9 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                     interactionSource = interactionSource,
                                                     indication = null
                                                 ) {
-                                                    val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                                    val intent = Intent(context, AlbumActivity::class.java).apply {
                                                         putExtra("album_id", album.id)
+                                                        putExtra("album_imageUrl", album.image[2].url)
                                                     }
                                                     context.startActivity(intent)
                                                 }
@@ -910,6 +914,7 @@ fun Artist_Activity(artistId: String?,viewModel: ArtistViewModel = viewModel()) 
                                                 model = album.image[2].url,
                                                 contentDescription = album.name,
                                                 contentScale = ContentScale.Crop,
+                                                error = painterResource(R.drawable.default_image),
                                                 modifier = Modifier
                                                     .height(110.dp)
                                                     .fillMaxWidth()
@@ -1045,6 +1050,6 @@ fun pressScale(
 @Composable
 fun Artist_ActivityPreview() {
     WaveXTheme {
-        Artist_Activity("")
+        Artist_Activity("","")
     }
 }

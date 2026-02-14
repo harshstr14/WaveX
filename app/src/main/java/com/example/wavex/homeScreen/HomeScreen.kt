@@ -474,6 +474,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     ) {
                         val intent = Intent(context, PlaylistActivity::class.java).apply {
                             putExtra("playlist_id", realItem.id)
+                            putExtra("playlist_imageUrl", realItem.image[2].url)
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         }
                         context.startActivity(intent)
@@ -483,6 +484,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     model = realItem.image[2].url,
                     contentDescription = realItem.name,
                     contentScale = ContentScale.Crop,
+                    error = painterResource(R.drawable.default_image),
                     modifier = Modifier
                         .height(itemWidth)
                         .fillMaxWidth()
@@ -723,8 +725,9 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                     interactionSource = interactionSource,
                     indication = null
                 ) {
-                    val intent = Intent(context, ArtistActivity()::class.java).apply {
+                    val intent = Intent(context, ArtistActivity::class.java).apply {
                         putExtra("artist_id", artist.id)
+                        putExtra("artist_imageUrl", artist.image)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     }
                     context.startActivity(intent)
@@ -735,7 +738,6 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                     model = artist.image.takeIf { it.isNotBlank() },
                     contentDescription = artist.name,
                     contentScale = ContentScale.Crop,
-                    placeholder = painterResource(R.drawable.default_artist),
                     error = painterResource(R.drawable.default_artist),
                     modifier = Modifier
                         .size(78.dp)
@@ -858,8 +860,9 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                         interactionSource = interactionSource,
                         indication = null
                     ) {
-                        val intent = Intent(context, AlbumActivity()::class.java).apply {
+                        val intent = Intent(context, AlbumActivity::class.java).apply {
                             putExtra("album_id", album.id)
+                            putExtra("album_imageUrl", album.image[2].url)
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         }
                         context.startActivity(intent)
@@ -869,6 +872,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                     model = album.image[2].url,
                     contentDescription = album.name,
                     contentScale = ContentScale.Crop,
+                    error = painterResource(R.drawable.default_image),
                     modifier = Modifier
                         .height(110.dp)
                         .fillMaxWidth()

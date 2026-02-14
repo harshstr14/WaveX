@@ -36,7 +36,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -568,8 +567,9 @@ fun ExploreArtists(
                             interactionSource = interactionSource,
                             indication = null
                         ) {
-                            val intent = Intent(context, ArtistActivity()::class.java).apply {
+                            val intent = Intent(context, ArtistActivity::class.java).apply {
                                 putExtra("artist_id", artist.id)
+                                putExtra("artist_imageUrl", artist.image)
                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                             context.startActivity(intent)
@@ -580,7 +580,6 @@ fun ExploreArtists(
                             model = artist.image.takeIf { it.isNotBlank() },
                             contentDescription = artist.name,
                             contentScale = ContentScale.Crop,
-                            placeholder = painterResource(R.drawable.default_artist),
                             error = painterResource(R.drawable.default_artist),
                             modifier = Modifier
                                 .size(82.dp)
@@ -648,8 +647,9 @@ fun ExploreAlbums(
                                 interactionSource = interactionSource,
                                 indication = null
                             ) {
-                                val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
+                                    putExtra("album_imageUrl", album.image[2].url)
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                 }
                                 context.startActivity(intent)
@@ -659,6 +659,7 @@ fun ExploreAlbums(
                             model = album.image[2].url,
                             contentDescription = album.name,
                             contentScale = ContentScale.Crop,
+                            error = painterResource(R.drawable.default_image),
                             modifier = Modifier
                                 .fillMaxWidth().aspectRatio(1f)
                                 .clip(RoundedCornerShape(16.dp))
@@ -741,6 +742,7 @@ fun ExplorePlaylist(
                             ) {
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
+                                    putExtra("playlist_imageUrl", playlist.image[2].url)
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                 }
                                 context.startActivity(intent)
@@ -750,6 +752,7 @@ fun ExplorePlaylist(
                             model = playlist.image[2].url,
                             contentDescription = playlist.name,
                             contentScale = ContentScale.Crop,
+                            error = painterResource(R.drawable.default_image),
                             modifier = Modifier
                                 .fillMaxWidth().aspectRatio(1f)
                                 .clip(RoundedCornerShape(16.dp))

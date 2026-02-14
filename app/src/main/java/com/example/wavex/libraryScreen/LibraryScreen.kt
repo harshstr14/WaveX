@@ -66,6 +66,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.wavex.R
 import com.example.wavex.fonts
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 
 enum class SheetType {
@@ -429,8 +431,14 @@ fun AddPlaylistBottomSheet(onClose: () -> Unit) {
 
 @Composable
 fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
-    var name by remember { mutableStateOf("") }
+    var titleName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var titleError by remember { mutableStateOf(false) }
+
+    val userID = FirebaseAuth.getInstance().currentUser?.uid
+
+    val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
+        .child(userID!!).child("Favourites").child("MyPlaylists")
 
     Column(
         modifier = Modifier
@@ -464,14 +472,20 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
         Spacer(modifier = Modifier.height(10.dp))
 
         Box(modifier = Modifier.padding(horizontal = 25.dp).height(52.dp)
-            .fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (titleError) Color.Red else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
             shape = RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                 val (inputField, placeholderText) = createRefs()
 
-                if (name.isEmpty()) {
+                if (titleName.isEmpty()) {
                     Text(modifier = Modifier.constrainAs(placeholderText) {
                         top.linkTo(parent.top)
                         bottom.linkTo(parent.bottom)
@@ -494,8 +508,14 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
                     BasicTextField(
-                        value = name,
-                        onValueChange = { name = it },
+                        value = titleName,
+                        onValueChange = {
+                            titleName = it
+
+                            if (it.isNotBlank()) {
+                                titleError = false
+                            }
+                        },
                         modifier = Modifier
                             .constrainAs(inputField) {
                                 top.linkTo(parent.top)
@@ -516,6 +536,16 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
                     )
                 }
             }
+        }
+
+        if (titleError) {
+            Text(
+                text = "Title cannot be empty",
+                color = Color.Red,
+                fontSize = 12.sp,
+                lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
+                modifier = Modifier.padding(start = 28.dp, top = 4.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -607,7 +637,18 @@ fun CreatePlaylistBottomSheet(onClose: () -> Unit) {
                 modifier = Modifier.width(148.dp).padding(top = 25.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(colorResource(R.color.theme_color))
-                    .clickable { }
+                    .clickable {
+                        titleError = titleName.isBlank()
+                        if (!titleError) {
+                            val playlistData = mutableMapOf<String, Any>()
+
+                            titleName.takeIf { it.isNotBlank() }?.let { playlistData["playlistName"] = it }
+                            description.takeIf { it.isNotBlank() }?.let { playlistData["description"] = it }
+                            playlistData["imageUrl"] = "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1771090319/default_image_hrsmd7.jpg"
+
+                            favouriteReference.child(titleName).updateChildren(playlistData)
+                        }
+                    }
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {

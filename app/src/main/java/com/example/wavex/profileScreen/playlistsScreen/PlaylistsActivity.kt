@@ -1,9 +1,8 @@
-package com.example.wavex.profileScreen.artistsScreen
+package com.example.wavex.profileScreen.playlistsScreen
 
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,7 +33,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -57,7 +56,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -72,12 +70,12 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
-import com.example.wavex.artistScreen.ArtistActivity
-
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.ui.theme.WaveXTheme
-class ArtistsActivity : ComponentActivity() {
+
+class PlaylistsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -93,20 +91,20 @@ class ArtistsActivity : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                Artists_Activity()
+                Playlists_Activity()
             }
         }
     }
 }
 
 @Composable
-fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
+fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
-    val artistsGridState = rememberLazyGridState()
+    val playlistsGridState = rememberLazyGridState()
 
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -119,8 +117,7 @@ fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
         label = "ShareScale"
     )
 
-    val artistList by viewModel.artists.collectAsStateWithLifecycle()
-    Log.d("artists", artistList.toString())
+    val playlistList by viewModel.playlists.collectAsStateWithLifecycle()
 
     Scaffold(
         snackbarHost = {
@@ -174,28 +171,28 @@ fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
             contentAlignment = Alignment.Center
         ) {
             when {
-                artistList.isLoading -> {
+                playlistList.isLoading -> {
                     LoadingEffect()
                 }
 
-                artistList.isError -> {
+                playlistList.isError -> {
                     ErrorState(
-                        message = artistList.errorMessage
+                        message = playlistList.errorMessage
                     )
                 }
 
-                artistList.artists.isEmpty() -> {
+                playlistList.playlists.isEmpty() -> {
                     ErrorState(
-                        message = "No Favourite Artists"
+                        message = "No Favourite Playlists"
                     )
                 }
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (backButton, titleText, artistsGrid) = createRefs()
+                        val (backButton, titleText, playlistsGrid) = createRefs()
 
                         Text(
-                            text = "Artists",
+                            text = "Playlists",
                             modifier = Modifier.constrainAs(titleText) {
                                 top.linkTo(parent.top, margin = 20.dp)
                                 start.linkTo(parent.start)
@@ -228,7 +225,7 @@ fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.arrow_icon),
-                                contentDescription = "add Icon",
+                                contentDescription = "Arrow Icon",
                                 tint = colorResource(R.color.primary_text_color),
                                 modifier = Modifier.size(20.dp)
                                     .graphicsLayer {
@@ -239,52 +236,53 @@ fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
                         }
 
                         LazyVerticalGrid(
-                            state = artistsGridState,
+                            state = playlistsGridState,
                             columns = GridCells.Fixed(3),
-                            modifier = Modifier.constrainAs(artistsGrid){
+                            modifier = Modifier.constrainAs(playlistsGrid){
                                 top.linkTo(titleText.bottom, margin = 20.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 100.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp)
                         ) {
-                            items(artistList.artists) { artist ->
+                            items(playlistList.playlists){ playlist ->
                                 Column(
-                                    modifier = Modifier.clickable(
-                                        interactionSource = interactionSource,
-                                        indication = null
-                                    ) {
-                                        val intent = Intent(context, ArtistActivity::class.java).apply {
-                                            putExtra("artist_id", artist.artistId)
-                                            putExtra("artist_imageUrl", artist.artistImageUrl)
-                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            val intent = Intent(context, PlaylistActivity::class.java).apply {
+                                                putExtra("playlist_id", playlist.playlistId)
+                                                putExtra("playlist_imageUrl", playlist.playlistImageUrl)
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            }
+                                            context.startActivity(intent)
                                         }
-                                        context.startActivity(intent)
-                                    } ,
-                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     AsyncImage(
-                                        model = artist.artistImageUrl.takeIf { it.isNotBlank() },
-                                        contentDescription = artist.artistName,
+                                        model = playlist.playlistImageUrl.takeIf { it.isNotBlank() },
+                                        contentDescription = playlist.playlistName,
                                         contentScale = ContentScale.Crop,
-                                        error = painterResource(R.drawable.default_artist),
+                                        error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
-                                            .size(82.dp)
-                                            .clip(CircleShape)
+                                            .fillMaxWidth().aspectRatio(1f)
+                                            .clip(RoundedCornerShape(16.dp))
                                     )
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    val artistName = htmlToText(artist.artistName)
+                                    val playlistName = htmlToText(playlist.playlistName)
 
-                                    Text( modifier = Modifier.width(78.dp),
-                                        text = artistName,
+                                    Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                        text = playlistName,
                                         fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                        color = colorResource(R.color.primary_text_color), maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
@@ -343,8 +341,8 @@ fun ErrorState(message: String) {
 
 @Preview(showSystemUi = true)
 @Composable
-fun ArtistsActivityPreview() {
+fun PlaylistsActivityPreview() {
     WaveXTheme {
-        Artists_Activity()
+        Playlists_Activity()
     }
 }

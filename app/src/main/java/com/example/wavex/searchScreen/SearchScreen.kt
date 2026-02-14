@@ -512,8 +512,9 @@ fun SearchArtists(
                 items(artists) { artist ->
                     Column(
                         modifier = Modifier.hideKeyboardOnClick {
-                            val intent = Intent(context, ArtistActivity()::class.java).apply {
+                            val intent = Intent(context, ArtistActivity::class.java).apply {
                                 putExtra("artist_id", artist.id)
+                                putExtra("artist_imageUrl", artist.image)
                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                             context.startActivity(intent)
@@ -524,7 +525,6 @@ fun SearchArtists(
                             model = artist.image.takeIf { it.isNotBlank() },
                             contentDescription = artist.name,
                             contentScale = ContentScale.Crop,
-                            placeholder = painterResource(R.drawable.default_artist),
                             error = painterResource(R.drawable.default_artist),
                             modifier = Modifier
                                 .size(82.dp)
@@ -776,8 +776,9 @@ fun SearchAlbums(
                         modifier = Modifier
                             .fillMaxWidth()
                             .hideKeyboardOnClick {
-                                val intent = Intent(context, AlbumActivity()::class.java).apply {
+                                val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
+                                    putExtra("album_imageUrl", album.image[2].url)
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                 }
                                 context.startActivity(intent)
@@ -787,6 +788,7 @@ fun SearchAlbums(
                             model = album.image[2].url,
                             contentDescription = album.name,
                             contentScale = ContentScale.Crop,
+                            error = painterResource(R.drawable.default_image),
                             modifier = Modifier
                                 .fillMaxWidth().aspectRatio(1f)
                                 .clip(RoundedCornerShape(16.dp))
@@ -884,6 +886,7 @@ fun SearchPlaylists(
                             .hideKeyboardOnClick {
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
+                                    putExtra("playlist_imageUrl", playlist.image[2].url)
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                 }
                                 context.startActivity(intent)
@@ -893,6 +896,7 @@ fun SearchPlaylists(
                             model = playlist.image[2].url,
                             contentDescription = playlist.name,
                             contentScale = ContentScale.Crop,
+                            error = painterResource(R.drawable.default_image),
                             modifier = Modifier
                                 .fillMaxWidth().aspectRatio(1f)
                                 .clip(RoundedCornerShape(16.dp))

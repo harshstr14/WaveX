@@ -1,6 +1,7 @@
 package com.example.wavex.artistScreen.allAlbumsScreen
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -70,6 +71,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.ui.theme.WaveXTheme
@@ -245,7 +247,7 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
                             state = albumsGridState,
                             columns = GridCells.Fixed(3),
                             modifier = Modifier.constrainAs(albumsGrid){
-                                top.linkTo(titleText.bottom, margin = 15.dp)
+                                top.linkTo(titleText.bottom, margin = 20.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
@@ -263,13 +265,19 @@ fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewMod
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
-
+                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                putExtra("album_id", album.id)
+                                                putExtra("album_imageUrl", album.image[2].url)
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            }
+                                            context.startActivity(intent)
                                         },
                                 ) {
                                     AsyncImage(
                                         model = album.image[2].url,
                                         contentDescription = album.name,
                                         contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
                                             .fillMaxWidth().aspectRatio(1f)
                                             .clip(RoundedCornerShape(16.dp))

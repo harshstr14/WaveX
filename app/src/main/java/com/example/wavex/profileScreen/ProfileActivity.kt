@@ -63,6 +63,7 @@ import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity
 import com.example.wavex.profileScreen.artistsScreen.ArtistsActivity
 import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongsActivity
+import com.example.wavex.profileScreen.playlistsScreen.PlaylistsActivity
 import com.example.wavex.profileScreen.settingScreen.SettingActivity
 import com.example.wavex.profileScreen.yourProfileScreen.YourProfileActivity
 import com.example.wavex.ui.theme.WaveXTheme
@@ -181,7 +182,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                 val (backButton, titleText, profileAvatar, userIcon, text1, row2
-                        , row3, row4, row5, editIcon
+                        , row3, row4, row5, row6, editIcon
                 ) = createRefs()
 
                 Text(
@@ -502,8 +503,60 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row5){
+                    modifier = Modifier.constrainAs(row6){
                         top.linkTo(row4.bottom, margin = 30.dp)
+                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, PlaylistsActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.playlist_icon),
+                        contentDescription = "Playlist Icon",
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier.size(22.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = "Playlists",
+                        fontSize = 16.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Icon(
+                        painter = painterResource(R.drawable.right_arrow_icon),
+                        contentDescription = "Arrow Icon",
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier.size(22.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.constrainAs(row5){
+                        top.linkTo(row6.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,

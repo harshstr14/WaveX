@@ -28,6 +28,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
         <activity
+            android:name=".profileScreen.playlistsScreen.PlaylistsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_playlists"
+            android:theme="@style/Theme.WaveX" />
+        <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />

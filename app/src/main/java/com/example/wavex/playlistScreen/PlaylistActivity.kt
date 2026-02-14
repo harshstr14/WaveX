@@ -3,7 +3,6 @@ package com.example.wavex.playlistScreen
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -117,10 +116,11 @@ class PlaylistActivity : ComponentActivity() {
         )
 
         val playlistId = intent.getStringExtra("playlist_id")
+        val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
 
         setContent {
             WaveXTheme {
-                Playlist_Activity(playlistId)
+                Playlist_Activity(playlistId, playlistImageUrl)
             }
         }
     }
@@ -128,7 +128,7 @@ class PlaylistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewModel())  {
+fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel: PlaylistViewModel = viewModel())  {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -136,7 +136,6 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
 
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    Log.d("Album",playlists.toString())
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -305,14 +304,14 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                                             override fun onDataChange(snapshot: DataSnapshot) {
 
                                                 if (!snapshot.exists()) {
-
-                                                    val songData = mapOf(
-                                                        "id" to playlistId,
-                                                        "albumName" to playlists.name,
+                                                    val playlistData = mapOf(
+                                                        "playlistId" to playlistId,
+                                                        "playlistName" to playlists.name,
+                                                        "playlistImageUrl" to playlistImageUrl,
                                                         "isFavourite" to true
                                                     )
 
-                                                    favouriteReference.setValue(songData)
+                                                    favouriteReference.setValue(playlistData)
                                                         .addOnSuccessListener {
                                                             isLiked = true
                                                             scope.launch {
@@ -459,12 +458,11 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                                 ) {
-                                    val thirdImageUrl = playlists.images.getOrNull(2)?.url
-
                                     AsyncImage(
-                                        model = thirdImageUrl ?: R.drawable.default_artist,
+                                        model = playlistImageUrl ?: R.drawable.default_image,
                                         contentDescription = "Album Image",
                                         contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
                                             .offset(x = offsetX, y = offsetY)
                                             .size(size)
@@ -648,20 +646,23 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                                 )
                             }
 
+                            val uniqueArtists = playlists.artists.distinctBy { it.id }
+
                             item {
                                 LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
-                                    items(playlists.artists) { artist ->
+                                    items(uniqueArtists) { artist ->
                                         Column(
                                             modifier = Modifier
                                                 .clickable(
                                                     interactionSource = interactionSource,
                                                     indication = null
                                                 ) {
-                                                    val intent = Intent(context, ArtistActivity()::class.java).apply {
+                                                    val intent = Intent(context, ArtistActivity::class.java).apply {
                                                         putExtra("artist_id", artist.id)
+                                                        putExtra("artist_imageUrl", artist.image)
                                                     }
                                                     context.startActivity(intent)
                                                 },
@@ -671,7 +672,6 @@ fun Playlist_Activity(playlistId: String?, viewModel: PlaylistViewModel = viewMo
                                                 model = artist.image.takeIf { it.isNotBlank() },
                                                 contentDescription = artist.name,
                                                 contentScale = ContentScale.Crop,
-                                                placeholder = painterResource(R.drawable.default_artist),
                                                 error = painterResource(R.drawable.default_artist),
                                                 modifier = Modifier
                                                     .size(78.dp)
@@ -919,6 +919,6 @@ fun pressScale(
 @Composable
 fun GreetingPreview() {
     WaveXTheme {
-        Playlist_Activity("playlistId")
+        Playlist_Activity("playlistId", "playlistImageUrl")
     }
 }

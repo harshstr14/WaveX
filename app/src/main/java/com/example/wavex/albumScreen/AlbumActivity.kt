@@ -3,7 +3,6 @@ package com.example.wavex.albumScreen
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -117,10 +116,11 @@ class AlbumActivity : ComponentActivity() {
         )
 
         val albumId = intent.getStringExtra("album_id")
+        val albumImageUrl = intent.getStringExtra("album_imageUrl")
 
         setContent {
             WaveXTheme {
-                Album_Activity(albumId)
+                Album_Activity(albumId, albumImageUrl)
             }
         }
     }
@@ -128,7 +128,7 @@ class AlbumActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
+fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -136,7 +136,6 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    Log.d("Album",albums.toString())
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -304,14 +303,22 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                             override fun onDataChange(snapshot: DataSnapshot) {
 
                                                 if (!snapshot.exists()) {
+                                                    val artistsList = albums.primaryArtists
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
 
-                                                    val songData = mapOf(
-                                                        "id" to albumId,
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    val albumData = mapOf(
+                                                        "albumId" to albumId,
                                                         "albumName" to albums.albumName,
+                                                        "albumImageUrl" to albumImageUrl,
+                                                        "primaryArtists" to artistsName,
                                                         "isFavourite" to true
                                                     )
 
-                                                    favouriteReference.setValue(songData)
+                                                    favouriteReference.setValue(albumData)
                                                         .addOnSuccessListener {
                                                             isLiked = true
                                                             scope.launch {
@@ -458,10 +465,8 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                                 ) {
-                                    val thirdImageUrl = albums.albumImages.getOrNull(2)?.url
-
                                     AsyncImage(
-                                        model = thirdImageUrl ?: R.drawable.default_artist,
+                                        model = albumImageUrl ?: R.drawable.default_image,
                                         contentDescription = "Album Image",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
@@ -659,8 +664,9 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                                 interactionSource = interactionSource,
                                                 indication = null
                                             ) {
-                                                val intent = Intent(context, ArtistActivity()::class.java).apply {
+                                                val intent = Intent(context, ArtistActivity::class.java).apply {
                                                     putExtra("artist_id", artist.id)
+                                                    putExtra("artist_imageUrl", artist.image)
                                                 }
                                                 context.startActivity(intent)
                                             },
@@ -670,7 +676,6 @@ fun Album_Activity(albumId: String?, viewModel: AlbumViewModel = viewModel()) {
                                                 model = artist.image.takeIf { it.isNotBlank() },
                                                 contentDescription = artist.name,
                                                 contentScale = ContentScale.Crop,
-                                                placeholder = painterResource(R.drawable.default_artist),
                                                 error = painterResource(R.drawable.default_artist),
                                                 modifier = Modifier
                                                     .size(78.dp)
@@ -918,6 +923,6 @@ fun pressScale(
 @Composable
 fun Album_ActivityPreview() {
     WaveXTheme {
-        Album_Activity("1245648")
+        Album_Activity("1245648", "")
     }
 }

@@ -1,6 +1,7 @@
 package com.example.wavex.profileScreen.albumsScreen
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -14,14 +15,24 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -39,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -50,6 +62,17 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import com.example.wavex.R
 import com.example.wavex.fonts
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.albumScreen.AlbumActivity
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.ui.theme.WaveXTheme
 
 class AlbumsActivity : ComponentActivity() {
@@ -75,12 +98,13 @@ class AlbumsActivity : ComponentActivity() {
 }
 
 @Composable
-fun Albums_Activity() {
+fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
+    val albumsGridState = rememberLazyGridState()
 
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -92,6 +116,8 @@ fun Albums_Activity() {
         ),
         label = "ShareScale"
     )
+
+    val albumList by viewModel.albums.collectAsStateWithLifecycle()
 
     Scaffold(
         snackbarHost = {
@@ -144,60 +170,185 @@ fun Albums_Activity() {
                 .background(colorResource(R.color.background_color)),
             contentAlignment = Alignment.Center
         ) {
-            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val (backButton, titleText) = createRefs()
+            when {
+                albumList.isLoading -> {
+                    LoadingEffect()
+                }
 
-                Text(
-                    text = "Albums",
-                    modifier = Modifier.constrainAs(titleText) {
-                        top.linkTo(parent.top, margin = 20.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    },
-                    fontSize = 20.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 22.sp
-                )
-
-                Box(
-                    modifier = Modifier.constrainAs(backButton) {
-                        top.linkTo(titleText.top)
-                        bottom.linkTo(titleText.bottom)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }.size(36.dp).clip(RoundedCornerShape(20.dp))
-                        .border(
-                            width = 1.5.dp,
-                            color = colorResource(R.color.secondary_text_color),
-                            shape = RoundedCornerShape(20.dp)
-                        ).clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            activity?.finish()
-                        }, contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_icon),
-                        contentDescription = "add Icon",
-                        tint = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.size(20.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
+                albumList.isError -> {
+                    ErrorState(
+                        message = albumList.errorMessage
                     )
+                }
+
+                albumList.albums.isEmpty() -> {
+                    ErrorState(
+                        message = "No Favourite Albums"
+                    )
+                }
+
+                else -> {
+                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                        val (backButton, titleText, albumsGrid) = createRefs()
+
+                        Text(
+                            text = "Albums",
+                            modifier = Modifier.constrainAs(titleText) {
+                                top.linkTo(parent.top, margin = 20.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
+                            fontSize = 20.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color),
+                            lineHeight = 22.sp
+                        )
+
+                        Box(
+                            modifier = Modifier.constrainAs(backButton) {
+                                top.linkTo(titleText.top)
+                                bottom.linkTo(titleText.bottom)
+                                start.linkTo(parent.start, margin = 25.dp)
+                            }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = colorResource(R.color.secondary_text_color),
+                                    shape = RoundedCornerShape(20.dp)
+                                ).clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
+                                    activity?.finish()
+                                }, contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_icon),
+                                contentDescription = "add Icon",
+                                tint = colorResource(R.color.primary_text_color),
+                                modifier = Modifier.size(20.dp)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
+                            )
+                        }
+
+                        LazyVerticalGrid(
+                            state = albumsGridState,
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier.constrainAs(albumsGrid){
+                                top.linkTo(titleText.bottom, margin = 20.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                                bottom.linkTo(parent.bottom)
+                                height = Dimension.fillToConstraints
+                            },
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 25.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp)
+                        ) {
+                            items(albumList.albums) { album ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                putExtra("album_id", album.albumId)
+                                                putExtra("album_imageUrl", album.albumImageUrl)
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                ) {
+                                    AsyncImage(
+                                        model = album.albumImageUrl,
+                                        contentDescription = album.albumName,
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.default_image),
+                                        modifier = Modifier
+                                            .fillMaxWidth().aspectRatio(1f)
+                                            .clip(RoundedCornerShape(16.dp))
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    val albumName = htmlToText(album.albumName)
+
+                                    Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                        text = albumName,
+                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                        text = album.primaryArtists,
+                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun LoadingEffect() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
+    )
+
+    LottieAnimation(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        modifier = Modifier.fillMaxWidth().size(144.dp)
+    )
+}
+
+@Composable
+fun ErrorState(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
+        )
+
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.size(144.dp)
+        )
+
+        Spacer(modifier = Modifier.height(0.dp))
+
+        Text(
+            modifier = Modifier.offset(y = (-8).dp),
+            text = message,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
+        )
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+fun AlbumsActivityPreview() {
     WaveXTheme {
         Albums_Activity()
     }
