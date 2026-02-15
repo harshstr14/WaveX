@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,12 +35,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -97,14 +101,16 @@ class PlaylistsActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
+private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
     val playlistsGridState = rememberLazyGridState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -120,6 +126,57 @@ fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
     val playlistList by viewModel.playlists.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = Modifier.background(colorResource(R.color.background_color)),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            CenterAlignedTopAppBar(
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    Box(
+                        modifier = Modifier.padding(start = 20.dp)
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(
+                                width = 1.5.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(20.dp)
+                            ).clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                activity?.finish()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_icon),
+                            contentDescription = "Back Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.size(20.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "Playlists",
+                        fontSize = 20.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        lineHeight = 22.sp
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorResource(R.color.background_color),
+                    scrolledContainerColor = colorResource(R.color.background_color)
+                )
+            )
+        },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
                 Snackbar(
@@ -189,57 +246,13 @@ fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (backButton, titleText, playlistsGrid) = createRefs()
-
-                        Text(
-                            text = "Playlists",
-                            modifier = Modifier.constrainAs(titleText) {
-                                top.linkTo(parent.top, margin = 20.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            },
-                            fontSize = 20.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.Bold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 22.sp
-                        )
-
-                        Box(
-                            modifier = Modifier.constrainAs(backButton) {
-                                top.linkTo(titleText.top)
-                                bottom.linkTo(titleText.bottom)
-                                start.linkTo(parent.start, margin = 25.dp)
-                            }.size(36.dp).clip(RoundedCornerShape(20.dp))
-                                .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    shape = RoundedCornerShape(20.dp)
-                                ).clickable(
-                                    interactionSource = interactionSource,
-                                    indication = null
-                                ) {
-                                    activity?.finish()
-                                }, contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_icon),
-                                contentDescription = "Arrow Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(20.dp)
-                                    .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
-                                    }
-                            )
-                        }
+                        val (playlistsGrid) = createRefs()
 
                         LazyVerticalGrid(
                             state = playlistsGridState,
                             columns = GridCells.Fixed(3),
                             modifier = Modifier.constrainAs(playlistsGrid){
-                                top.linkTo(titleText.bottom, margin = 20.dp)
+                                top.linkTo(parent.top, margin = 5.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
@@ -296,7 +309,7 @@ fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -304,16 +317,15 @@ fun LoadingEffect() {
     LottieAnimation(
         composition = composition,
         iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().size(144.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
     )
 }
 
 @Composable
-fun ErrorState(message: String) {
+private fun ErrorState(message: String) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+            .fillMaxSize().padding(bottom = 45.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -341,7 +353,7 @@ fun ErrorState(message: String) {
 
 @Preview(showSystemUi = true)
 @Composable
-fun PlaylistsActivityPreview() {
+private fun PlaylistsActivityPreview() {
     WaveXTheme {
         Playlists_Activity()
     }

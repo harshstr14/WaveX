@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,9 +29,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +51,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -153,13 +159,60 @@ class MainScreen : ComponentActivity() {
 @Composable
 fun Main_Screen() {
     val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             BottomNavBar(navController)
         },
-        contentWindowInsets = WindowInsets(0)
+        contentWindowInsets = WindowInsets(0),
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(10.dp),
+                            ambientColor = Color(0xFF1C1C1C),
+                            spotColor = Color(0xFF1C1C1C)
+                        ),
+                    containerColor = Color(0xFF1C1C1C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("PlayList") -> R.drawable.playlist_icon
+                                    data.visuals.message.contains("name") -> R.drawable.user_icon
+                                    data.visuals.message.contains("Phone") -> R.drawable.phone_icon
+                                    else -> {
+                                        R.drawable.alert_icon
+                                    }
+                                }
+                            ),
+                            contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.background_color)
+                        )
+                    }
+                }
+            }
+        }
     ) { paddingValues ->
         NavHost(
             navController = navController,
@@ -214,7 +267,7 @@ fun Main_Screen() {
                 SearchScreen(navController)
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController)
+                LibraryScreen(navController, snackbarHostState = snackbarHostState)
             }
         }
     }

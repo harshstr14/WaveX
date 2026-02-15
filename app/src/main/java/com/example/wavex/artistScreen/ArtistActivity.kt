@@ -137,7 +137,7 @@ class ArtistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewModel: ArtistViewModel = viewModel()) {
+private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewModel: ArtistViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -954,12 +954,12 @@ fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewModel: Artis
 }
 
 @Composable
-fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
+private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
     return start + (end - start) * fraction
 }
 
 @Composable
-fun ErrorState(message: String, onRetry: () -> Unit) {
+private fun ErrorState(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1005,7 +1005,7 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
     }
 }
 
-fun formatCount(count: Long): String {
+private fun formatCount(count: Long): String {
     return when {
         count >= 1_000_000_000 -> String.format(Locale.US,"%.1fB", count / 1_000_000_000.0)
         count >= 1_000_000 -> String.format(Locale.US,"%.1fM", count / 1_000_000.0)
@@ -1015,7 +1015,7 @@ fun formatCount(count: Long): String {
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -1028,7 +1028,7 @@ fun LoadingEffect() {
 }
 
 @Composable
-fun pressScale(
+private fun pressScale(
     pressedScale: Float = 1.15f
 ): Pair<MutableInteractionSource, Float> {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1048,7 +1048,7 @@ fun pressScale(
 
 @Preview(showSystemUi = true)
 @Composable
-fun Artist_ActivityPreview() {
+private fun Artist_ActivityPreview() {
     WaveXTheme {
         Artist_Activity("","")
     }

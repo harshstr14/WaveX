@@ -210,7 +210,7 @@ fun SearchScreen(navController: NavController) {
 }
 
 @Composable
-fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
+private fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -226,7 +226,7 @@ fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
 }
 
 @Composable
-private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: (TextFieldValue) -> Unit) {
+private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: (TextFieldValue) -> Unit) {
     val selectionColors = TextSelectionColors(
         handleColor = Color(0xFF1C1C1C),
         backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
@@ -289,7 +289,7 @@ private  fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange:
 
 @SuppressLint("FrequentlyChangingValue")
 @Composable
-fun SearchTabs(modifier: Modifier, searchText: String) {
+private fun SearchTabs(modifier: Modifier, searchText: String) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -409,7 +409,7 @@ fun SearchTabs(modifier: Modifier, searchText: String) {
 }
 
 @Composable
-fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
+private fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
               onTextMeasured: (Dp) -> Unit, modifier: Modifier = Modifier)
 {
     val interactionSource = remember { MutableInteractionSource() }
@@ -454,7 +454,7 @@ fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
 }
 
 @Composable
-fun SearchArtists(
+private fun SearchArtists(
     query: String,
     root: String,
     modifier: Modifier,
@@ -549,7 +549,7 @@ fun SearchArtists(
 }
 
 @Composable
-fun SearchSongs(
+private fun SearchSongs(
     query: String,
     root: String,
     modifier: Modifier,
@@ -716,7 +716,7 @@ fun SearchSongs(
 }
 
 @Composable
-fun SearchAlbums(
+private fun SearchAlbums(
     query: String,
     root: String,
     modifier: Modifier,
@@ -824,7 +824,7 @@ fun SearchAlbums(
 }
 
 @Composable
-fun SearchPlaylists(
+private fun SearchPlaylists(
     query: String,
     root: String,
     modifier: Modifier,
@@ -920,7 +920,7 @@ fun SearchPlaylists(
 }
 
 @Composable
-fun EmptyState(text: String) {
+private fun EmptyState(text: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth().padding(bottom = 100.dp),
@@ -935,7 +935,7 @@ fun EmptyState(text: String) {
 }
 
 @Composable
-fun ErrorState(message: String) {
+private fun ErrorState(message: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -966,7 +966,7 @@ fun ErrorState(message: String) {
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )

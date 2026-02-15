@@ -819,12 +819,12 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
 }
 
 @Composable
-fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
+private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
     return start + (end - start) * fraction
 }
 
 @Composable
-fun ErrorState(message: String, onRetry: () -> Unit) {
+private fun ErrorState(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -884,7 +884,7 @@ private fun formatTotalDuration(totalSeconds: Int): String {
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -897,7 +897,7 @@ fun LoadingEffect() {
 }
 
 @Composable
-fun pressScale(
+private fun pressScale(
     pressedScale: Float = 1.15f
 ): Pair<MutableInteractionSource, Float> {
     val interactionSource = remember { MutableInteractionSource() }
@@ -917,7 +917,7 @@ fun pressScale(
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+private fun PlaylistActivityPreview() {
     WaveXTheme {
         Playlist_Activity("playlistId", "playlistImageUrl")
     }

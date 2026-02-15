@@ -776,7 +776,7 @@ fun ExplorePlaylist(
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -789,7 +789,7 @@ fun LoadingEffect() {
 }
 
 @Composable
-fun ErrorState(message: String) {
+private fun ErrorState(message: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()

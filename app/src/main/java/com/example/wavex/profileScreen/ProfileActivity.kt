@@ -25,12 +25,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -92,7 +95,7 @@ class ProfileActivity : ComponentActivity() {
 }
 
 @Composable
-fun Profile_Activity() {
+private fun Profile_Activity() {
     val viewModel: ProfileViewModel = viewModel()
 
     val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
@@ -110,6 +113,7 @@ fun Profile_Activity() {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileScreen(imageUrl: String?, name: String) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -117,6 +121,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -130,6 +135,56 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
     )
 
     Scaffold(
+        modifier = Modifier.background(colorResource(R.color.background_color)),
+        topBar = {
+            CenterAlignedTopAppBar(
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    Box(
+                        modifier = Modifier.padding(start = 20.dp)
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(
+                                width = 1.5.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(20.dp)
+                            ).clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                activity?.finish()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_icon),
+                            contentDescription = "Back Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.size(20.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "Profile",
+                        fontSize = 20.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        lineHeight = 22.sp
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorResource(R.color.background_color),
+                    scrolledContainerColor = colorResource(R.color.background_color)
+                )
+            )
+        },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
                 Snackbar(
@@ -181,53 +236,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             contentAlignment = Alignment.Center
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val (backButton, titleText, profileAvatar, userIcon, text1, row2
-                        , row3, row4, row5, row6, editIcon
-                ) = createRefs()
-
-                Text(
-                    text = "Profile",
-                    modifier = Modifier.constrainAs(titleText) {
-                        top.linkTo(parent.top, margin = 20.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    },
-                    fontSize = 20.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 22.sp
-                )
-
-                Box(
-                    modifier = Modifier.constrainAs(backButton) {
-                        top.linkTo(titleText.top)
-                        bottom.linkTo(titleText.bottom)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }.size(36.dp).clip(RoundedCornerShape(20.dp))
-                        .border(
-                            width = 1.5.dp,
-                            color = colorResource(R.color.secondary_text_color),
-                            shape = RoundedCornerShape(20.dp)
-                        ).clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            activity?.finish()
-                        }, contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_icon),
-                        contentDescription = "add Icon",
-                        tint = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.size(20.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                    )
-                }
+                val (profileAvatar, userIcon, text1, row2, row3, row4, row5, row6, editIcon) = createRefs()
 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -239,7 +248,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                     contentDescription = "Profile Image",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.constrainAs(profileAvatar) {
-                        top.linkTo(backButton.bottom, margin = 25.dp)
+                        top.linkTo(parent.top, margin = 15.dp)
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
                     }.size(162.dp)
@@ -612,7 +621,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
 @Preview(showSystemUi = true)
 @Composable
-fun Profile_ActivityPreview() {
+private fun Profile_ActivityPreview() {
     WaveXTheme {
         ProfileScreen(
             imageUrl = "",

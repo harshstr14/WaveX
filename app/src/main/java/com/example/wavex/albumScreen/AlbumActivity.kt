@@ -128,7 +128,7 @@ class AlbumActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumViewModel = viewModel()) {
+private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -823,16 +823,16 @@ fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumVie
 }
 
 @Composable
-fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
+private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
     return start + (end - start) * fraction
 }
 
 @Composable
-fun ErrorState(message: String, onRetry: () -> Unit) {
+private fun ErrorState(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(bottom = 45.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -888,7 +888,7 @@ private fun formatTotalDuration(totalSeconds: Int): String {
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -896,12 +896,12 @@ fun LoadingEffect() {
     LottieAnimation(
         composition = composition,
         iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().size(144.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
     )
 }
 
 @Composable
-fun pressScale(
+private fun pressScale(
     pressedScale: Float = 1.15f
 ): Pair<MutableInteractionSource, Float> {
     val interactionSource = remember { MutableInteractionSource() }
@@ -921,7 +921,7 @@ fun pressScale(
 
 @Preview(showSystemUi = true)
 @Composable
-fun Album_ActivityPreview() {
+private fun Album_ActivityPreview() {
     WaveXTheme {
         Album_Activity("1245648", "")
     }
