@@ -186,7 +186,7 @@ fun Main_Screen() {
                         Icon(
                             painter = painterResource(
                                 when {
-                                    data.visuals.message.contains("PlayList") -> R.drawable.playlist_icon
+                                    data.visuals.message.contains("Playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("name") -> R.drawable.user_icon
                                     data.visuals.message.contains("Phone") -> R.drawable.phone_icon
                                     else -> {

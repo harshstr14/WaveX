@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -46,6 +47,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -81,8 +85,11 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.BuildConfig
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.libraryScreen.importPlaylist.ImportPlaylistViewModel
+import com.example.wavex.libraryScreen.importPlaylist.ImportState
 import com.example.wavex.libraryScreen.playlistScreen.PlaylistActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -98,6 +105,28 @@ enum class SheetType {
 fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostState,
     viewModel: PlaylistViewModel = viewModel()
 ) {
+    val apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
+    val importViewModel: ImportPlaylistViewModel = viewModel()
+    val importState by importViewModel.importState.collectAsState()
+
+    LaunchedEffect(importState) {
+        when (importState) {
+            is ImportState.Success -> {
+                snackbarHostState.showSnackbar(
+                    "Playlist imported successfully",
+                    duration = SnackbarDuration.Short
+                )
+            }
+            is ImportState.Error -> {
+                snackbarHostState.showSnackbar(
+                    (importState as ImportState.Error).message,
+                    duration = SnackbarDuration.Short
+                )
+            }
+            else -> Unit
+        }
+    }
+
     val showSheet = remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -149,6 +178,8 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
 
                 SheetType.ADD_PLAYLIST -> {
                     AddPlaylistBottomSheet(
+                        apiUrl,
+                        importViewModel,
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
@@ -163,298 +194,309 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
         }
     }
 
-    val blur by animateFloatAsState(
-        targetValue = if (showSheet.value) 20f else 0f,
-        label = "BlurAnim"
+    val shouldBlur = importState is ImportState.Loading || showSheet.value
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
     )
 
-    ConstraintLayout(modifier = Modifier
+    val isLoading = importState is ImportState.Loading
+
+    BackHandler(enabled = isLoading) {}
+
+    Box(modifier = Modifier
         .fillMaxSize()
-        .graphicsLayer {
-            if (showSheet.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blur > 0f) {
-                renderEffect = RenderEffect
-                    .createBlurEffect(
-                        blur,
-                        blur,
-                        Shader.TileMode.CLAMP
-                    )
-                    .asComposeRenderEffect()
-            }
-        }
-    ) {
-        val(backButton,titleText,addButton,spotifyLogo,likedSongsRow,playlistList) = createRefs()
-
-        Text("Library", modifier = Modifier
-            .constrainAs(titleText) {
-                top.linkTo(parent.top, margin = 22.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
-            fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
-
-        Box(modifier = Modifier
-            .constrainAs(backButton) {
-                top.linkTo(titleText.top)
-                bottom.linkTo(titleText.bottom)
-                start.linkTo(parent.start, margin = 25.dp)
+    {
+        ConstraintLayout(modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                    renderEffect = RenderEffect
+                        .createBlurEffect(
+                            animatedBlur,
+                            animatedBlur,
+                            Shader.TileMode.CLAMP
+                        )
+                        .asComposeRenderEffect()
+                }
             }
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .size(36.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(
-                width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                shape = RoundedCornerShape(20.dp)
-            )
-            .clickable(
-                interactionSource = backInteraction,
-                indication = null
-            ) {
-                navController.popBackStack()
-            }, contentAlignment = Alignment.Center
         ) {
-            Icon(
-                painter = painterResource(R.drawable.arrow_icon),
-                contentDescription = "add Icon",
-                tint = colorResource(R.color.primary_text_color),
-                modifier = Modifier
-                    .size(20.dp)
-                    .graphicsLayer {
-                        scaleX = backScale
-                        scaleY = backScale
-                    }
-            )
-        }
+            val(backButton,titleText,addButton,spotifyLogo,likedSongsRow,playlistList) = createRefs()
 
-        Box(modifier = Modifier
-            .constrainAs(addButton) {
-                top.linkTo(titleText.top)
-                bottom.linkTo(titleText.bottom)
-                end.linkTo(parent.end, margin = 25.dp)
-            }
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .size(36.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(
-                width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                shape = RoundedCornerShape(20.dp)
+            Text("Library", modifier = Modifier
+                .constrainAs(titleText) {
+                    top.linkTo(parent.top, margin = 22.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+                fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
             )
-            .clickable(
-                interactionSource = addInteraction,
-                indication = null
-            ) {
-                currentSheet.value = SheetType.CREATE_PLAYLIST
-                showSheet.value = true
-                scope.launch { sheetState.show() }
-            }, contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.plus_icon),
-                contentDescription = "add Icon",
-                tint = colorResource(R.color.primary_text_color),
-                modifier = Modifier
-                    .size(22.dp)
-                    .graphicsLayer {
-                        scaleX = addScale
-                        scaleY = addScale
-                    }
-            )
-        }
 
-        Icon(
-            painter = painterResource(R.drawable.spotify_logo),
-            contentDescription = "Spotify Icon",
-            tint = Color.Unspecified,
-            modifier = Modifier
-                .constrainAs(spotifyLogo) {
+            Box(modifier = Modifier
+                .constrainAs(backButton) {
                     top.linkTo(titleText.top)
                     bottom.linkTo(titleText.bottom)
-                    end.linkTo(addButton.start, margin = 15.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
                 }
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(42.dp)
-                .graphicsLayer {
-                    scaleX = spotifyScale
-                    scaleY = spotifyScale
-                }
+                .size(36.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.5.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                )
                 .clickable(
-                    interactionSource = spotifyInteraction,
+                    interactionSource = backInteraction,
                     indication = null
                 ) {
-                    currentSheet.value = SheetType.ADD_PLAYLIST
+                    navController.popBackStack()
+                }, contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_icon),
+                    contentDescription = "add Icon",
+                    tint = colorResource(R.color.primary_text_color),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer {
+                            scaleX = backScale
+                            scaleY = backScale
+                        }
+                )
+            }
+
+            Box(modifier = Modifier
+                .constrainAs(addButton) {
+                    top.linkTo(titleText.top)
+                    bottom.linkTo(titleText.bottom)
+                    end.linkTo(parent.end, margin = 25.dp)
+                }
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(36.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.5.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .clickable(
+                    interactionSource = addInteraction,
+                    indication = null
+                ) {
+                    currentSheet.value = SheetType.CREATE_PLAYLIST
                     showSheet.value = true
                     scope.launch { sheetState.show() }
-                }
-        )
+                }, contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.plus_icon),
+                    contentDescription = "add Icon",
+                    tint = colorResource(R.color.primary_text_color),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer {
+                            scaleX = addScale
+                            scaleY = addScale
+                        }
+                )
+            }
 
-        Row (
-            modifier = Modifier
-                .constrainAs(likedSongsRow) {
-                    top.linkTo(titleText.bottom, margin = 35.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
-                .padding(start = 24.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(R.drawable.liked),
-                contentDescription = null,
+            Icon(
+                painter = painterResource(R.drawable.spotify_logo),
+                contentDescription = "Spotify Icon",
+                tint = Color.Unspecified,
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop
+                    .constrainAs(spotifyLogo) {
+                        top.linkTo(titleText.top)
+                        bottom.linkTo(titleText.bottom)
+                        end.linkTo(addButton.start, margin = 15.dp)
+                    }
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .size(42.dp)
+                    .graphicsLayer {
+                        scaleX = spotifyScale
+                        scaleY = spotifyScale
+                    }
+                    .clickable(
+                        interactionSource = spotifyInteraction,
+                        indication = null
+                    ) {
+                        currentSheet.value = SheetType.ADD_PLAYLIST
+                        showSheet.value = true
+                        scope.launch { sheetState.show() }
+                    }
             )
 
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "Liked Songs",
-                    fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "total songs",
-                    fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Row(
+            Row (
+                modifier = Modifier
+                    .constrainAs(likedSongsRow) {
+                        top.linkTo(titleText.bottom, margin = 35.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                    .padding(start = 24.dp, end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { }) {
-                    Icon(
-                        modifier = Modifier.size(20.dp),
-                        painter = painterResource(R.drawable.three_dots_icon),
-                        contentDescription = "Three Dots",
-                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                Image(
+                    painter = painterResource(R.drawable.liked),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Liked Songs",
+                        fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "total songs",
+                        fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            modifier = Modifier.size(20.dp),
+                            painter = painterResource(R.drawable.three_dots_icon),
+                            contentDescription = "Three Dots",
+                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                        )
+                    }
+                }
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .constrainAs(playlistList) {
-                    top.linkTo(likedSongsRow.bottom, margin = 12.dp)
-                    start.linkTo(parent.start)
-                    bottom.linkTo(parent.bottom)
-                    end.linkTo(parent.end)
-                    height = Dimension.fillToConstraints
-                }
-                .background(colorResource(R.color.background_color)),
-        ) {
-            when {
-                playlistsList.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingEffect()
+            Box(
+                modifier = Modifier
+                    .constrainAs(playlistList) {
+                        top.linkTo(likedSongsRow.bottom, margin = 12.dp)
+                        start.linkTo(parent.start)
+                        bottom.linkTo(parent.bottom)
+                        end.linkTo(parent.end)
+                        height = Dimension.fillToConstraints
                     }
-                }
-
-                playlistsList.isError -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ErrorState(
-                            message = playlistsList.errorMessage
-                        )
+                    .background(colorResource(R.color.background_color)),
+            ) {
+                when {
+                    playlistsList.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingEffect()
+                        }
                     }
-                }
 
-                playlistsList.playlists.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ErrorState(
-                            message = "No Playlist Created"
-                        )
+                    playlistsList.isError -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorState(
+                                message = playlistsList.errorMessage
+                            )
+                        }
                     }
-                }
 
-                else -> {
-                    LazyColumn (
-                        state = playlistState,
-                        contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = 25.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    playlistsList.playlists.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorState(
+                                message = "No Playlist Created"
+                            )
+                        }
+                    }
 
-                        items(playlistsList.playlists) { playlist ->
-                            Row (
-                                modifier = Modifier.clickable(
-                                    interactionSource = spotifyInteraction,
-                                    indication = null
-                                ) {
-                                    val intent = Intent(context, PlaylistActivity::class.java).apply {
-                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                        putExtra("playlist_name",playlist.playlistName)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = playlist.imageUrl,
-                                    contentDescription = null,
-                                    error = painterResource(R.drawable.default_image),
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .clip(RoundedCornerShape(10.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
+                    else -> {
+                        LazyColumn (
+                            state = playlistState,
+                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = 25.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = playlist.playlistName,
-                                        fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    Text(
-                                        text = "Songs : ${playlist.totalSongs}",
-                                        fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Row(
+                            items(playlistsList.playlists) { playlist ->
+                                Row (
+                                    modifier = Modifier.clickable(
+                                        interactionSource = spotifyInteraction,
+                                        indication = null
+                                    ) {
+                                        val intent = Intent(context, PlaylistActivity::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            putExtra("playlist_name",playlist.playlistName)
+                                        }
+                                        context.startActivity(intent)
+                                    },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    IconButton(onClick = { }) {
-                                        Icon(
-                                            modifier = Modifier.size(20.dp),
-                                            painter = painterResource(R.drawable.three_dots_icon),
-                                            contentDescription = "Three Dots",
-                                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                    AsyncImage(
+                                        model = playlist.imageUrl,
+                                        contentDescription = null,
+                                        error = painterResource(R.drawable.default_image),
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = playlist.playlistName,
+                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Text(
+                                            text = "Songs : ${playlist.totalSongs}",
+                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconButton(onClick = { }) {
+                                            Icon(
+                                                modifier = Modifier.size(20.dp),
+                                                painter = painterResource(R.drawable.three_dots_icon),
+                                                contentDescription = "Three Dots",
+                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -463,15 +505,67 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 }
             }
         }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) { awaitPointerEvent() }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp).padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(colorResource(R.color.background_color)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+
+                        Text(
+                            text = "Importing Playlist",
+                            fontSize = 14.sp, lineHeight = 15.sp,
+                            fontFamily = fonts, fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val composition by rememberLottieComposition(
+                            LottieCompositionSpec.RawRes(R.raw.happy_spaceman)
+                        )
+
+                        LottieAnimation(
+                            composition = composition,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier.size(124.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun AddPlaylistBottomSheet(onClose: () -> Unit) {
+private fun AddPlaylistBottomSheet(apiUrl: String,
+                                   viewModel: ImportPlaylistViewModel,
+                                   onClose: () -> Unit
+) {
     var url by remember { mutableStateOf("") }
     var urlError by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val trimUrl = url.substringAfter("playlist/").substringBefore("?")
 
     Column(
         modifier = Modifier
@@ -643,6 +737,11 @@ private fun AddPlaylistBottomSheet(onClose: () -> Unit) {
                     .background(colorResource(R.color.theme_color))
                     .clickable {
                         urlError = url.isBlank()
+
+                        if (!urlError) {
+                            viewModel.importPlaylistByUrl(apiUrl, trimUrl)
+                            onClose()
+                        }
                     }
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center

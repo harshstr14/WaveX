@@ -8,11 +8,11 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class SongItem(
-    val id: String = "",
-    val name: String = "",
-    val artist: MutableList<Artists> = mutableListOf(),
-    val image: MutableList<Image> = mutableListOf(),
-    val duration: Int = 0,
-    val downloadUrl: MutableList<Download> = mutableListOf(),
+    var id: String = "",
+    var name: String = "",
+    var artist: MutableList<Artists> = mutableListOf(),
+    var image: MutableList<Image> = mutableListOf(),
+    var duration: Int = 0,
+    var downloadUrl: MutableList<Download> = mutableListOf(),
     var isFav: Boolean = false
 ) : Parcelable

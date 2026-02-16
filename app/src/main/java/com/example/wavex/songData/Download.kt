@@ -5,6 +5,6 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class Download(
-    val quality: String,
-    val url: String
-) : Parcelable
+    var quality: String = "",
+    var url: String = ""
+): Parcelable
