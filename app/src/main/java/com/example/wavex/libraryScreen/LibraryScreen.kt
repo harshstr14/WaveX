@@ -5,16 +5,17 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,6 +41,7 @@ import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -94,6 +96,8 @@ import com.example.wavex.libraryScreen.playlistScreen.PlaylistActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.Arrangement
 
 enum class SheetType {
     CREATE_PLAYLIST,
@@ -507,6 +511,25 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
         }
 
         if (isLoading) {
+            val progress = remember { Animatable(0f) }
+            val interactionSource = remember { MutableInteractionSource() }
+
+            LaunchedEffect(isLoading) {
+                if (isLoading) {
+                    progress.snapTo(0f)
+                    progress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(
+                            durationMillis = 100_000,
+                            easing = LinearEasing
+                        )
+                    )
+                } else {
+                    progress.stop()
+                    progress.snapTo(0f)
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -520,7 +543,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp).padding(horizontal = 24.dp)
+                        .height(230.dp).padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(colorResource(R.color.background_color)),
                     contentAlignment = Alignment.Center
@@ -549,6 +572,45 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                             iterations = LottieConstants.IterateForever,
                             modifier = Modifier.size(124.dp)
                         )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            LinearProgressIndicator(
+                                progress = { progress.value },
+                                color = colorResource(R.color.theme_color),
+                                trackColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.3f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(50)),
+                            )
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Text(
+                                text = "Cancel",
+                                fontSize = 14.sp, lineHeight = 15.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.theme_color), maxLines = 1,
+                                modifier = Modifier.clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
+                                    scope.launch {
+                                        progress.stop()
+                                        importViewModel.cancelImport()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -75,7 +75,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -251,12 +250,7 @@ fun HomeScreen (navController: NavController) {
         )
 
         AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(imageUrl)
-                .memoryCacheKey(userID?.let { "profile_$it" })
-                .diskCacheKey(userID?.let { "profile_$it" })
-                .crossfade(true)
-                .build(),
+            model = imageUrl,
             contentDescription = "Profile Image",
             contentScale = ContentScale.Crop,
             modifier = Modifier.constrainAs(profileAvatar) {

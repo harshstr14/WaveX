@@ -74,6 +74,10 @@ class ImportPlaylistViewModel : ViewModel() {
         }
     }
 
+    fun cancelImport() {
+        _importState.value = ImportState.Idle
+    }
+
     private suspend fun parsePlaylistData(jsonString: String) {
 
         val (name, image, songList) = withContext(Dispatchers.Default) {

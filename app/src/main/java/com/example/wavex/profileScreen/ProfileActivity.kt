@@ -59,7 +59,6 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
@@ -239,12 +238,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 val (profileAvatar, userIcon, text1, row2, row3, row4, row5, row6, editIcon) = createRefs()
 
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(imageUrl)
-                        .memoryCacheKey("profile_image")
-                        .diskCacheKey("profile_image")
-                        .crossfade(true)
-                        .build(),
+                    model = imageUrl,
                     contentDescription = "Profile Image",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.constrainAs(profileAvatar) {
@@ -252,8 +246,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
                     }.size(162.dp)
-                        .clip(CircleShape),
-                    placeholder = painterResource(R.drawable.logo)
+                        .clip(CircleShape)
                 )
 
                 Box(

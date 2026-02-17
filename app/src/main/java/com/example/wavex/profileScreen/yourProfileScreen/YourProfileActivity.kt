@@ -1,10 +1,12 @@
 package com.example.wavex.profileScreen.yourProfileScreen
 
 import android.app.Activity
-import android.content.Context
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +48,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -52,7 +56,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -72,6 +75,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -92,7 +96,10 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.UploadCallback
 import com.example.wavex.R
@@ -102,8 +109,8 @@ import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.launch
 import com.yalantis.ucrop.UCrop
+import kotlinx.coroutines.launch
 import java.io.File
 
 class YourProfileActivity : ComponentActivity() {
@@ -154,14 +161,15 @@ fun Your_Profile_Activity() {
     }
 
     YourProfileScreen(
+        viewModel = viewModel,
         imageUrl = imageUrl,
         savedName = name,
         savedEmail = mail,
         savedPhoneNO = phoneNo,
         savedGender = gender,
-        onUpdateClick = { updatedName, updatedPhone, updatedGender ->
+        onUpdateClick = { updatedName, updatedPhone, updatedGender, showMessage ->
 
-            uid?.let { it ->
+            uid?.let { userId ->
                 val updates = mutableMapOf<String, Any>()
 
                 updatedName.takeIf { it.isNotBlank() }?.let { updates["name"] = it }
@@ -169,7 +177,14 @@ fun Your_Profile_Activity() {
                 updatedGender.takeIf { it.isNotBlank() }?.let { updates["gender"] = it }
 
                 if (updates.isNotEmpty()) {
-                    database.child(it).updateChildren(updates)
+                    database.child(userId)
+                        .updateChildren(updates)
+                        .addOnSuccessListener {
+                            showMessage("Profile updated successfully")
+                        }
+                        .addOnFailureListener {
+                            showMessage("Failed to update profile")
+                        }
                 }
             }
         }
@@ -179,19 +194,19 @@ fun Your_Profile_Activity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun YourProfileScreen(
+    viewModel: ProfileViewModel,
     imageUrl: String?,
     savedName: String,
     savedEmail: String,
     savedPhoneNO: String,
     savedGender: String,
-    onUpdateClick: (String, String, String) -> Unit
+    onUpdateClick: (String, String, String, (String) -> Unit) -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
-    val viewModel: ProfileViewModel = viewModel()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     var name by remember { mutableStateOf("") }
@@ -203,6 +218,8 @@ private fun YourProfileScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     var expanded by remember { mutableStateOf(false) }
     val genderOptions = listOf("Male", "Female", "Other")
+
+    val isUploading by viewModel.isUploading.collectAsState()
 
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 270f else 90f,
@@ -242,7 +259,17 @@ private fun YourProfileScreen(
             resultUri?.let { uri ->
                 // Upload to Cloudinary and save URL
                 val database = FirebaseDatabase.getInstance().getReference("Users")
-                uploadToCloudinary(uri, database, context, viewModel)
+                uploadToCloudinary(uri, database,
+                    viewModel,
+                    onShowMessage = { message ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = message,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                )
             }
         }
     }
@@ -267,6 +294,13 @@ private fun YourProfileScreen(
             cropLauncher.launch(intent)
         }
     }
+
+    val shouldBlur = isUploading
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
@@ -338,9 +372,7 @@ private fun YourProfileScreen(
                         Icon(
                             painter = painterResource(
                                 when {
-                                    data.visuals.message.contains("email") -> R.drawable.email_icon
-                                    data.visuals.message.contains("name") -> R.drawable.user_icon
-                                    data.visuals.message.contains("Phone") -> R.drawable.phone_icon
+                                    data.visuals.message.contains("Profile") -> R.drawable.user_icon
                                     else -> {
                                         R.drawable.alert_icon
                                     }
@@ -370,19 +402,25 @@ private fun YourProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(colorResource(R.color.background_color)),
+                .background(colorResource(R.color.background_color))
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                 val (profileAvatar, column, editIcon, updateButton) = createRefs()
 
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(imageUrl)
-                        .memoryCacheKey("profile_image")
-                        .diskCacheKey("profile_image")
-                        .crossfade(true)
-                        .build(),
+                    model = imageUrl,
                     contentDescription = "Profile Image",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.constrainAs(profileAvatar) {
@@ -390,8 +428,7 @@ private fun YourProfileScreen(
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
                     }.size(162.dp)
-                        .clip(CircleShape),
-                    placeholder = painterResource(R.drawable.logo)
+                        .clip(CircleShape)
                 )
 
                 Box(
@@ -786,7 +823,14 @@ private fun YourProfileScreen(
                             }
                         }
 
-                        onUpdateClick(name, phoneNo, gender)
+                        onUpdateClick(name, phoneNo, gender) { message ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = message,
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
                     }, colors = ButtonDefaults.buttonColors(
                         containerColor = colorResource(R.color.theme_color),
                         contentColor = colorResource(R.color.background_color)
@@ -805,24 +849,100 @@ private fun YourProfileScreen(
                 keyboardController?.show()
             }
         }
+
+        if (isUploading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(230.dp).padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(colorResource(R.color.background_color)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+
+                        Text(
+                            text = "Uploading Profile",
+                            fontSize = 14.sp, lineHeight = 15.sp,
+                            fontFamily = fonts, fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val composition by rememberLottieComposition(
+                            LottieCompositionSpec.RawRes(R.raw.astronaut_illustration)
+                        )
+
+                        LottieAnimation(
+                            composition = composition,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier.size(144.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            LinearProgressIndicator(
+                                color = colorResource(R.color.theme_color),
+                                trackColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.3f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(50)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 private fun uploadToCloudinary(imageUri: Uri,
-                               database: DatabaseReference, context: Context,
-                               profileViewModel: ProfileViewModel) {
+                               database: DatabaseReference,
+                               profileViewModel: ProfileViewModel,
+                               onShowMessage: (String) -> Unit
+) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+    profileViewModel.setUploading(true)
 
     MediaManager.get().upload(imageUri)
         .option("folder", "profile_pics")
         .option("public_id", userId)
         .option("overwrite", true)
         .callback(object : UploadCallback {
-            override fun onStart(requestId: String?) {}
+            override fun onStart(requestId: String?) {
+                Log.d("UPLOAD_DEBUG", "Upload started")
+                profileViewModel.setUploading(true)
+                profileViewModel.updateProgress(0f)
+            }
 
-            override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+            override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {
+                val progress = bytes.toFloat() / totalBytes.toFloat()
+                Log.d("UPLOAD_DEBUG", "Progress: $progress")
+                profileViewModel.updateProgress(progress)
+            }
 
             override fun onSuccess(requestId: String?, resultData: Map<*, *>?) {
+                profileViewModel.setUploading(false)
+
                 val secureUrl = resultData?.get("secure_url").toString()
                 val version = resultData?.get("version").toString()
 
@@ -831,25 +951,20 @@ private fun uploadToCloudinary(imageUri: Uri,
                 // Save URL in Firebase Realtime Database
                 database.child(userId).child("photoUrl").setValue(finalUrl)
                     .addOnSuccessListener {
-                        Toast.makeText(
-                            context,
-                            "Profile photo updated",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        onShowMessage("Profile photo updated")
 
                         profileViewModel.refreshProfileImage(userId)
                     }
                     .addOnFailureListener { e ->
-                        Toast.makeText(
-                            context,
-                            "Failed to update profile: ${e.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        onShowMessage("Failed to update profile: ${e.message}")
                     }
             }
 
             override fun onError(requestId: String, p1: com.cloudinary.android.callback.ErrorInfo) {
-                Toast.makeText(context, "Upload failed: ${p1.description}", Toast.LENGTH_SHORT).show()
+                profileViewModel.setUploading(false)
+                profileViewModel.resetProgress()
+
+                onShowMessage("Upload failed: ${p1.description}")
             }
 
             override fun onReschedule(requestId: String, p1: com.cloudinary.android.callback.ErrorInfo) {
@@ -862,14 +977,16 @@ private fun uploadToCloudinary(imageUri: Uri,
 @Preview(showSystemUi = true)
 @Composable
 fun YourProfileActivityPreview() {
+    val viewModel: ProfileViewModel = viewModel()
     WaveXTheme {
         YourProfileScreen(
+            viewModel = viewModel,
             imageUrl = "",
             savedName = "",
             savedEmail = "",
             savedPhoneNO = "",
             savedGender = "",
-            onUpdateClick = { _, _, _ -> }
+            onUpdateClick = { _, _, _ , _-> }
         )
     }
 }
