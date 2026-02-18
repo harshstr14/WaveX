@@ -859,7 +859,7 @@ private fun YourProfileScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(230.dp).padding(horizontal = 24.dp)
+                        .height(240.dp).padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(colorResource(R.color.background_color)),
                     contentAlignment = Alignment.Center
@@ -870,11 +870,11 @@ private fun YourProfileScreen(
                     ) {
 
                         Text(
-                            text = "Uploading Profile",
-                            fontSize = 14.sp, lineHeight = 15.sp,
+                            text = "Updating Profile Photo",
+                            fontSize = 16.sp, lineHeight = 16.sp,
                             fontFamily = fonts, fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                            color = colorResource(R.color.primary_text_color), maxLines = 1,
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -886,7 +886,7 @@ private fun YourProfileScreen(
                         LottieAnimation(
                             composition = composition,
                             iterations = LottieConstants.IterateForever,
-                            modifier = Modifier.size(144.dp)
+                            modifier = Modifier.size(160.dp)
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))

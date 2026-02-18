@@ -481,7 +481,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                                         Spacer(modifier = Modifier.height(6.dp))
 
                                         Text(
-                                            text = "Songs : ${playlist.totalSongs}",
+                                            text = "${playlist.totalSongs} Songs",
                                             fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -543,7 +543,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(230.dp).padding(horizontal = 24.dp)
+                        .height(240.dp).padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(colorResource(R.color.background_color)),
                     contentAlignment = Alignment.Center
@@ -555,10 +555,10 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
 
                         Text(
                             text = "Importing Playlist",
-                            fontSize = 14.sp, lineHeight = 15.sp,
+                            fontSize = 16.sp, lineHeight = 16.sp,
                             fontFamily = fonts, fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                            color = colorResource(R.color.primary_text_color), maxLines = 1,
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))

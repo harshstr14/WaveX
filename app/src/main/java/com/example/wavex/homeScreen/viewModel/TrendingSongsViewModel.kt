@@ -12,6 +12,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.songData.Album
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,8 +99,14 @@ class TrendingSongsViewModel : ViewModel() {
                     }
                 }
 
+            val albumObject = song.optJSONObject("album")
+            val album = Album(
+                id = albumObject?.optString("id") ?: "",
+                name = albumObject?.optString("name") ?: ""
+            )
+
             parsedSongs.add(
-                SongItem(id, name, primaryArtists, image, duration, download)
+                SongItem(id, name, primaryArtists, album, image, duration, download)
             )
         }
 

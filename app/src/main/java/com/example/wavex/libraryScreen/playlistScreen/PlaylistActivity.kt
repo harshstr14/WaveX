@@ -2,6 +2,9 @@ package com.example.wavex.libraryScreen.playlistScreen
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -46,15 +49,19 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -81,9 +88,13 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
@@ -121,6 +132,12 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val playlist by viewModel.playlist.collectAsStateWithLifecycle()
+
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableStateOf(-1) }
 
     LaunchedEffect(playlistName) {
         playlistName?.let {
@@ -172,6 +189,15 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
     val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
 
     val isTitleVisible = !playlist.isLoading && !playlist.isError
+
+    var showSheet by remember { mutableStateOf(false) }
+
+    val shouldBlur = showSheet
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -298,7 +324,18 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorResource(R.color.background_color))
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -538,8 +575,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                             }
 
                             itemsIndexed(
-                                items = playlistData?.songs ?: emptyList(),
-                                key = { _, song -> song.id }
+                                items = playlistData?.songs ?: emptyList()
                             ) { index, song ->
 
                                 Row (
@@ -552,9 +588,11 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                             val intent = Intent(context,MusicPlayerService::class.java
                                             ).apply {
                                                 action = MusicPlayerService.ACTION_PLAY_NEW
-                                                putParcelableArrayListExtra("playlist", ArrayList(playlistData?.songs ?: emptyList()))
                                                 putExtra("index", index)
                                             }
+
+                                            PlayerManager.currentPlaylist = playlistData?.songs ?: emptyList()
+                                            PlayerManager.currentIndex = index
 
                                             ContextCompat.startForegroundService(context, intent)
 
@@ -640,7 +678,11 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                             )
                                         }
 
-                                        IconButton(onClick = { }) {
+                                        IconButton(onClick = {
+                                            selectedSong = song
+                                            selectedIndex = index
+                                            showSheet = true
+                                        }) {
                                             Icon(
                                                 modifier = Modifier.size(20.dp),
                                                 painter = painterResource(R.drawable.three_dots_icon),
@@ -651,6 +693,41 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                     }
                                 }
                             }
+                        }
+
+                        selectedSong?.let { song ->
+                            val isFavourite = likedSongs.contains(song.id)
+
+                            SongOptionsBottomSheet(
+                                songId = song.id,
+                                imageUrl = song.image.getOrNull(2)?.url,
+                                songName = htmlToText(song.name),
+                                albumName = htmlToText(song.album?.name),
+                                onDismiss = {
+                                    showSheet = false
+                                    selectedSong = null
+                                },
+                                onPlayNow = {
+                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        action = MusicPlayerService.ACTION_PLAY_NEW
+                                        putExtra("index", selectedIndex)
+                                    }
+
+                                    PlayerManager.currentPlaylist = playlistData?.songs ?: emptyList()
+                                    PlayerManager.currentIndex = selectedIndex
+
+                                    ContextCompat.startForegroundService(context, intent)
+                                    showSheet = false
+                                },
+                                isFavourite = isFavourite,
+                                onToggleFavourite = { id ->
+                                    likedViewModel.toggleLike(
+                                        songId = id,
+                                        songName = song.name,
+                                        imageUrl = song.image.getOrNull(2)?.url
+                                    )
+                                }
+                            )
                         }
                     }
                 }

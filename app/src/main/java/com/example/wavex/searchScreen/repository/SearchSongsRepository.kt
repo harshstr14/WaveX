@@ -5,6 +5,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.songData.Album
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -86,11 +87,18 @@ class SearchSongsRepository {
                     }
                 }
 
+            val albumObject = song.optJSONObject("album")
+            val album = Album(
+                id = albumObject?.optString("id") ?: "",
+                name = albumObject?.optString("name") ?: ""
+            )
+
             songs.add(
                 SongItem(
                     id = id,
                     name = name,
                     artist = primaryArtists,
+                    album = album,
                     image = images,
                     duration = duration,
                     downloadUrl = downloads

@@ -10,9 +10,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class AllAlbumsRepository {
-    suspend fun fetchAlbums(artistId: String,root: String): AllAlbumsUiState = withContext(Dispatchers.IO) {
+    suspend fun fetchAlbums(artistId: String,root: String, page: Int): AllAlbumsUiState = withContext(Dispatchers.IO) {
 
-        val response = requestWithFallback("/artists/$artistId/albums")
+        val response = requestWithFallback("/artists/$artistId/albums?page=$page")
 
         if (response.isEmpty()) {
             return@withContext AllAlbumsUiState(

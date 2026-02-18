@@ -39,6 +39,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import coil.ImageLoader
 import coil.request.ImageRequest
 import com.example.wavex.R
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import kotlinx.coroutines.CoroutineScope
@@ -222,15 +223,10 @@ class  MusicPlayerService : LifecycleService() {
         intent?.action?.let { action ->
             when (action) {
                 ACTION_PLAY_NEW -> {
-                    val playlist: ArrayList<SongItem>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableArrayListExtra("playlist", SongItem::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableArrayListExtra("playlist")
-                    }
-
                     val index = intent.getIntExtra("index", 0)
-                    if (!playlist.isNullOrEmpty() && index in playlist.indices) {
+                    val playlist = PlayerManager.currentPlaylist
+
+                    if (playlist.isNotEmpty() && index in playlist.indices) {
                         setPlaylist(playlist, index)
                         // Only start foreground if a song is available
                         currentSongLive.value?.let { song ->
@@ -239,15 +235,10 @@ class  MusicPlayerService : LifecycleService() {
                     }
                 }
                 ACTION_PLAY_SONG -> {
-                    val playlist: ArrayList<SongItem>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableArrayListExtra("playlist", SongItem::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableArrayListExtra("playlist")
-                    }
-
                     val index = intent.getIntExtra("index", 0)
-                    if (!playlist.isNullOrEmpty() && index in playlist.indices) {
+                    val playlist = PlayerManager.currentPlaylist
+
+                    if (playlist.isNotEmpty() && index in playlist.indices) {
                         play(playlist[index])
                         // Only start foreground if a song is available
                         currentSongLive.value?.let { song ->
@@ -277,7 +268,7 @@ class  MusicPlayerService : LifecycleService() {
 
         return START_STICKY
     }
-    fun setPlaylist(songs: ArrayList<SongItem>?, startAtIndex: Int = 0) {
+    fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
         playlist.clear(); playlist.addAll(songs!!)
         if (startAtIndex in playlist.indices) playIndex(startAtIndex)
     }

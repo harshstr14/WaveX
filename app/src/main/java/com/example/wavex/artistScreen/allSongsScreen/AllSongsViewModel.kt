@@ -11,18 +11,39 @@ class AllSongsViewModel(
     private val repository: AllSongsRepository = AllSongsRepository()
 ) : ViewModel() {
 
+    private var currentPage = 1
+    private var currentArtistId: String? = null
+
     private val _songs = MutableStateFlow(AllSongsUiState())
     val songs = _songs.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    fun fetchSongsByArtistID(artistId: String, root: String) {
+    fun fetchSongsByArtistID (
+        artistId: String, root: String,
+        page: Int = 1, isLoadMore: Boolean = false
+    ) {
         viewModelScope.launch {
-            _isLoading.value = true
+            if (!isLoadMore) {
+                _isLoading.value = true
+                _songs.value = AllSongsUiState()
+                currentPage = 1
+                currentArtistId = artistId
+            }
+
             try {
-                _songs.value =
-                    repository.fetchSongsByArtistID(artistId, root)
+                val response = repository.fetchSongsByArtistID(artistId, root, page)
+
+                _songs.value = if (isLoadMore) {
+                    _songs.value.copy(
+                        songs = _songs.value.songs + response.songs
+                    )
+                } else {
+                    AllSongsUiState(songs = response.songs)
+                }
+
+                currentPage = page
             } catch (e: Exception) {
                 _songs.value = AllSongsUiState(
                     isError = true,
@@ -33,5 +54,15 @@ class AllSongsViewModel(
                 _isLoading.value = false
             }
         }
+    }
+
+    fun loadNextPage() {
+        val artistId = currentArtistId ?: return
+        fetchSongsByArtistID(
+            artistId = artistId,
+            root = "songs",
+            page = currentPage + 1,
+            isLoadMore = true
+        )
     }
 }

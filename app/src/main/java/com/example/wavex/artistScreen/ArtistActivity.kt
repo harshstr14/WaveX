@@ -2,6 +2,9 @@ package com.example.wavex.artistScreen
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -57,6 +60,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -97,9 +102,13 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -145,6 +154,12 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
 
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableStateOf(-1) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -230,6 +245,15 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
     val titleOffsetY = lerpDp((-12).dp, 0.dp, smoothProgress)
 
     val isTitleVisible = !isLoading && !artists.isError
+
+    var showSheet by remember { mutableStateOf(false) }
+
+    val shouldBlur = showSheet
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -513,7 +537,18 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorResource(R.color.background_color))
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -700,9 +735,11 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                         ) {
                                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                 action = MusicPlayerService.ACTION_PLAY_NEW
-                                                putParcelableArrayListExtra("playlist", ArrayList(artists.topSongs))
                                                 putExtra("index", index)
                                             }
+
+                                            PlayerManager.currentPlaylist = artists.topSongs
+                                            PlayerManager.currentIndex = index
 
                                             ContextCompat.startForegroundService(context, intent)
 
@@ -788,7 +825,11 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                             )
                                         }
 
-                                        IconButton(onClick = { }) {
+                                        IconButton(onClick = {
+                                            selectedSong = song
+                                            selectedIndex = index
+                                            showSheet = true
+                                        }) {
                                             Icon(
                                                 modifier = Modifier.size(20.dp),
                                                 painter = painterResource(R.drawable.three_dots_icon),
@@ -945,6 +986,41 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                     }
                                 }
                             }
+                        }
+
+                        selectedSong?.let { song ->
+                            val isFavourite = likedSongs.contains(song.id)
+
+                            SongOptionsBottomSheet(
+                                songId = song.id,
+                                imageUrl = song.image.getOrNull(2)?.url,
+                                songName = htmlToText(song.name),
+                                albumName = htmlToText(song.album?.name),
+                                onDismiss = {
+                                    showSheet = false
+                                    selectedSong = null
+                                },
+                                onPlayNow = {
+                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        action = MusicPlayerService.ACTION_PLAY_NEW
+                                        putExtra("index", selectedIndex)
+                                    }
+
+                                    PlayerManager.currentPlaylist = artists.topSongs
+                                    PlayerManager.currentIndex = selectedIndex
+
+                                    ContextCompat.startForegroundService(context, intent)
+                                    showSheet = false
+                                },
+                                isFavourite = isFavourite,
+                                onToggleFavourite = { id ->
+                                    likedViewModel.toggleLike(
+                                        songId = id,
+                                        songName = song.name,
+                                        imageUrl = song.image.getOrNull(2)?.url
+                                    )
+                                }
+                            )
                         }
                     }
                 }

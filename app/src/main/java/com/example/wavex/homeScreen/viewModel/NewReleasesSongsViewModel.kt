@@ -13,6 +13,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.songData.Album
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
@@ -97,8 +98,14 @@ class NewReleasesSongsViewModel : ViewModel() {
                     }
                 }
 
+            val albumObject = song.optJSONObject("album")
+            val album = Album(
+                id = albumObject?.optString("id") ?: "",
+                name = albumObject?.optString("name") ?: ""
+            )
+
             parsedSongs.add(
-                SongItem(id, name, primaryArtists, image, duration, download)
+                SongItem(id, name, primaryArtists, album, image, duration, download)
             )
         }
 

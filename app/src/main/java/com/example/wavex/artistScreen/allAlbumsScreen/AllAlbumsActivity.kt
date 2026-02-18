@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -268,7 +269,10 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)
                         ) {
-                            items(albums.albums) { album ->
+                            items(
+                                items = albums.albums,
+                                key = { it.id }
+                            ) { album ->
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -285,7 +289,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                         },
                                 ) {
                                     AsyncImage(
-                                        model = album.image[2].url,
+                                        model = album.image.getOrNull(2)?.url,
                                         contentDescription = album.name,
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
@@ -316,6 +320,33 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                         text = artistsName,
                                         fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            item(
+                                span = { GridItemSpan(maxLineSpan) }
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            viewModel.loadNextPage()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "See More",
+                                        fontSize = 16.sp,
+                                        lineHeight = 18.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.theme_color),
+                                        maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }

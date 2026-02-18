@@ -2,6 +2,9 @@ package com.example.wavex.playlistScreen
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -38,8 +41,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -48,8 +53,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -89,9 +97,12 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -136,6 +147,12 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
 
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableStateOf(-1) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -211,6 +228,14 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
     val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
 
     val isTitleVisible = !isLoading && !playlists.isError
+    var showSheet by remember { mutableStateOf(false) }
+
+    val shouldBlur = showSheet
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -420,7 +445,18 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorResource(R.color.background_color))
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -711,9 +747,11 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                         ) {
                                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                 action = MusicPlayerService.ACTION_PLAY_NEW
-                                                putParcelableArrayListExtra("playlist", ArrayList(playlists.songs))
                                                 putExtra("index", index)
                                             }
+
+                                            PlayerManager.currentPlaylist = playlists.songs
+                                            PlayerManager.currentIndex = selectedIndex
 
                                             ContextCompat.startForegroundService(context, intent)
 
@@ -723,7 +761,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                         }, verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = song.image[2].url,
+                                        model = song.image.getOrNull(2)?.url,
                                         contentDescription = null,
                                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                                         contentScale = ContentScale.Crop
@@ -799,7 +837,11 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                             )
                                         }
 
-                                        IconButton(onClick = { }) {
+                                        IconButton(onClick = {
+                                            selectedSong = song
+                                            selectedIndex = index
+                                            showSheet = true
+                                        }) {
                                             Icon(
                                                 modifier = Modifier.size(20.dp),
                                                 painter = painterResource(R.drawable.three_dots_icon),
@@ -811,10 +853,230 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                 }
                             }
                         }
+
+                        selectedSong?.let { song ->
+                            val isFavourite = likedSongs.contains(song.id)
+
+                            SongOptionsBottomSheet(
+                                songId = song.id,
+                                imageUrl = song.image.getOrNull(2)?.url,
+                                songName = htmlToText(song.name),
+                                albumName = htmlToText(song.album?.name),
+                                onDismiss = {
+                                    showSheet = false
+                                    selectedSong = null
+                                },
+                                onPlayNow = {
+                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        action = MusicPlayerService.ACTION_PLAY_NEW
+                                        putExtra("index", selectedIndex)
+                                    }
+
+                                    PlayerManager.currentPlaylist = playlists.songs
+                                    PlayerManager.currentIndex = selectedIndex
+
+                                    ContextCompat.startForegroundService(context, intent)
+                                    showSheet = false
+                                },
+                                isFavourite = isFavourite,
+                                onToggleFavourite = { id ->
+                                    likedViewModel.toggleLike(
+                                        songId = id,
+                                        songName = song.name,
+                                        imageUrl = song.image.getOrNull(2)?.url
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SongOptionsBottomSheet(
+    songId: String,
+    imageUrl: String?,
+    songName: String,
+    albumName: String,
+    onDismiss: () -> Unit,
+    onPlayNow: () -> Unit,
+    isFavourite: Boolean,
+    onToggleFavourite: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        sheetState = sheetState,
+        containerColor = colorResource(R.color.background_color),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = null
+    ) {
+        BottomSheetContent(
+            songId,
+            imageUrl,
+            songName,
+            albumName,
+            onPlayNow,
+            isFavourite,
+            onToggleFavourite
+        )
+    }
+}
+
+@Composable
+private fun BottomSheetContent(
+    songId: String,
+    imageUrl: String?,
+    songName: String,
+    albumName: String,
+    onPlayNow: () -> Unit,
+    isFavourite: Boolean,
+    onToggleFavourite: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(modifier = Modifier.height(28.dp))
+
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(180.dp)
+                .align(Alignment.CenterHorizontally)
+                .shadow(
+                    elevation = 18.dp,
+                    shape = RoundedCornerShape(18.dp),
+                    clip = false
+                )
+                .clip(RoundedCornerShape(18.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Text(
+            text = songName, textAlign = TextAlign.Center,
+            fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Album • $albumName", textAlign = TextAlign.Center,
+            fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+            thickness = 1.dp,
+            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        SheetOptionItem(R.drawable.notificationplaybutton, "Play Now") {
+            onPlayNow()
+        }
+
+        SheetOptionItem(
+            icon = if (isFavourite) R.drawable.heart_filled else R.drawable.heart_outline,
+            text = if (isFavourite) "Remove from Favourite" else "Save to Favourite",
+            isAnimated = isFavourite)
+        {
+            onToggleFavourite(songId)
+        }
+        //SheetOptionItem(R.drawable.next_icon, "Play Next")
+        SheetOptionItem(R.drawable.add_playlist_icon, "Add to Playlist") {
+
+        }
+
+        SheetOptionItem(R.drawable.queue_icon, "Add to queue") {
+
+        }
+
+        SheetOptionItem(R.drawable.download_icon, "Download") {
+
+        }
+
+        SheetOptionItem(R.drawable.mic_icon, "View Artist") {
+
+        }
+
+        SheetOptionItem(R.drawable.album_icon, "Go to Album") {
+
+        }
+
+        SheetOptionItem(R.drawable.share_icon, "Share") {
+
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+fun SheetOptionItem(
+    icon: Int,
+    text: String,
+    isAnimated: Boolean = false,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val scale by animateFloatAsState(
+        targetValue = if (isAnimated) 1.12f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "SheetHeart"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                onClick()
+            }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+            tint = colorResource(R.color.theme_color)
+        )
+
+        Spacer(modifier = Modifier.width(18.dp))
+
+        Text(
+            text = text,
+            fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color), lineHeight = 16.sp
+        )
     }
 }
 

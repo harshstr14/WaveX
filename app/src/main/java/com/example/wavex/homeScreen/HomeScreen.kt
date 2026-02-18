@@ -100,6 +100,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+object PlayerManager {
+    var currentPlaylist: List<SongItem> = emptyList()
+    var currentIndex: Int = 0
+}
+
 val Context.musicDataStore by preferencesDataStore("waveX_datastore")
 
 object RecentlyPlayedManager {
@@ -536,9 +541,11 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
 
                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                     action = MusicPlayerService.ACTION_PLAY_NEW
-                                    putParcelableArrayListExtra("playlist", ArrayList(recentSongs))
                                     putExtra("index", songIndex)
                                 }
+
+                                PlayerManager.currentPlaylist = recentSongs
+                                PlayerManager.currentIndex = songIndex
 
                                 ContextCompat.startForegroundService(context, intent)
 
@@ -647,9 +654,11 @@ fun NewReleasesSongs(
                     ) {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", ArrayList(songs))
                             putExtra("index", index)
                         }
+
+                        PlayerManager.currentPlaylist = songs
+                        PlayerManager.currentIndex = index
 
                         ContextCompat.startForegroundService(context, intent)
 
@@ -780,9 +789,11 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                     ) {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", ArrayList(songs))
                             putExtra("index", index)
                         }
+
+                        PlayerManager.currentPlaylist = songs
+                        PlayerManager.currentIndex = index
 
                         ContextCompat.startForegroundService(context, intent)
 

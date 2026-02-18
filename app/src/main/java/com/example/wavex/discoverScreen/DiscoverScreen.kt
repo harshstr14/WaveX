@@ -1,6 +1,9 @@
 package com.example.wavex.discoverScreen
 
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -50,14 +53,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -90,10 +97,14 @@ import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -104,6 +115,10 @@ fun DiscoverScreen(navController: NavController) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableStateOf(-1) }
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.15f else 1f,
         animationSpec = spring(
@@ -113,7 +128,28 @@ fun DiscoverScreen(navController: NavController) {
         label = "ShareScale"
     )
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+    var showSheet by remember { mutableStateOf(false) }
+
+    val shouldBlur = showSheet
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (shouldBlur) 25f else 0f,
+        label = ""
+    )
+
+    ConstraintLayout(modifier = Modifier.fillMaxSize()
+        .graphicsLayer {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                renderEffect = RenderEffect
+                    .createBlurEffect(
+                        animatedBlur,
+                        animatedBlur,
+                        Shader.TileMode.CLAMP
+                    )
+                    .asComposeRenderEffect()
+            }
+        }
+    ) {
         val(backButton, titleText, categoryTabs, contentPager) = createRefs()
 
         Text("Explore", modifier = Modifier.constrainAs(titleText) {
@@ -260,7 +296,15 @@ fun DiscoverScreen(navController: NavController) {
                 "Songs" -> {
                     ExploreSongs(
                         "946682072", "songs",
-                        modifier = Modifier.fillMaxSize().padding(top = 3.dp), listState = songsListState
+                        modifier = Modifier.fillMaxSize().padding(top = 3.dp),
+                        listState = songsListState,
+                        onMoreClick = { song, index, songsList ->
+                            selectedSong = song
+                            selectedIndex = index
+                            PlayerManager.currentPlaylist = songsList
+                            PlayerManager.currentIndex = index
+                            showSheet = true
+                        }
                     )
                 }
 
@@ -308,6 +352,41 @@ fun DiscoverScreen(navController: NavController) {
                 }
             }
         }
+    }
+
+    if (showSheet && selectedSong != null) {
+
+        val context = LocalContext.current
+        val song = selectedSong!!
+        val likedSongs by likedViewModel.likedSongs.collectAsState()
+        val isFavourite = likedSongs.contains(song.id)
+
+        SongOptionsBottomSheet(
+            songId = song.id,
+            imageUrl = song.image.getOrNull(2)?.url,
+            songName = htmlToText(song.name),
+            albumName = htmlToText(song.album?.name),
+            isFavourite = isFavourite,
+            onDismiss = {
+                showSheet = false
+                selectedSong = null
+            },
+            onPlayNow = {
+                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putExtra("index", selectedIndex)
+                }
+                ContextCompat.startForegroundService(context, intent)
+                showSheet = false
+            },
+            onToggleFavourite = { id ->
+                likedViewModel.toggleLike(
+                    songId = id,
+                    songName = song.name,
+                    imageUrl = song.image.getOrNull(2)?.url
+                )
+            }
+        )
     }
 }
 
@@ -381,7 +460,8 @@ fun ExploreSongs(
     root: String,
     modifier: Modifier,
     viewModel: ExploreSongsViewModel = viewModel(),
-    listState: LazyListState
+    listState: LazyListState,
+    onMoreClick: (SongItem, Int, List<SongItem>) -> Unit
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -420,9 +500,11 @@ fun ExploreSongs(
                             ) {
                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                     action = MusicPlayerService.ACTION_PLAY_NEW
-                                    putParcelableArrayListExtra("playlist", ArrayList(songs))
                                     putExtra("index", index)
                                 }
+
+                                PlayerManager.currentPlaylist = songs
+                                PlayerManager.currentIndex = index
 
                                 ContextCompat.startForegroundService(context, intent)
 
@@ -509,7 +591,9 @@ fun ExploreSongs(
                                 )
                             }
 
-                            IconButton(onClick = { }) {
+                            IconButton(onClick = {
+                                onMoreClick(song, index, songs)
+                            }) {
                                 Icon(
                                     modifier = Modifier.size(20.dp),
                                     painter = painterResource(R.drawable.three_dots_icon),

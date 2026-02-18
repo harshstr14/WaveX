@@ -3,6 +3,7 @@ package com.example.wavex.libraryScreen.importPlaylist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.songData.Album
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
@@ -98,12 +99,18 @@ class ImportPlaylistViewModel : ViewModel() {
                     val song = it.optJSONObject(i)
 
                     val duration = song.optInt("duration")
+                    val albumObject = song.optJSONObject("album")
+                    val album = Album(
+                        id = albumObject?.optString("id") ?: "",
+                        name = albumObject?.optString("name") ?: ""
+                    )
 
                     songList.add(
                         SongItem(
                             id = song.optString("id"),
                             name = song.optString("name"),
                             artist = parsePrimaryArtists(song.optJSONObject("artists")).toMutableList(),
+                            album = album,
                             image = parseImages(song.optJSONArray("image")).toMutableList(),
                             duration = duration,
                             downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()

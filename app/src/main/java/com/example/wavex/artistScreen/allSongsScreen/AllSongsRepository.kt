@@ -5,6 +5,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.songData.Album
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -12,9 +13,9 @@ import org.json.JSONObject
 
 class AllSongsRepository {
 
-    suspend fun fetchSongsByArtistID(artistId: String,root: String): AllSongsUiState = withContext(Dispatchers.IO) {
+    suspend fun fetchSongsByArtistID(artistId: String,root: String, page: Int): AllSongsUiState = withContext(Dispatchers.IO) {
 
-        val response = requestWithFallback("/artists/$artistId/songs")
+        val response = requestWithFallback("/artists/$artistId/songs?page=$page")
 
         if (response.isEmpty()) {
             return@withContext AllSongsUiState(
@@ -51,12 +52,18 @@ class AllSongsRepository {
 
         for (i in 0 until songsArray.length()) {
             val song = songsArray.getJSONObject(i)
+            val albumObject = song.optJSONObject("album")
+            val album = Album(
+                id = albumObject?.optString("id") ?: "",
+                name = albumObject?.optString("name") ?: ""
+            )
 
             songs.add(
                 SongItem(
                     id = song.optString("id"),
                     name = song.optString("name"),
                     artist = parsePrimaryArtists(song.optJSONObject("artists")).toMutableList(),
+                    album = album,
                     image = parseImages(song.optJSONArray("image")).toMutableList(),
                     duration = song.optInt("duration"),
                     downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
