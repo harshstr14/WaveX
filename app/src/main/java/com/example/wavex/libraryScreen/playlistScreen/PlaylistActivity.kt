@@ -52,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -113,11 +114,11 @@ class PlaylistActivity : ComponentActivity() {
             )
         )
 
-        val playlistName = intent.getStringExtra("playlist_name")
+        val playlistId = intent.getStringExtra("playlist_Id")
 
         setContent {
             WaveXTheme {
-                Playlist_Activity(playlistName)
+                Playlist_Activity(playlistId)
             }
         }
     }
@@ -125,8 +126,8 @@ class PlaylistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+private fun Playlist_Activity( playlistId: String?, viewModel: PlaylistViewModel = viewModel()) {
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -137,10 +138,10 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
-    LaunchedEffect(playlistName) {
-        playlistName?.let {
+    LaunchedEffect(playlistId) {
+        playlistId?.let {
             viewModel.observePlaylists(it)
         }
     }
@@ -192,11 +193,13 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
 
     var showSheet by remember { mutableStateOf(false) }
 
-    val shouldBlur = showSheet
-
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     Scaffold(
@@ -281,7 +284,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
             }
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -372,7 +375,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                 ) {
                                     AsyncImage(
                                         model = playlistData?.imageUrl,
-                                        contentDescription = "Album Image",
+                                        contentDescription = "Playlist Image",
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
@@ -399,7 +402,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                                 fontWeight = FontWeight.Bold,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.primary_text_color),
-                                                maxLines = 2,
+                                                maxLines = 3,
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                         }
@@ -431,14 +434,14 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.primary_text_color),
+                                                tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "Songs : ${playlistData?.totalSongs}",
+                                                text = "${playlistData?.totalSongs} Songs",
                                                 fontSize = 12.sp,
                                                 lineHeight = 12.sp,
                                                 fontFamily = fonts,
@@ -462,7 +465,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                             Icon(
                                                 painter = painterResource(R.drawable.clock),
                                                 contentDescription = "Time Icon",
-                                                tint = colorResource(R.color.primary_text_color),
+                                                tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
                                             )
 
@@ -602,7 +605,7 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                         }, verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = song.image[2].url,
+                                        model = song.image.getOrNull(2)?.url,
                                         contentDescription = null,
                                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                                         contentScale = ContentScale.Crop
@@ -695,14 +698,12 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                             }
                         }
 
-                        selectedSong?.let { song ->
+                        if (showSheet && selectedSong != null) {
+                            val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
-                                songId = song.id,
-                                imageUrl = song.image.getOrNull(2)?.url,
-                                songName = htmlToText(song.name),
-                                albumName = htmlToText(song.album?.name),
+                               song = song,
                                 onDismiss = {
                                     showSheet = false
                                     selectedSong = null
@@ -720,12 +721,8 @@ private fun Playlist_Activity( playlistName: String?, viewModel: PlaylistViewMod
                                     showSheet = false
                                 },
                                 isFavourite = isFavourite,
-                                onToggleFavourite = { id ->
-                                    likedViewModel.toggleLike(
-                                        songId = id,
-                                        songName = song.name,
-                                        imageUrl = song.image.getOrNull(2)?.url
-                                    )
+                                onToggleFavourite = {
+                                    likedViewModel.toggleLike(song)
                                 }
                             )
                         }
@@ -823,7 +820,7 @@ private fun pressScale(
 
 @Preview(showBackground = true)
 @Composable
-private fun GreetingPreview() {
+private fun PlaylistActivityPreview() {
     WaveXTheme {
         Playlist_Activity("")
     }

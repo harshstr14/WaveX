@@ -1,6 +1,6 @@
-package com.example.wavex.libraryScreen.playlistScreen
+package com.example.wavex.profileScreen.favouriteSongsScreen
 
-import com.example.wavex.libraryScreen.PlaylistData
+import com.example.wavex.homeScreen.SongItem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -10,22 +10,27 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-class PlaylistRepository {
+class FavouriteSongRepository {
     val userID = FirebaseAuth.getInstance().currentUser?.uid
 
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
-        .child(userID!!).child("Favourites").child("MyPlaylists")
+        .child(userID!!).child("Favourites").child("Songs")
 
-    fun observePlaylistById(playlistId: String): Flow<PlaylistData?> =
+    fun observeFavouriteSongs(): Flow<List<SongItem>> =
         callbackFlow {
-
-            val reference = favouriteReference.child(playlistId)
 
             val listener = object : ValueEventListener {
 
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val playlist = snapshot.getValue(PlaylistData::class.java)
-                    trySend(playlist)
+                    val list = mutableListOf<SongItem>()
+
+                    for (child in snapshot.children) {
+                        val album = child.getValue(SongItem::class.java)
+
+                        album?.let { list.add(it) }
+                    }
+
+                    trySend(list)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -33,10 +38,10 @@ class PlaylistRepository {
                 }
             }
 
-            reference.addValueEventListener(listener)
+            favouriteReference.addValueEventListener(listener)
 
             awaitClose {
-                reference.removeEventListener(listener)
+                favouriteReference.removeEventListener(listener)
             }
         }
 }

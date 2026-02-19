@@ -175,13 +175,14 @@ class ImportPlaylistViewModel : ViewModel() {
         return artists
     }
 
-    private suspend fun saveToFirebaseSuspend (
+    private suspend fun saveToFirebaseSuspend(
         name: String,
         image: String,
         songList: List<SongItem>,
         totalDuration: Int
     ) {
-        val userID = auth.currentUser?.uid ?: throw Exception("User not logged in")
+        val userID = auth.currentUser?.uid
+            ?: throw Exception("User not logged in")
 
         val playListRef = database
             .child("Users")
@@ -191,7 +192,13 @@ class ImportPlaylistViewModel : ViewModel() {
 
         withContext(Dispatchers.IO) {
 
-            val snapshot = playListRef.child(name.trim()).get().await()
+            val trimmedName = name.trim()
+
+            val snapshot = playListRef
+                .orderByChild("playlistName")
+                .equalTo(trimmedName)
+                .get()
+                .await()
 
             if (snapshot.exists()) {
                 withContext(Dispatchers.Main) {
@@ -200,15 +207,21 @@ class ImportPlaylistViewModel : ViewModel() {
                 return@withContext
             }
 
+            val playlistId = playListRef.push().key
+                ?: throw Exception("Failed to generate playlistId")
+
             val playlistData = mutableMapOf<String, Any>()
 
+            playlistData["playlistId"] = playlistId
             playlistData["playlistName"] = name
             playlistData["imageUrl"] = image
             playlistData["totalSongs"] = songList.size
             playlistData["songs"] = songList
             playlistData["totalDuration"] = totalDuration
 
-            playListRef.child(name).setValue(playlistData).await()
+            playListRef.child(playlistId)
+                .setValue(playlistData)
+                .await()
 
             withContext(Dispatchers.Main) {
                 _importState.value = ImportState.Success("Playlist Imported")

@@ -480,7 +480,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     }
             ) {
                 AsyncImage(
-                    model = realItem.image[2].url,
+                    model = realItem.image.getOrNull(2)?.url,
                     contentDescription = realItem.name,
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.default_image),
@@ -494,7 +494,8 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 
                 val playlistName = htmlToText(realItem.name)
 
-                Text( modifier = Modifier.padding(horizontal = 8.dp ),
+                Text(
+                    modifier = Modifier.padding(horizontal = 8.dp ),
                     text = playlistName,
                     fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 2,
@@ -556,7 +557,7 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = song.image[2].url,
+                            model = song.image.getOrNull(2)?.url,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Crop
@@ -668,7 +669,7 @@ fun NewReleasesSongs(
                     }
             ) {
                 AsyncImage(
-                    model = song.image[2].url,
+                    model = song.image.getOrNull(2)?.url,
                     contentDescription = song.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -681,7 +682,8 @@ fun NewReleasesSongs(
 
                 val songName = htmlToText(song.name)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = songName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
@@ -695,7 +697,8 @@ fun NewReleasesSongs(
 
                 val artistsName = htmlToText(artistsList)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -751,7 +754,8 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
 
                 val artistName = htmlToText(artist.name)
 
-                Text( modifier = Modifier.width(78.dp),
+                Text(
+                    modifier = Modifier.width(78.dp),
                     text = artistName,
                     fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
@@ -803,7 +807,7 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
                     }
             ) {
                 AsyncImage(
-                    model = song.image[2].url,
+                    model = song.image.getOrNull(2)?.url,
                     contentDescription = song.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -816,7 +820,8 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 
                 val songName = htmlToText(song.name)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = songName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
@@ -830,7 +835,8 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
 
                 val artistsName = htmlToText(artistsList)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -874,7 +880,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                     }
             ) {
                 AsyncImage(
-                    model = album.image[2].url,
+                    model = album.image.getOrNull(2)?.url,
                     contentDescription = album.name,
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.default_image),
@@ -888,7 +894,8 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
 
                 val albumName = htmlToText(album.name)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                     text = albumName,
                     fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 1,
@@ -902,7 +909,8 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
 
                 val artistsName = htmlToText(artistsList)
 
-                Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                Text(
+                    modifier = Modifier.padding(horizontal = 2.dp ),
                     text = artistsName,
                     fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), maxLines = 1,

@@ -1,6 +1,7 @@
 package com.example.wavex.homeScreen.viewModel
 
 import androidx.lifecycle.ViewModel
+import com.example.wavex.homeScreen.SongItem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -40,23 +41,13 @@ class LikedSongsViewModel : ViewModel() {
         })
     }
 
-    fun toggleLike(
-        songId: String,
-        songName: String,
-        imageUrl: String?
-    ) {
-        val ref = favouriteRef?.child(songId) ?: return
+    fun toggleLike(song: SongItem) {
+        val ref = favouriteRef?.child(song.id) ?: return
 
-        if (_likedSongs.value.contains(songId)) {
+        if (_likedSongs.value.contains(song.id)) {
             ref.removeValue()
         } else {
-            val data = mapOf(
-                "songId" to songId,
-                "songName" to songName,
-                "songImageUrl" to imageUrl,
-                "isFavourite" to true
-            )
-            ref.setValue(data)
+            ref.setValue(song)
         }
     }
 

@@ -56,7 +56,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -98,16 +97,23 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.Alignment
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.libraryScreen.likedSongsScreen.LikedSongsActivity
 
 enum class SheetType {
     CREATE_PLAYLIST,
-    ADD_PLAYLIST
+    ADD_PLAYLIST,
+    RENAME_PLAYLIST
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostState,
-    viewModel: PlaylistViewModel = viewModel()
+fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostState,
+                  viewModel: PlaylistViewModel = viewModel()
 ) {
     val apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
     val importViewModel: ImportPlaylistViewModel = viewModel()
@@ -116,13 +122,13 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
     LaunchedEffect(importState) {
         when (importState) {
             is ImportState.Success -> {
-                snackbarHostState.showSnackbar(
+                snackBarHostState.showSnackbar(
                     "Playlist imported successfully",
                     duration = SnackbarDuration.Short
                 )
             }
             is ImportState.Error -> {
-                snackbarHostState.showSnackbar(
+                snackBarHostState.showSnackbar(
                     (importState as ImportState.Error).message,
                     duration = SnackbarDuration.Short
                 )
@@ -130,6 +136,9 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
             else -> Unit
         }
     }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var playlistToDelete by remember { mutableStateOf<PlaylistData?>(null) }
 
     val showSheet = remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
@@ -144,8 +153,13 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
     val (backInteraction, backScale) = pressScale()
     val (addInteraction, addScale) = pressScale()
     val (spotifyInteraction, spotifyScale) = pressScale(1.12f)
+    val interactionSource = remember { MutableInteractionSource() }
 
     val playlistsList by viewModel.playlists.collectAsStateWithLifecycle()
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    val selectedPlaylist = remember { mutableStateOf<PlaylistData?>(null) }
 
     if (showSheet.value) {
         ModalBottomSheet(
@@ -171,7 +185,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                             }
                         }, onShowMessage = { message ->
                             scope.launch {
-                                snackbarHostState.showSnackbar(
+                                snackBarHostState.showSnackbar(
                                     message = message,
                                     duration = SnackbarDuration.Short
                                 )
@@ -193,6 +207,25 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                     )
                 }
 
+                SheetType.RENAME_PLAYLIST -> {
+                    RenamePlaylistBottomSheet(
+                        playlist = selectedPlaylist.value,
+                        onClose = {
+                            scope.launch {
+                                sheetState.hide()
+                                showSheet.value = false
+                            }
+                        }, onShowMessage = { message ->
+                            scope.launch {
+                                snackBarHostState.showSnackbar(
+                                    message = message,
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    )
+                }
+
                 null -> {}
             }
         }
@@ -201,8 +234,12 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
     val shouldBlur = importState is ImportState.Loading || showSheet.value
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (shouldBlur) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     val isLoading = importState is ImportState.Loading
@@ -227,9 +264,10 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 }
             }
         ) {
-            val(backButton,titleText,addButton,spotifyLogo,likedSongsRow,playlistList) = createRefs()
+            val(backButton, titleText, addButton, spotifyLogo, likedSongsRow, playlistList) = createRefs()
 
-            Text("Library", modifier = Modifier
+            Text(
+                text = "Library", modifier = Modifier
                 .constrainAs(titleText) {
                     top.linkTo(parent.top, margin = 22.dp)
                     start.linkTo(parent.start)
@@ -240,7 +278,8 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
             )
 
-            Box(modifier = Modifier
+            Box(
+                modifier = Modifier
                 .constrainAs(backButton) {
                     top.linkTo(titleText.top)
                     bottom.linkTo(titleText.bottom)
@@ -263,7 +302,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
-                    contentDescription = "add Icon",
+                    contentDescription = "Back Icon",
                     tint = colorResource(R.color.primary_text_color),
                     modifier = Modifier
                         .size(20.dp)
@@ -299,7 +338,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
             ) {
                 Icon(
                     painter = painterResource(R.drawable.plus_icon),
-                    contentDescription = "add Icon",
+                    contentDescription = "Add Icon",
                     tint = colorResource(R.color.primary_text_color),
                     modifier = Modifier
                         .size(22.dp)
@@ -343,7 +382,16 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }
-                    .padding(start = 24.dp, end = 12.dp),
+                    .padding(start = 24.dp, end = 12.dp)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        val intent = Intent(context, LikedSongsActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        context.startActivity(intent)
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
@@ -370,26 +418,11 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "total songs",
+                        text = "${likedSongs.size} Songs",
                         fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { }) {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            painter = painterResource(R.drawable.three_dots_icon),
-                            contentDescription = "Three Dots",
-                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
-                        )
-                    }
                 }
             }
 
@@ -443,6 +476,8 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                             items(playlistsList.playlists) { playlist ->
+                                var menuExpanded by remember { mutableStateOf(false) }
+
                                 Row (
                                     modifier = Modifier.clickable(
                                         interactionSource = spotifyInteraction,
@@ -450,7 +485,7 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                                     ) {
                                         val intent = Intent(context, PlaylistActivity::class.java).apply {
                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                            putExtra("playlist_name",playlist.playlistName)
+                                            putExtra("playlist_Id",playlist.playlistId)
                                         }
                                         context.startActivity(intent)
                                     },
@@ -490,15 +525,77 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
 
                                     Spacer(modifier = Modifier.width(14.dp))
 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(onClick = { }) {
+                                    Box {
+                                        IconButton(
+                                            onClick = { menuExpanded = true }
+                                        ) {
                                             Icon(
-                                                modifier = Modifier.size(20.dp),
                                                 painter = painterResource(R.drawable.three_dots_icon),
                                                 contentDescription = "Three Dots",
-                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+
+                                        DropdownMenu(
+                                            expanded = menuExpanded,
+                                            onDismissRequest = { menuExpanded = false },
+                                            containerColor = Color(0xFF3a3a3a),
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier.width(150.dp),
+                                        ) {
+                                            DropdownMenuItem(
+                                                modifier = Modifier.height(38.dp),
+                                                text = {
+                                                    Text(
+                                                        text = "Rename",
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.background_color),
+                                                        modifier = Modifier.offset(x = (-6).dp)
+                                                    )
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.edit_icon),
+                                                        contentDescription = null,
+                                                        tint = colorResource(R.color.theme_color),
+                                                        modifier = Modifier.padding(start = 2.dp).size(20.dp)
+                                                    )
+                                                },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    selectedPlaylist.value = playlist
+                                                    currentSheet.value = SheetType.RENAME_PLAYLIST
+                                                    showSheet.value = true
+                                                    scope.launch { sheetState.show() }
+                                                }
+                                            )
+
+                                            DropdownMenuItem(
+                                                modifier = Modifier.height(38.dp),
+                                                text = {
+                                                    Text(
+                                                        text = "Remove",
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.background_color),
+                                                        modifier = Modifier.offset(x = (-6).dp)
+                                                    )
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.delete_icon),
+                                                        contentDescription = null,
+                                                        tint = colorResource(R.color.theme_color),
+                                                        modifier = Modifier.padding(start = 2.dp).size(20.dp)
+                                                    )
+                                                },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    playlistToDelete = playlist
+                                                    showDeleteDialog = true
+                                                }
                                             )
                                         }
                                     }
@@ -615,6 +712,94 @@ fun LibraryScreen(navController: NavController, snackbarHostState: SnackbarHostS
                 }
             }
         }
+    }
+
+    if (showDeleteDialog && playlistToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor = colorResource(R.color.background_color),
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.delete_icon),
+                        contentDescription = null,
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Text(
+                        text = "Delete Playlist",
+                        fontFamily = fonts,
+                        fontSize = 18.sp, lineHeight = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete \"${playlistToDelete!!.playlistName}\" ?",
+                    fontFamily = fonts,
+                    fontSize = 14.sp, lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.secondary_text_color)
+                )
+            },
+            confirmButton = {
+                Text(
+                    text = "Delete",
+                    fontSize = 14.sp, lineHeight = 15.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.theme_color),
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                        .clickable {
+                            viewModel.deletePlaylist(
+                                playlistToDelete!!.playlistId
+                            ) { success ->
+
+                                if (success) {
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            "Playlist deleted",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                } else {
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            "Failed to delete playlist",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+
+                                showDeleteDialog = false
+                                playlistToDelete = null
+                            }
+                    }
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "Cancel",
+                    color = colorResource(R.color.theme_color),
+                    fontSize = 14.sp, lineHeight = 15.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Normal,
+                    modifier = Modifier.clickable {
+                        showDeleteDialog = false
+                    }
+                )
+            }
+        )
     }
 }
 
@@ -1044,30 +1229,42 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                         titleError = titleName.isBlank()
 
                         if (!titleError) {
-                            favouriteReference.child(titleName.trim()).get()
+                            favouriteReference
+                                .orderByChild("playlistName")
+                                .equalTo(titleName.trim())
+                                .get()
                                 .addOnSuccessListener { snapshot ->
-                                    if (!snapshot.exists()) {
-                                        val playlistData = mutableMapOf<String, Any>()
 
-                                        titleName.trim().takeIf { it.isNotEmpty() }
-                                            ?.let { playlistData["playlistName"] = it }
-                                        description.trim().takeIf { it.isNotEmpty() }
-                                            ?.let { playlistData["description"] = it }
+                                    if (snapshot.exists()) {
+                                        onShowMessage("Playlist Already Exists")
+                                        onClose()
+                                    } else {
+
+                                        val playlistId = favouriteReference.push().key!!
+
+                                        val playlistData = mutableMapOf<String, Any>()
+                                        playlistData["playlistId"] = playlistId
+                                        playlistData["playlistName"] = titleName.trim()
+                                        playlistData["description"] = description.trim()
                                         playlistData["imageUrl"] =
                                             "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1771090319/default_image_hrsmd7.jpg"
+                                        playlistData["totalSongs"] = 0
 
-                                        favouriteReference.child(titleName.trim())
-                                            .setValue(playlistData).addOnSuccessListener {
-                                                onShowMessage("PlayList Created Successfully")
-                                                onClose()
-                                            }.addOnFailureListener {
-                                                onShowMessage("Failed to Create PlayList")
+                                        favouriteReference.child(playlistId)
+                                            .setValue(playlistData)
+                                            .addOnSuccessListener {
+                                                onShowMessage("Playlist Created Successfully")
                                                 onClose()
                                             }
-                                    } else {
-                                        onShowMessage("PlayList Already Exist")
-                                        onClose()
+                                            .addOnFailureListener {
+                                                onShowMessage("Failed to Create Playlist")
+                                                onClose()
+                                            }
                                     }
+                                }
+                                .addOnFailureListener {
+                                    onShowMessage("Something went wrong")
+                                    onClose()
                                 }
                         }
                     }
@@ -1076,6 +1273,290 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
             ) {
                 Text(
                     text = "Create",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.background_color)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+    }
+}
+
+@Composable
+private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> Unit, onShowMessage: (String) -> Unit) {
+    var titleName by remember { mutableStateOf(playlist?.playlistName ?: "") }
+    var description by remember { mutableStateOf(playlist?.description ?: "") }
+    var titleError by remember { mutableStateOf(false) }
+
+    val userID = FirebaseAuth.getInstance().currentUser?.uid
+
+    val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
+        .child(userID!!).child("Favourites").child("MyPlaylists")
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(text = "Rename Your Playlist", modifier = Modifier.align(Alignment.CenterHorizontally),
+            fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Title", modifier = Modifier.padding(start = 28.dp),
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(modifier = Modifier
+            .padding(horizontal = 25.dp)
+            .height(52.dp)
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (titleError) Color.Red else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(
+                colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (inputField, placeholderText) = createRefs()
+
+                if (titleName.isEmpty()) {
+                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start, margin = 15.dp)
+                        end.linkTo(parent.end, margin = 15.dp)
+                        width = Dimension.fillToConstraints },
+                        text = "Enter Title",
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Normal,
+                        fontStyle = FontStyle.Normal,
+                        fontSize = 14.sp, lineHeight = 17.sp,
+                        color = colorResource(R.color.secondary_text_color)
+                    )
+                }
+
+                val selectionColors = TextSelectionColors(
+                    handleColor = Color(0xFF1C1C1C),
+                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                )
+
+                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                    BasicTextField(
+                        value = titleName,
+                        onValueChange = {
+                            titleName = it
+
+                            if (it.isNotBlank()) {
+                                titleError = false
+                            }
+                        },
+                        modifier = Modifier
+                            .constrainAs(inputField) {
+                                top.linkTo(parent.top)
+                                bottom.linkTo(parent.bottom)
+                                start.linkTo(parent.start, margin = 15.dp)
+                                end.linkTo(parent.end, margin = 15.dp)
+                                width = Dimension.fillToConstraints
+                            },
+                        textStyle = TextStyle(
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 14.sp, lineHeight = 17.sp,
+                            color = colorResource(R.color.secondary_text_color)
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                    )
+                }
+            }
+        }
+
+        if (titleError) {
+            Text(
+                text = "Title cannot be empty",
+                color = Color.Red,
+                fontSize = 12.sp,
+                lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
+                modifier = Modifier.padding(start = 28.dp, top = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Description", modifier = Modifier.padding(start = 28.dp),
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(modifier = Modifier
+            .padding(horizontal = 25.dp)
+            .height(52.dp)
+            .fillMaxWidth()
+            .background(
+                colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (inputField, placeholderText) = createRefs()
+
+                if (description.isEmpty()) {
+                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start, margin = 15.dp)
+                        end.linkTo(parent.end, margin = 15.dp)
+                        width = Dimension.fillToConstraints },
+                        text = "Enter Short Description",
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Normal,
+                        fontStyle = FontStyle.Normal,
+                        fontSize = 14.sp, lineHeight = 17.sp,
+                        color = colorResource(R.color.secondary_text_color)
+                    )
+                }
+
+                val selectionColors = TextSelectionColors(
+                    handleColor = Color(0xFF1C1C1C),
+                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                )
+
+                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                    BasicTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        modifier = Modifier
+                            .constrainAs(inputField) {
+                                top.linkTo(parent.top)
+                                bottom.linkTo(parent.bottom)
+                                start.linkTo(parent.start, margin = 15.dp)
+                                end.linkTo(parent.end, margin = 15.dp)
+                                width = Dimension.fillToConstraints
+                            },
+                        textStyle = TextStyle(
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 14.sp, lineHeight = 17.sp,
+                            color = colorResource(R.color.secondary_text_color)
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(148.dp)
+                    .padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                    .clickable { onClose() }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Cancel",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.theme_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(148.dp)
+                    .padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.theme_color))
+                    .clickable {
+                        titleError = titleName.isBlank()
+
+                        if (!titleError) {
+                            val newName = titleName.trim()
+                            val newDescription = description.trim()
+
+                            titleError = newName.isBlank()
+                            if (titleError) return@clickable
+
+                            val playlistId = playlist?.playlistId ?: return@clickable
+
+                            favouriteReference
+                                .orderByChild("playlistName")
+                                .equalTo(newName.trim())
+                                .get()
+                                .addOnSuccessListener { snapshot ->
+                                    var nameAlreadyUsed = false
+
+                                    snapshot.children.forEach { child ->
+                                        if (child.key != playlistId) {
+                                            nameAlreadyUsed = true
+                                        }
+                                    }
+
+                                    if (nameAlreadyUsed) {
+                                        onShowMessage("Playlist Already Exists")
+                                        onClose()
+                                        return@addOnSuccessListener
+                                    }
+
+                                    val updates = mapOf<String, Any>(
+                                        "playlistName" to newName,
+                                        "description" to newDescription
+                                    )
+
+                                    favouriteReference.child(playlistId)
+                                        .updateChildren(updates)
+                                        .addOnSuccessListener {
+                                            onShowMessage("Playlist Renamed Successfully")
+                                            onClose()
+                                        }
+                                        .addOnFailureListener {
+                                            onShowMessage("Rename Failed")
+                                            onClose()
+                                        }
+                                }
+                        }
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Rename",
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.background_color)
                 )

@@ -115,7 +115,7 @@ private fun Profile_Activity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileScreen(imageUrl: String?, name: String) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -185,7 +185,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -235,13 +235,15 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             contentAlignment = Alignment.Center
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val (profileAvatar, userIcon, text1, row2, row3, row4, row5, row6, editIcon) = createRefs()
+                val (profileImageRef, yourProfileRowRef, userNameTextRef, favouriteSongsRowRef, artistsRowRef,
+                    albumsRowRef, settingsRowRef, playlistsRowRef, profileEditIconRef
+                ) = createRefs()
 
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Profile Image",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.constrainAs(profileAvatar) {
+                    modifier = Modifier.constrainAs(profileImageRef) {
                         top.linkTo(parent.top, margin = 15.dp)
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
@@ -250,9 +252,9 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 )
 
                 Box(
-                    modifier = Modifier.constrainAs(editIcon) {
-                        bottom.linkTo(profileAvatar.bottom)
-                        end.linkTo(profileAvatar.end, margin = 8.dp)
+                    modifier = Modifier.constrainAs(profileEditIconRef) {
+                        bottom.linkTo(profileImageRef.bottom)
+                        end.linkTo(profileImageRef.end, margin = 8.dp)
                     }.size(36.dp).clip(RoundedCornerShape(20.dp))
                         .background(colorResource(R.color.theme_color))
                         .border(
@@ -283,8 +285,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                 Text(
                     text = name,
-                    modifier = Modifier.constrainAs(text1) {
-                        top.linkTo(profileAvatar.bottom, margin = 20.dp)
+                    modifier = Modifier.constrainAs(userNameTextRef) {
+                        top.linkTo(profileImageRef.bottom, margin = 20.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     },
@@ -297,8 +299,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 )
 
                 Row(
-                    modifier = Modifier.constrainAs(userIcon){
-                        top.linkTo(text1.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(yourProfileRowRef){
+                        top.linkTo(userNameTextRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,
@@ -349,8 +351,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row2){
-                        top.linkTo(userIcon.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(favouriteSongsRowRef){
+                        top.linkTo(yourProfileRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,
@@ -401,8 +403,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row3){
-                        top.linkTo(row2.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(artistsRowRef){
+                        top.linkTo(favouriteSongsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,
@@ -453,8 +455,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row4){
-                        top.linkTo(row3.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(albumsRowRef){
+                        top.linkTo(artistsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,
@@ -505,8 +507,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row6){
-                        top.linkTo(row4.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(playlistsRowRef){
+                        top.linkTo(albumsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,
@@ -557,8 +559,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(row5){
-                        top.linkTo(row6.bottom, margin = 30.dp)
+                    modifier = Modifier.constrainAs(settingsRowRef){
+                        top.linkTo(playlistsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
                             interactionSource = interactionSource,

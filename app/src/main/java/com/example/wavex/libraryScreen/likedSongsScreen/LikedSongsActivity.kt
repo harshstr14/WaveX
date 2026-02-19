@@ -1,4 +1,4 @@
-package com.example.wavex.albumScreen
+package com.example.wavex.libraryScreen.likedSongsScreen
 
 import android.app.Activity
 import android.content.Intent
@@ -34,25 +34,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -74,7 +69,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -92,7 +86,6 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
-import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
@@ -101,16 +94,12 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.ui.theme.WaveXTheme
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 
-class AlbumActivity : ComponentActivity() {
+class LikedSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -124,12 +113,9 @@ class AlbumActivity : ComponentActivity() {
             )
         )
 
-        val albumId = intent.getStringExtra("album_id")
-        val albumImageUrl = intent.getStringExtra("album_imageUrl")
-
         setContent {
             WaveXTheme {
-                Album_Activity(albumId, albumImageUrl)
+                Liked_Songs_Activity()
             }
         }
     }
@@ -137,58 +123,26 @@ class AlbumActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumViewModel = viewModel()) {
+fun Liked_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
-    val albums by viewModel.albums.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
+    val totalDuration by viewModel.totalDuration.collectAsStateWithLifecycle()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableStateOf(-1) }
 
-    val interactionSource = remember { MutableInteractionSource() }
-    val context = LocalContext.current
-    val activity = context as? Activity
-    var isLiked by remember { mutableStateOf(false) }
-
-    val userID = FirebaseAuth.getInstance().currentUser?.uid
-
-    val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
-        .child(userID!!).child("Favourites").child("Albums").child(albumId.toString())
-
-    LaunchedEffect(albumId) {
-        albumId?.let {
-            viewModel.loadAlbum(it)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                isLiked = snapshot.exists()
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-    val heartScale by animateFloatAsState(
-        targetValue = if (isLiked) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "HeartPop"
-    )
+    val songsList by viewModel.songs.collectAsStateWithLifecycle()
 
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
+    val interactionSource = remember { MutableInteractionSource() }
 
     val rawProgress by remember {
         derivedStateOf {
@@ -224,7 +178,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
     val titleStartPadding = lerpDp(25.dp, 8.dp, smoothProgress)
     val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
 
-    val isTitleVisible = !isLoading && !albums.isError
+    val isTitleVisible = !songsList.isLoading && !songsList.isError
 
     var showSheet by remember { mutableStateOf(false) }
 
@@ -309,96 +263,6 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                         }
                                 )
                             }
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(20.dp)
-                                    ).clickable(
-                                        interactionSource = interactionSource,
-                                        indication = null
-                                    ) {
-                                        favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
-
-                                            override fun onDataChange(snapshot: DataSnapshot) {
-
-                                                if (!snapshot.exists()) {
-                                                    val artistsList = albums.primaryArtists
-                                                        .takeIf { it.isNotEmpty() }
-                                                        ?.joinToString(", ") { it.name }
-                                                        ?: "Unknown Artist"
-
-                                                    val artistsName = htmlToText(artistsList)
-
-                                                    val albumData = mapOf(
-                                                        "albumId" to albumId,
-                                                        "albumName" to albums.albumName,
-                                                        "albumImageUrl" to albumImageUrl,
-                                                        "primaryArtists" to artistsName,
-                                                        "isFavourite" to true
-                                                    )
-
-                                                    favouriteReference.setValue(albumData)
-                                                        .addOnSuccessListener {
-                                                            isLiked = true
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar(
-                                                                    message = "Added To Favourite",
-                                                                    duration = SnackbarDuration.Short
-                                                                )
-                                                            }
-                                                        }
-                                                        .addOnFailureListener {
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar(
-                                                                    message = "Failed To Add in Favourite",
-                                                                    duration = SnackbarDuration.Short
-                                                                )
-                                                            }
-                                                        }
-
-                                                } else {
-                                                    favouriteReference.removeValue()
-                                                        .addOnSuccessListener {
-                                                            isLiked = false
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar(
-                                                                    message = "Removed From Favourite",
-                                                                    duration = SnackbarDuration.Short
-                                                                )
-                                                            }
-                                                        }
-                                                }
-                                            }
-
-                                            override fun onCancelled(error: DatabaseError) {
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar("Database Error: ${error.message}")
-                                                }
-                                            }
-                                        })
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(if (isLiked) R.drawable.heart_filled else R.drawable.heart_outline),
-                                    contentDescription = "Heart Icon",
-                                    tint = if (isLiked)
-                                        colorResource(R.color.theme_color)
-                                    else
-                                        colorResource(R.color.primary_text_color),
-                                    modifier = Modifier.graphicsLayer {
-                                        scaleX = heartScale
-                                        scaleY = heartScale
-                                    }.size(18.dp)
-                                )
-                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -467,28 +331,26 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
             contentAlignment = Alignment.Center
         ) {
             when {
-                isLoading -> {
+                songsList.isLoading -> {
                     LoadingEffect()
                 }
 
-                albums.isError -> {
+                songsList.isError -> {
                     ErrorState(
-                        message = albums.errorMessage,
-                        onRetry = {
-                            albumId?.let { viewModel.loadAlbum(it) }
-                        }
+                        message = songsList.errorMessage,
                     )
                 }
 
                 else -> {
                     ConstraintLayout(
-                        modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))
+                        modifier = Modifier.fillMaxSize()
+                            .background(colorResource(R.color.background_color))
                     ) {
                         val (contentList) = createRefs()
 
-                        LazyColumn (
+                        LazyColumn(
                             state = listState,
-                            modifier = Modifier.constrainAs(contentList){
+                            modifier = Modifier.constrainAs(contentList) {
                                 top.linkTo(parent.top)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
@@ -502,17 +364,17 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                                 ) {
                                     AsyncImage(
-                                        model = albumImageUrl ?: R.drawable.default_image,
-                                        contentDescription = "Album Image",
+                                        model = R.drawable.liked,
+                                        contentDescription = "Playlist Image",
                                         contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
                                             .offset(x = offsetX, y = offsetY)
                                             .size(size)
                                             .clip(RoundedCornerShape(cornerRadius))
                                             .graphicsLayer {
                                                 alpha = metaAlpha
-                                            }
-                                            .zIndex(10f)
+                                            }.zIndex(10f)
                                     )
 
                                     Column(
@@ -520,38 +382,28 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                             .padding(horizontal = 15.dp)
                                             .animateContentSize()
                                     ) {
-                                        val albumName = htmlToText(albums.albumName)
-
                                         Text(
-                                            modifier = Modifier.padding(top = titleTopPadding,start = titleStartPadding, end = 10.dp),
-                                            text = albumName,
+                                            modifier = Modifier.padding(
+                                                top = titleTopPadding,
+                                                start = titleStartPadding,
+                                                end = 10.dp
+                                            ),
+                                            text = "Liked Songs",
                                             fontSize = titleFontSize.value.sp,
                                             lineHeight = 22.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.Bold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        val description = htmlToText(albums.description)
-
-                                        Text(
-                                            modifier = Modifier.padding(top = 6.dp,start = titleStartPadding, end = 10.dp),
-                                            text = description,
-                                            fontSize = 12.sp,
-                                            lineHeight = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 3,
+                                            maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
                                         Row(
-                                            modifier = Modifier.padding(top = 8.dp, start = titleStartPadding)
+                                            modifier = Modifier.padding(
+                                                top = 15.dp,
+                                                start = titleStartPadding
+                                            )
                                                 .graphicsLayer {
                                                     alpha = metaAlpha
                                                     scaleX = 1f - smoothProgress * 0.04f
@@ -569,7 +421,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "${albums.songCount} Songs",
+                                                text = "${likedSongs.size} Songs",
                                                 fontSize = 12.sp,
                                                 lineHeight = 12.sp,
                                                 fontFamily = fonts,
@@ -582,7 +434,10 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                         }
 
                                         Row(
-                                            modifier = Modifier.padding(top = 4.dp, start = titleStartPadding)
+                                            modifier = Modifier.padding(
+                                                top = 4.dp,
+                                                start = titleStartPadding
+                                            )
                                                 .graphicsLayer {
                                                     alpha = metaAlpha
                                                     scaleX = 1f - smoothProgress * 0.04f
@@ -600,7 +455,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                             Spacer(modifier = Modifier.width(4.dp))
 
                                             Text(
-                                                text = formatTotalDuration(albums.totalDuration),
+                                                text = formatTotalDuration(totalDuration),
                                                 fontSize = 12.sp,
                                                 lineHeight = 12.sp,
                                                 fontFamily = fonts,
@@ -642,7 +497,11 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
 
                                             Text(
                                                 text = "Shuffle",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                fontSize = 16.sp,
+                                                lineHeight = 18.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.background_color)
                                             )
                                         }
@@ -653,7 +512,11 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                     Box(
                                         modifier = Modifier.width(158.dp).padding(top = 25.dp)
                                             .clip(RoundedCornerShape(28.dp))
-                                            .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                                            .background(
+                                                colorResource(R.color.secondary_text_color).copy(
+                                                    alpha = 0.2f
+                                                )
+                                            )
                                             .clickable { }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
@@ -672,7 +535,11 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
 
                                             Text(
                                                 text = "Play",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                fontSize = 16.sp,
+                                                lineHeight = 18.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.theme_color)
                                             )
                                         }
@@ -682,66 +549,42 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
 
                             item {
                                 Text(
-                                    modifier = Modifier.padding(top = 15.dp, start = 24.dp),
-                                    text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                    modifier = Modifier.padding(
+                                        top = 15.dp,
+                                        start = 24.dp,
+                                        bottom = 10.dp
+                                    ),
+                                    text = "Songs",
+                                    fontSize = 18.sp,
+                                    fontFamily = fonts,
+                                    fontWeight = FontWeight.Bold,
+                                    fontStyle = FontStyle.Normal,
+                                    color = colorResource(R.color.primary_text_color),
+                                    lineHeight = 20.sp
                                 )
                             }
 
-                            item {
-                                LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
-                                    contentPadding = PaddingValues(horizontal = 24.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                                ) {
-                                    items(albums.primaryArtists) { artist ->
-                                        Column(
-                                            modifier = Modifier
-                                                .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                val intent = Intent(context, ArtistActivity::class.java).apply {
-                                                    putExtra("artist_id", artist.id)
-                                                    putExtra("artist_imageUrl", artist.image)
-                                                }
-                                                context.startActivity(intent)
-                                            },
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            AsyncImage(
-                                                model = artist.image.takeIf { it.isNotBlank() },
-                                                contentDescription = artist.name,
-                                                contentScale = ContentScale.Crop,
-                                                error = painterResource(R.drawable.default_artist),
-                                                modifier = Modifier
-                                                    .size(78.dp)
-                                                    .clip(CircleShape)
-                                            )
-
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            val artistName = htmlToText(artist.name)
-
-                                            Text( modifier = Modifier.width(78.dp),
-                                                text = artistName,
-                                                fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                            if (songsList.songs.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().padding(top = 200.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "No Songs Yet", fontSize = 16.sp,
+                                            fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            lineHeight = 18.sp
+                                        )
                                     }
                                 }
                             }
 
-                            item {
-                                Text(
-                                    modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
-                                    text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                )
-                            }
+                            itemsIndexed(
+                                items = songsList.songs
+                            ) { index, song ->
 
-                            itemsIndexed(albums.songs, key = { _, song -> song.id }) { index, song ->
                                 Row (
                                     modifier = Modifier.fillMaxWidth()
                                         .padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
@@ -749,12 +592,13 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                             interactionSource = interactionSource,
                                             indication = null
                                         ) {
-                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                            val intent = Intent(context,MusicPlayerService::class.java
+                                            ).apply {
                                                 action = MusicPlayerService.ACTION_PLAY_NEW
                                                 putExtra("index", index)
                                             }
 
-                                            PlayerManager.currentPlaylist = albums.songs
+                                            PlayerManager.currentPlaylist = songsList.songs
                                             PlayerManager.currentIndex = index
 
                                             ContextCompat.startForegroundService(context, intent)
@@ -874,7 +718,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                         putExtra("index", selectedIndex)
                                     }
 
-                                    PlayerManager.currentPlaylist = albums.songs
+                                    PlayerManager.currentPlaylist  = songsList.songs
                                     PlayerManager.currentIndex = selectedIndex
 
                                     ContextCompat.startForegroundService(context, intent)
@@ -898,77 +742,20 @@ private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
     return start + (end - start) * fraction
 }
 
-@Composable
-private fun ErrorState(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = 45.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+private fun formatTotalDuration(totalSeconds: Int?): String {
 
-        val composition by rememberLottieComposition(
-            LottieCompositionSpec.RawRes (R.raw.spaceman)
-        )
+    val safeSeconds = totalSeconds ?: 0
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
-
-        Spacer(modifier = Modifier.height(0.dp))
-
-        Text(
-            modifier = Modifier.offset(y = (-8).dp),
-            text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = colorResource(R.color.secondary_text_color), maxLines = 2
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Box(
-            modifier = Modifier.offset(y = (-8).dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(colorResource(R.color.theme_color))
-                .clickable { onRetry() }
-                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Retry",
-                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = colorResource(R.color.background_color)
-            )
-        }
-    }
-}
-
-private fun formatTotalDuration(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
+    val hours = safeSeconds / 3600
+    val minutes = (safeSeconds % 3600) / 60
+    val seconds = safeSeconds % 60
 
     return buildString {
         if (hours > 0) append("$hours h ")
-        if (minutes > 0) append("$minutes min  ")
+        if (minutes > 0) append("$minutes min ")
         if (seconds > 0) append("$seconds s")
-        if (isEmpty()) append("0s") // handle 0 case
+        if (isEmpty()) append("0 s")
     }.trim()
-}
-
-@Composable
-private fun LoadingEffect() {
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
-    )
-
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
-    )
 }
 
 @Composable
@@ -990,10 +777,55 @@ private fun pressScale(
     return interactionSource to scale
 }
 
+@Composable
+private fun LoadingEffect() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
+    )
+
+    LottieAnimation(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        modifier = Modifier
+            .fillMaxWidth()
+            .size(144.dp)
+    )
+}
+
+@Composable
+private fun ErrorState(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
+        )
+
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.size(134.dp)
+        )
+
+        Spacer(modifier = Modifier.height(0.dp))
+
+        Text(
+            modifier = Modifier.offset(y = (-8).dp),
+            text = message,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
+        )
+    }
+}
+
 @Preview(showSystemUi = true)
 @Composable
-private fun Album_ActivityPreview() {
+fun LikedSongsActivityPreview() {
     WaveXTheme {
-        Album_Activity("1245648", "")
+        Liked_Songs_Activity()
     }
 }

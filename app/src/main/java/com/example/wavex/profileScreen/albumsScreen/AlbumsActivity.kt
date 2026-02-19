@@ -103,7 +103,7 @@ class AlbumsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -176,7 +176,7 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -290,14 +290,16 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
 
                                     val albumName = htmlToText(album.albumName)
 
-                                    Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                                         text = albumName,
                                         fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
 
-                                    Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp ),
                                         text = album.primaryArtists,
                                         fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -322,7 +324,7 @@ private fun LoadingEffect() {
     LottieAnimation(
         composition = composition,
         iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().size(144.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
     )
 }
 
@@ -330,7 +332,8 @@ private fun LoadingEffect() {
 private fun ErrorState(message: String) {
     Column(
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .padding(bottom = 45.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

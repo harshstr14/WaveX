@@ -43,4 +43,11 @@ class PlaylistViewModel(
                 }
         }
     }
+
+    fun deletePlaylist(
+        playlistId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        repository.deletePlaylist(playlistId, onResult)
+    }
 }

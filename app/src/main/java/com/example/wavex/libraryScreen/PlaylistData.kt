@@ -3,6 +3,7 @@ package com.example.wavex.libraryScreen
 import com.example.wavex.homeScreen.SongItem
 
 data class PlaylistData(
+    var playlistId: String = "",
     var playlistName: String = "",
     var description: String = "",
     var imageUrl: String = "",

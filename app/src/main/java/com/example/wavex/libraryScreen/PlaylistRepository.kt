@@ -42,4 +42,15 @@ class PlaylistRepository {
                 favouriteReference.removeEventListener(listener)
             }
         }
+
+    fun deletePlaylist(
+        playlistId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        favouriteReference
+            .child(playlistId)
+            .removeValue()
+            .addOnSuccessListener { onResult(true) }
+            .addOnFailureListener { onResult(false) }
+    }
 }

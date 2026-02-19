@@ -202,7 +202,7 @@ private fun YourProfileScreen(
     savedGender: String,
     onUpdateClick: (String, String, String, (String) -> Unit) -> Unit
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -263,7 +263,7 @@ private fun YourProfileScreen(
                     viewModel,
                     onShowMessage = { message ->
                         scope.launch {
-                            snackbarHostState.showSnackbar(
+                            snackBarHostState.showSnackbar(
                                 message = message,
                                 duration = SnackbarDuration.Short
                             )
@@ -354,7 +354,7 @@ private fun YourProfileScreen(
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -417,13 +417,13 @@ private fun YourProfileScreen(
             contentAlignment = Alignment.Center
         ) {
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val (profileAvatar, column, editIcon, updateButton) = createRefs()
+                val (profileImageRef, formContainerRef, editProfileImageRef, updateProfileButtonRef) = createRefs()
 
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Profile Image",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.constrainAs(profileAvatar) {
+                    modifier = Modifier.constrainAs(profileImageRef) {
                         top.linkTo(parent.top, margin = 15.dp)
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
@@ -432,9 +432,9 @@ private fun YourProfileScreen(
                 )
 
                 Box(
-                    modifier = Modifier.constrainAs(editIcon) {
-                        bottom.linkTo(profileAvatar.bottom)
-                        end.linkTo(profileAvatar.end, margin = 8.dp)
+                    modifier = Modifier.constrainAs(editProfileImageRef) {
+                        bottom.linkTo(profileImageRef.bottom)
+                        end.linkTo(profileImageRef.end, margin = 8.dp)
                     }.size(36.dp).clip(RoundedCornerShape(20.dp))
                         .background(colorResource(R.color.theme_color))
                         .border(
@@ -460,27 +460,28 @@ private fun YourProfileScreen(
                     )
                 }
 
-                Column(modifier = Modifier.constrainAs(column){
-                    top.linkTo(profileAvatar.bottom, margin = 30.dp)
+                Column(modifier = Modifier.constrainAs(formContainerRef){
+                    top.linkTo(profileImageRef.bottom, margin = 30.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                    bottom.linkTo(updateButton.bottom, margin = 8.dp)
+                    bottom.linkTo(updateProfileButtonRef.bottom, margin = 8.dp)
                     height = Dimension.fillToConstraints
                 }) {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (genderLabel, genderInputContainer,
-                            nameLabel, nameInputContainer, phoneNoLabel, phoneNoInputContainer,
-                            emailLabel, emailInputContainer) = createRefs()
+                        val (genderLabelRef, genderDropdownRef,
+                            nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,
+                            emailLabelRef, emailFieldContainerRef
+                        ) = createRefs()
 
-                        Text("Name", modifier = Modifier.constrainAs(nameLabel) {
+                        Text("Name", modifier = Modifier.constrainAs(nameLabelRef) {
                             top.linkTo(parent.top)
                             start.linkTo(parent.start, margin = 28.dp)
                         }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(nameInputContainer) {
-                            top.linkTo(nameLabel.bottom, margin = 10.dp)
+                        Box(modifier = Modifier.constrainAs(nameFieldContainerRef) {
+                            top.linkTo(nameLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
                         }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -537,15 +538,15 @@ private fun YourProfileScreen(
                             }
                         }
 
-                        Text("Phone Number", modifier = Modifier.constrainAs(phoneNoLabel) {
-                            top.linkTo(nameInputContainer.bottom, margin = 20.dp)
+                        Text("Phone Number", modifier = Modifier.constrainAs(phoneLabelRef) {
+                            top.linkTo(nameFieldContainerRef.bottom, margin = 20.dp)
                             start.linkTo(parent.start, margin = 28.dp)
                         }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(phoneNoInputContainer) {
-                            top.linkTo(phoneNoLabel.bottom, margin = 10.dp)
+                        Box(modifier = Modifier.constrainAs(phoneFieldContainerRef) {
+                            top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
                         }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -634,15 +635,15 @@ private fun YourProfileScreen(
                             }
                         }
 
-                        Text("Email", modifier = Modifier.constrainAs(emailLabel) {
-                            top.linkTo(phoneNoInputContainer.bottom, margin = 20.dp)
+                        Text("Email", modifier = Modifier.constrainAs(emailLabelRef) {
+                            top.linkTo(phoneFieldContainerRef.bottom, margin = 20.dp)
                             start.linkTo(parent.start, margin = 28.dp)
                         }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(emailInputContainer) {
-                            top.linkTo(emailLabel.bottom, margin = 10.dp)
+                        Box(modifier = Modifier.constrainAs(emailFieldContainerRef) {
+                            top.linkTo(emailLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
                         }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -700,8 +701,8 @@ private fun YourProfileScreen(
                             }
                         }
 
-                        Text("Gender", modifier = Modifier.constrainAs(genderLabel) {
-                            top.linkTo(emailInputContainer.bottom, margin = 20.dp)
+                        Text("Gender", modifier = Modifier.constrainAs(genderLabelRef) {
+                            top.linkTo(emailFieldContainerRef.bottom, margin = 20.dp)
                             start.linkTo(parent.start, margin = 28.dp)
                         }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
@@ -710,8 +711,8 @@ private fun YourProfileScreen(
                         ExposedDropdownMenuBox(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.constrainAs(genderInputContainer) {
-                                top.linkTo(genderLabel.bottom, margin = 10.dp)
+                            modifier = Modifier.constrainAs(genderDropdownRef) {
+                                top.linkTo(genderLabelRef.bottom, margin = 10.dp)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                             }.padding(horizontal = 25.dp)
@@ -792,7 +793,7 @@ private fun YourProfileScreen(
                     }
                 }
 
-                Button(modifier = Modifier.constrainAs(updateButton) {
+                Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
                     bottom.linkTo(parent.bottom, margin = 35.dp)
                 }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
                     elevation = 26.dp,
@@ -804,7 +805,7 @@ private fun YourProfileScreen(
                         when {
                             phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = "Phone number must be 10 digits",
                                         duration = SnackbarDuration.Short
                                     )
@@ -814,7 +815,7 @@ private fun YourProfileScreen(
 
                             name.isBlank() -> {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = "Please enter your name",
                                         duration = SnackbarDuration.Short
                                     )
@@ -825,7 +826,7 @@ private fun YourProfileScreen(
 
                         onUpdateClick(name, phoneNo, gender) { message ->
                             scope.launch {
-                                snackbarHostState.showSnackbar(
+                                snackBarHostState.showSnackbar(
                                     message = message,
                                     duration = SnackbarDuration.Short
                                 )

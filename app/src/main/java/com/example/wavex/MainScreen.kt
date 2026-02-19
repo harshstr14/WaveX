@@ -267,7 +267,7 @@ fun Main_Screen() {
                 SearchScreen(navController)
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController, snackbarHostState = snackbarHostState)
+                LibraryScreen(navController, snackBarHostState = snackbarHostState)
             }
         }
     }
@@ -309,8 +309,9 @@ private fun BottomNavBar(navController: NavController) {
     Box(modifier = Modifier
             .fillMaxWidth()
             .padding(start = 18.dp, end = 18.dp, bottom = 8.dp)
-            .navigationBarsPadding().height(68.dp).shadow( elevation = 18.dp,
-                shape = RoundedCornerShape(18.dp),
+            .navigationBarsPadding().height(68.dp).shadow(
+                elevation = 24.dp,
+                shape = RoundedCornerShape(24.dp),
                 ambientColor = Color(0xFF313131).copy(alpha = 0.2f),
                 spotColor = Color(0xFF313131).copy(alpha = 0.4f)
             ).background(Brush.verticalGradient(
@@ -318,7 +319,7 @@ private fun BottomNavBar(navController: NavController) {
                     Color(0xFF313131).copy(alpha = 0.95f),
                     Color(0xFF313131).copy(alpha = 1f)
                 )
-            ), shape = RoundedCornerShape(18.dp)),
+            ), shape = RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
         Row(

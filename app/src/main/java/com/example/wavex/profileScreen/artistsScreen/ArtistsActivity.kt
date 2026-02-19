@@ -105,7 +105,7 @@ class ArtistsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -179,7 +179,7 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -292,7 +292,8 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
 
                                     val artistName = htmlToText(artist.artistName)
 
-                                    Text( modifier = Modifier.width(78.dp),
+                                    Text(
+                                        modifier = Modifier.width(78.dp),
                                         text = artistName,
                                         fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,

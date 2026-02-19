@@ -14,9 +14,9 @@ class PlaylistViewModel(
     private val _playlist = MutableStateFlow(PlaylistDetailUiState())
     val playlist: StateFlow<PlaylistDetailUiState> = _playlist
 
-    fun observePlaylists(name: String) {
+    fun observePlaylists(playlistId: String) {
         viewModelScope.launch {
-            repository.observeSinglePlaylistByName(name)
+            repository.observePlaylistById(playlistId)
                 .onStart {
                     _playlist.value = _playlist.value.copy(
                         isLoading = true,

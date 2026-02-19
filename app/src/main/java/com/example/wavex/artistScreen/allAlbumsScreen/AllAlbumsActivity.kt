@@ -107,7 +107,7 @@ class AllAlbumsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val albumsGridState = rememberLazyGridState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -188,7 +188,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -302,7 +302,8 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
 
                                     val albumName = htmlToText(album.name)
 
-                                    Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                                         text = albumName,
                                         fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), maxLines = 1,
@@ -316,7 +317,8 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
 
                                     val artistsName = htmlToText(artistsList)
 
-                                    Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp ),
                                         text = artistsName,
                                         fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.secondary_text_color), maxLines = 1,

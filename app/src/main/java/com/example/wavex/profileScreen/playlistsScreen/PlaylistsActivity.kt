@@ -104,7 +104,7 @@ class PlaylistsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -178,7 +178,7 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -292,7 +292,8 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
 
                                     val playlistName = htmlToText(playlist.playlistName)
 
-                                    Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                                         text = playlistName,
                                         fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), maxLines = 2,
@@ -325,7 +326,8 @@ private fun LoadingEffect() {
 private fun ErrorState(message: String) {
     Column(
         modifier = Modifier
-            .fillMaxSize().padding(bottom = 45.dp),
+            .fillMaxSize()
+            .padding(bottom = 45.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

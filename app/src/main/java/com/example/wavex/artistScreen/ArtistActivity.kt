@@ -147,7 +147,7 @@ class ArtistActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewModel: ArtistViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -248,11 +248,13 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
 
     var showSheet by remember { mutableStateOf(false) }
 
-    val shouldBlur = showSheet
-
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     Scaffold(
@@ -327,7 +329,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                             ) {
                                 AsyncImage(
                                     model = artists.imageUrl,
-                                    contentDescription = "Profile Image",
+                                    contentDescription = "Artist Image",
                                     contentScale = ContentScale.Crop,
                                     modifier =  Modifier.padding(start = 8.dp)
                                         .size(48.dp)
@@ -432,7 +434,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                                         .addOnSuccessListener {
                                                             isLiked = true
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Added To Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -440,7 +442,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                                         }
                                                         .addOnFailureListener {
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Failed To Add in Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -448,12 +450,11 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                                         }
 
                                                 } else {
-
                                                     favouriteReference.removeValue()
                                                         .addOnSuccessListener {
                                                             isLiked = false
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Removed From Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -464,7 +465,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
 
                                             override fun onCancelled(error: DatabaseError) {
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("Database Error: ${error.message}")
+                                                    snackBarHostState.showSnackbar("Database Error: ${error.message}")
                                                 }
                                             }
                                         })
@@ -473,7 +474,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                             ) {
                                 Icon(
                                     painter = painterResource(if (isLiked) R.drawable.heart_filled else R.drawable.heart_outline),
-                                    contentDescription = "Like Icon",
+                                    contentDescription = "Heart Icon",
                                     tint = if (isLiked)
                                         colorResource(R.color.theme_color)
                                     else
@@ -494,7 +495,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
             }
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -586,7 +587,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                 ) {
                                     AsyncImage(
                                         model = artistImageUrl ?: R.drawable.default_artist,
-                                        contentDescription = "Profile Image",
+                                        contentDescription = "Artist Image",
                                         contentScale = ContentScale.Crop,
                                         modifier =  Modifier
                                             .offset(x = offsetX, y = offsetY)
@@ -598,14 +599,17 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                             .zIndex(10f)
                                     )
 
-                                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
-                                        .offset(y = titleOffsetY).animateContentSize()) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
+                                        .offset(y = titleOffsetY).animateContentSize()
+                                    ) {
                                         Row(
                                             modifier = Modifier
                                                 .padding(top = titleTopPadding, start = titleStartPadding),
-                                            verticalAlignment = Alignment.CenterVertically) {
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
                                             Text(
-                                                text = artists.name,
+                                                text = htmlToText(artists.name),
                                                 fontSize = titleFontSize.value.sp,
                                                 lineHeight = 22.sp,
                                                 fontFamily = fonts,
@@ -706,11 +710,13 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                    Text(
+                                        text = "Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
 
-                                    Text(modifier = Modifier.clickable(
+                                    Text(
+                                        modifier = Modifier.clickable(
                                         interactionSource = interactionSource,
                                         indication = null
                                     ) {
@@ -746,10 +752,11 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                             scope.launch {
                                                 RecentlyPlayedManager.add(context, song)
                                             }
-                                        }, verticalAlignment = Alignment.CenterVertically
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = song.image[2].url,
+                                        model = song.image.getOrNull(2)?.url,
                                         contentDescription = null,
                                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                                         contentScale = ContentScale.Crop
@@ -849,11 +856,13 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                    Text(
+                                        text = "Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
 
-                                    Text(modifier = Modifier.clickable(
+                                    Text(
+                                        modifier = Modifier.clickable(
                                         interactionSource = interactionSource,
                                         indication = null
                                     ) {
@@ -869,7 +878,8 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                             }
 
                             item {
-                                LazyRow(modifier = Modifier.fillMaxWidth()
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth()
                                     .padding(top = 10.dp),
                                     contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
                                     horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -889,7 +899,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                                 }
                                         ) {
                                             AsyncImage(
-                                                model = album.image[2].url,
+                                                model = album.image.getOrNull(2)?.url,
                                                 contentDescription = album.name,
                                                 contentScale = ContentScale.Crop,
                                                 error = painterResource(R.drawable.default_image),
@@ -901,19 +911,23 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
 
                                             Spacer(modifier = Modifier.height(8.dp))
 
-                                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                            Text(
+                                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                                                 text = album.name,
                                                 fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.primary_text_color), maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
 
-                                            val artistsName = album.artist
+                                            val artistsList = album.artist
                                                 .takeIf { it.isNotEmpty() }
                                                 ?.joinToString(", ") { it.name }
                                                 ?: "Unknown Artist"
 
-                                            Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                            val artistsName = htmlToText(artistsList)
+
+                                            Text(
+                                                modifier = Modifier.padding(horizontal = 2.dp ),
                                                 text = artistsName,
                                                 fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -925,14 +939,16 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                             }
 
                             item {
-                                Text("Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 8.dp)
+                                Text(
+                                    text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 8.dp)
                                     , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                 )
                             }
 
                             item {
-                                LazyRow(modifier = Modifier.fillMaxWidth()
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth()
                                     .padding(top = 10.dp, bottom = 25.dp),
                                     contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
                                     horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -952,7 +968,7 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                                 }
                                         ) {
                                             AsyncImage(
-                                                model = album.image[2].url,
+                                                model = album.image.getOrNull(2)?.url,
                                                 contentDescription = album.name,
                                                 contentScale = ContentScale.Crop,
                                                 error = painterResource(R.drawable.default_image),
@@ -964,19 +980,23 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
 
                                             Spacer(modifier = Modifier.height(8.dp))
 
-                                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                            Text(
+                                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                                                 text = album.name,
                                                 fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.primary_text_color), maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
 
-                                            val artistsName = album.artist
+                                            val artistsList = album.artist
                                                 .takeIf { it.isNotEmpty() }
                                                 ?.joinToString(", ") { it.name }
                                                 ?: "Unknown Artist"
 
-                                            Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                            val artistsName = htmlToText(artistsList)
+
+                                            Text(
+                                                modifier = Modifier.padding(horizontal = 2.dp ),
                                                 text = artistsName,
                                                 fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -988,14 +1008,12 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                             }
                         }
 
-                        selectedSong?.let { song ->
+                        if (showSheet && selectedSong != null) {
+                            val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
-                                songId = song.id,
-                                imageUrl = song.image.getOrNull(2)?.url,
-                                songName = htmlToText(song.name),
-                                albumName = htmlToText(song.album?.name),
+                                song = song,
                                 onDismiss = {
                                     showSheet = false
                                     selectedSong = null
@@ -1013,12 +1031,8 @@ private fun Artist_Activity(artistId: String?, artistImageUrl: String?, viewMode
                                     showSheet = false
                                 },
                                 isFavourite = isFavourite,
-                                onToggleFavourite = { id ->
-                                    likedViewModel.toggleLike(
-                                        songId = id,
-                                        songName = song.name,
-                                        imageUrl = song.image.getOrNull(2)?.url
-                                    )
+                                onToggleFavourite = {
+                                    likedViewModel.toggleLike(song)
                                 }
                             )
                         }

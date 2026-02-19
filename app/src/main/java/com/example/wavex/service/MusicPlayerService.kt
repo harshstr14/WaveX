@@ -105,7 +105,7 @@ class  MusicPlayerService : LifecycleService() {
         val placeholderNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("WaveX is starting…")
             .setContentText("Preparing your music")
-            .setSmallIcon(R.drawable.headset_image)
+            .setSmallIcon(R.drawable.headset_icon)
             .build()
         startForeground(NOTIFICATION_ID, placeholderNotification)
 
@@ -261,7 +261,7 @@ class  MusicPlayerService : LifecycleService() {
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("WaveX is running…")
                 .setContentText("Preparing your music")
-                .setSmallIcon(R.drawable.headset_image)
+                .setSmallIcon(R.drawable.headset_icon)
                 .build()
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -593,7 +593,7 @@ class  MusicPlayerService : LifecycleService() {
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(songName)
             .setContentText(artistsNameList)
-            .setSmallIcon(R.drawable.headset_image)
+            .setSmallIcon(R.drawable.headset_icon)
             .setLargeIcon(bitmap)
             //.setContentIntent(openPending)
             .setOnlyAlertOnce(true)

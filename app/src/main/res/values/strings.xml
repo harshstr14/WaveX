@@ -19,4 +19,5 @@
     <string name="title_activity_setting">SettingActivity</string>
     <string name="title_activity_playlists">PlaylistsActivity</string>
     <string name="title_activity_playlist">PlaylistActivity</string>
+    <string name="title_activity_liked_songs_activtiy">LikedSongsActivtiy</string>
 </resources>

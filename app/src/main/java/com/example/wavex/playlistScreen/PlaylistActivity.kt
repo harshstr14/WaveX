@@ -140,7 +140,7 @@ class PlaylistActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel: PlaylistViewModel = viewModel())  {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -230,11 +230,13 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
     val isTitleVisible = !isLoading && !playlists.isError
     var showSheet by remember { mutableStateOf(false) }
 
-    val shouldBlur = showSheet
-
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     Scaffold(
@@ -340,7 +342,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                                         .addOnSuccessListener {
                                                             isLiked = true
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Added To Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -348,7 +350,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                                         }
                                                         .addOnFailureListener {
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Failed To Add in Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -361,7 +363,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                                         .addOnSuccessListener {
                                                             isLiked = false
                                                             scope.launch {
-                                                                snackbarHostState.showSnackbar(
+                                                                snackBarHostState.showSnackbar(
                                                                     message = "Removed From Favourite",
                                                                     duration = SnackbarDuration.Short
                                                                 )
@@ -372,7 +374,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
 
                                             override fun onCancelled(error: DatabaseError) {
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("Database Error: ${error.message}")
+                                                    snackBarHostState.showSnackbar("Database Error: ${error.message}")
                                                 }
                                             }
                                         })
@@ -381,7 +383,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                             ) {
                                 Icon(
                                     painter = painterResource(if (isLiked) R.drawable.heart_filled else R.drawable.heart_outline),
-                                    contentDescription = "Like Icon",
+                                    contentDescription = "Heart Icon",
                                     tint = if (isLiked)
                                         colorResource(R.color.theme_color)
                                     else
@@ -402,7 +404,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
             }
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -496,7 +498,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                 ) {
                                     AsyncImage(
                                         model = playlistImageUrl ?: R.drawable.default_image,
-                                        contentDescription = "Album Image",
+                                        contentDescription = "Playlist Image",
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
@@ -556,14 +558,14 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.primary_text_color),
+                                                tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "Songs : ${playlists.songCount}",
+                                                text = "${playlists.songCount} Songs",
                                                 fontSize = 12.sp,
                                                 lineHeight = 12.sp,
                                                 fontFamily = fonts,
@@ -587,7 +589,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                             Icon(
                                                 painter = painterResource(R.drawable.clock),
                                                 contentDescription = "Time Icon",
-                                                tint = colorResource(R.color.primary_text_color),
+                                                tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
                                             )
 
@@ -718,7 +720,8 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
 
                                             val artistName = htmlToText(artist.name)
 
-                                            Text( modifier = Modifier.width(78.dp),
+                                            Text(
+                                                modifier = Modifier.width(78.dp),
                                                 text = artistName,
                                                 fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
@@ -854,14 +857,12 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                             }
                         }
 
-                        selectedSong?.let { song ->
+                        if (showSheet && selectedSong != null) {
+                            val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
-                                songId = song.id,
-                                imageUrl = song.image.getOrNull(2)?.url,
-                                songName = htmlToText(song.name),
-                                albumName = htmlToText(song.album?.name),
+                                song = song,
                                 onDismiss = {
                                     showSheet = false
                                     selectedSong = null
@@ -879,12 +880,8 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                     showSheet = false
                                 },
                                 isFavourite = isFavourite,
-                                onToggleFavourite = { id ->
-                                    likedViewModel.toggleLike(
-                                        songId = id,
-                                        songName = song.name,
-                                        imageUrl = song.image.getOrNull(2)?.url
-                                    )
+                                onToggleFavourite = {
+                                    likedViewModel.toggleLike(song)
                                 }
                             )
                         }
@@ -898,31 +895,36 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongOptionsBottomSheet(
-    songId: String,
-    imageUrl: String?,
-    songName: String,
-    albumName: String,
+    song: SongItem,
     onDismiss: () -> Unit,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
-    onToggleFavourite: (String) -> Unit
+    onToggleFavourite: (SongItem) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
 
+    LaunchedEffect(Unit) {
+        sheetState.show()
+    }
+
     ModalBottomSheet(
-        onDismissRequest = { onDismiss() },
+        onDismissRequest = {
+            scope.launch {
+                sheetState.hide()
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = colorResource(R.color.background_color),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
         BottomSheetContent(
-            songId,
-            imageUrl,
-            songName,
-            albumName,
+            song,
             onPlayNow,
             isFavourite,
             onToggleFavourite
@@ -932,13 +934,10 @@ fun SongOptionsBottomSheet(
 
 @Composable
 private fun BottomSheetContent(
-    songId: String,
-    imageUrl: String?,
-    songName: String,
-    albumName: String,
+    song: SongItem,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
-    onToggleFavourite: (String) -> Unit
+    onToggleFavourite: (SongItem) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -948,7 +947,7 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(28.dp))
 
         AsyncImage(
-            model = imageUrl,
+            model = song.image.getOrNull(2)?.url,
             contentDescription = null,
             modifier = Modifier
                 .size(180.dp)
@@ -965,7 +964,7 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = songName, textAlign = TextAlign.Center,
+            text = htmlToText(song.name), textAlign = TextAlign.Center,
             fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
@@ -974,7 +973,7 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Album • $albumName", textAlign = TextAlign.Center,
+            text = "Album • ${htmlToText(song.album?.name)}", textAlign = TextAlign.Center,
             fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
@@ -999,7 +998,7 @@ private fun BottomSheetContent(
             text = if (isFavourite) "Remove from Favourite" else "Save to Favourite",
             isAnimated = isFavourite)
         {
-            onToggleFavourite(songId)
+            onToggleFavourite(song)
         }
         //SheetOptionItem(R.drawable.next_icon, "Play Next")
         SheetOptionItem(R.drawable.add_playlist_icon, "Add to Playlist") {
@@ -1056,7 +1055,7 @@ fun SheetOptionItem(
             ) {
                 onClick()
             }
-            .padding(vertical = 12.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

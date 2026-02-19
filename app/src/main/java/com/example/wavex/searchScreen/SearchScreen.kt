@@ -2,6 +2,9 @@ package com.example.wavex.searchScreen
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -68,6 +71,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -104,10 +108,14 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
 import com.example.wavex.searchScreen.uiState.SearchArtistsUiState
 import com.example.wavex.searchScreen.uiState.SearchPlaylistUiState
@@ -127,12 +135,31 @@ import kotlinx.coroutines.launch
 @Composable
 fun SearchScreen(navController: NavController) {
     val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
     var debouncedQuery by remember { mutableStateOf("") }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    var showSheet by remember { mutableStateOf(false) }
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var currentSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    var selectedIndex by remember { mutableStateOf(0) }
+
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsStateWithLifecycle()
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
+    )
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.15f else 1f,
@@ -143,10 +170,25 @@ fun SearchScreen(navController: NavController) {
         label = "ShareScale"
     )
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val(searchField,backButton,searchResults) = createRefs()
+    ConstraintLayout(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                    renderEffect = RenderEffect
+                        .createBlurEffect(
+                            animatedBlur,
+                            animatedBlur,
+                            Shader.TileMode.CLAMP
+                        )
+                        .asComposeRenderEffect()
+                }
+            }
+    ) {
+        val(searchField, backButton, searchResults) = createRefs()
 
-        Box(modifier = Modifier.constrainAs(backButton) {
+        Box(
+            modifier = Modifier.constrainAs(backButton) {
             top.linkTo(searchField.top)
             bottom.linkTo(searchField.bottom)
             start.linkTo(parent.start, margin = 25.dp)
@@ -165,7 +207,7 @@ fun SearchScreen(navController: NavController) {
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
-                contentDescription = "add Icon",
+                contentDescription = "Back Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
                     .graphicsLayer {
@@ -189,13 +231,20 @@ fun SearchScreen(navController: NavController) {
             }
         )
 
-        SearchTabs(modifier = Modifier.constrainAs(searchResults){
+        SearchTabs(
+            modifier = Modifier.constrainAs(searchResults){
             top.linkTo(searchField.bottom, margin = 12.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
             bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
-            },debouncedQuery
+            },debouncedQuery,
+            onSongMoreClick = { song, songs, index ->
+                selectedSong = song
+                currentSongs = songs
+                selectedIndex = index
+                showSheet = true
+            }
         )
 
         LaunchedEffect(Unit) {
@@ -206,6 +255,41 @@ fun SearchScreen(navController: NavController) {
                     debouncedQuery = text
                 }
         }
+    }
+
+    if (showSheet && selectedSong != null) {
+
+        val song = selectedSong!!
+        val isFavourite = likedSongs.contains(song.id)
+
+        SongOptionsBottomSheet(
+            song = song,
+            isFavourite = isFavourite,
+            onDismiss = {
+                showSheet = false
+                selectedSong = null
+            },
+            onPlayNow = {
+                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putExtra("index", selectedIndex)
+                }
+
+                PlayerManager.currentPlaylist = currentSongs
+                PlayerManager.currentIndex = selectedIndex
+
+                ContextCompat.startForegroundService(context, intent)
+
+                scope.launch {
+                    RecentlyPlayedManager.add(context, song)
+                }
+
+                showSheet = false
+            },
+            onToggleFavourite = {
+                likedViewModel.toggleLike(song)
+            }
+        )
     }
 }
 
@@ -289,7 +373,9 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
 
 @SuppressLint("FrequentlyChangingValue")
 @Composable
-private fun SearchTabs(modifier: Modifier, searchText: String) {
+private fun SearchTabs(modifier: Modifier, searchText: String,
+                       onSongMoreClick: (song: SongItem, songs: List<SongItem>, index: Int) -> Unit
+) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -393,7 +479,11 @@ private fun SearchTabs(modifier: Modifier, searchText: String) {
                 }
 
                 "Songs" -> {
-                    SearchSongs(searchText, "results", modifier = Modifier, listState = songsListState)
+                    SearchSongs(searchText, "results", modifier = Modifier, listState = songsListState,
+                        onMoreClick = { song, songs, index ->
+                            onSongMoreClick(song, songs, index)
+                        }
+                    )
                 }
 
                 "Albums" -> {
@@ -554,7 +644,8 @@ private fun SearchSongs(
     root: String,
     modifier: Modifier,
     viewModel: SearchSongsViewModel = viewModel(),
-    listState: LazyListState
+    listState: LazyListState,
+    onMoreClick: (SongItem, List<SongItem>, Int) -> Unit
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -608,22 +699,22 @@ private fun SearchSongs(
                         modifier = Modifier.hideKeyboardOnClick {
                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                 action = MusicPlayerService.ACTION_PLAY_NEW
-                                putParcelableArrayListExtra("playlist", ArrayList(songs))
                                 putExtra("index", index)
                             }
+
+                            PlayerManager.currentPlaylist = songs
+                            PlayerManager.currentIndex = index
 
                             ContextCompat.startForegroundService(context, intent)
 
                             scope.launch {
                                 RecentlyPlayedManager.add(context, song)
                             }
-                        }
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
+                        }.fillMaxWidth().padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = song.image[2].url,
+                            model = song.image.getOrNull(2)?.url,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Crop
@@ -699,7 +790,7 @@ private fun SearchSongs(
                                 )
                             }
 
-                            IconButton(onClick = { }) {
+                            IconButton(onClick = { onMoreClick(song, songs, index) }) {
                                 Icon(
                                     modifier = Modifier.size(20.dp),
                                     painter = painterResource(R.drawable.three_dots_icon),

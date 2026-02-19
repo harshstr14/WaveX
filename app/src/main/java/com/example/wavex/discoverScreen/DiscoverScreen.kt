@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -111,13 +112,12 @@ import kotlin.math.absoluteValue
 
 @Composable
 fun DiscoverScreen(navController: NavController) {
-
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.15f else 1f,
@@ -130,11 +130,13 @@ fun DiscoverScreen(navController: NavController) {
 
     var showSheet by remember { mutableStateOf(false) }
 
-    val shouldBlur = showSheet
-
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()
@@ -152,7 +154,8 @@ fun DiscoverScreen(navController: NavController) {
     ) {
         val(backButton, titleText, categoryTabs, contentPager) = createRefs()
 
-        Text("Explore", modifier = Modifier.constrainAs(titleText) {
+        Text(
+            text = "Explore", modifier = Modifier.constrainAs(titleText) {
             top.linkTo(parent.top, margin = 22.dp)
             start.linkTo(parent.start)
             end.linkTo(parent.end)
@@ -161,7 +164,8 @@ fun DiscoverScreen(navController: NavController) {
             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
-        Box(modifier = Modifier.constrainAs(backButton) {
+        Box(
+            modifier = Modifier.constrainAs(backButton) {
             top.linkTo(titleText.top)
             bottom.linkTo(titleText.bottom)
             start.linkTo(parent.start, margin = 25.dp)
@@ -180,7 +184,7 @@ fun DiscoverScreen(navController: NavController) {
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
-                contentDescription = "add Icon",
+                contentDescription = "Add Icon",
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
                     .graphicsLayer {
@@ -258,7 +262,8 @@ fun DiscoverScreen(navController: NavController) {
                                             stiffness = Spring.StiffnessLow
                                         )
                                     )
-                            } }
+                                }
+                            }
                         )
                 ) {
                     Box(
@@ -362,10 +367,7 @@ fun DiscoverScreen(navController: NavController) {
         val isFavourite = likedSongs.contains(song.id)
 
         SongOptionsBottomSheet(
-            songId = song.id,
-            imageUrl = song.image.getOrNull(2)?.url,
-            songName = htmlToText(song.name),
-            albumName = htmlToText(song.album?.name),
+            song = song,
             isFavourite = isFavourite,
             onDismiss = {
                 showSheet = false
@@ -379,11 +381,9 @@ fun DiscoverScreen(navController: NavController) {
                 ContextCompat.startForegroundService(context, intent)
                 showSheet = false
             },
-            onToggleFavourite = { id ->
+            onToggleFavourite = {
                 likedViewModel.toggleLike(
-                    songId = id,
-                    songName = song.name,
-                    imageUrl = song.image.getOrNull(2)?.url
+                    song = song
                 )
             }
         )
@@ -515,7 +515,7 @@ fun ExploreSongs(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = song.image[2].url,
+                            model = song.image.getOrNull(2)?.url,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Crop
@@ -674,7 +674,8 @@ fun ExploreArtists(
 
                         val artistName = htmlToText(artist.name)
 
-                        Text( modifier = Modifier.width(78.dp),
+                        Text(
+                            modifier = Modifier.width(78.dp),
                             text = artistName,
                             fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
@@ -740,7 +741,7 @@ fun ExploreAlbums(
                             }
                     ) {
                         AsyncImage(
-                            model = album.image[2].url,
+                            model = album.image.getOrNull(2)?.url,
                             contentDescription = album.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),
@@ -753,7 +754,8 @@ fun ExploreAlbums(
 
                         val albumName = htmlToText(album.name)
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                        Text(
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = albumName,
                             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 1,
@@ -767,7 +769,8 @@ fun ExploreAlbums(
 
                         val artistsName = htmlToText(artistsList)
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                        Text(
+                            modifier = Modifier.padding(horizontal = 2.dp ),
                             text = artistsName,
                             fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
@@ -833,7 +836,7 @@ fun ExplorePlaylist(
                             }
                     ) {
                         AsyncImage(
-                            model = playlist.image[2].url,
+                            model = playlist.image.getOrNull(2)?.url,
                             contentDescription = playlist.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),
@@ -846,7 +849,8 @@ fun ExplorePlaylist(
 
                         val playlistName = htmlToText(playlist.name)
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                        Text(
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                             text = playlistName,
                             fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color), maxLines = 2,

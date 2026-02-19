@@ -28,6 +28,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
         <activity
+            android:name=".libraryScreen.likedSongsScreen.LikedSongsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_liked_songs_activtiy"
+            android:theme="@style/Theme.WaveX" />
+        <activity
             android:name=".libraryScreen.playlistScreen.PlaylistActivity"
             android:exported="false"
             android:label="@string/title_activity_playlist"

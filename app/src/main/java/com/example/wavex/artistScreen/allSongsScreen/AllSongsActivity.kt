@@ -120,7 +120,7 @@ class AllSongsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewModel()) {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val songsListState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -157,11 +157,13 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
 
     var showSheet by remember { mutableStateOf(false) }
 
-    val shouldBlur = showSheet
-
     val animatedBlur by animateFloatAsState(
-        targetValue = if (shouldBlur) 25f else 0f,
-        label = ""
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     Scaffold(
@@ -216,7 +218,7 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
             )
         },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -332,7 +334,7 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = song.image[2].url,
+                                        model = song.image.getOrNull(2)?.url,
                                         contentDescription = null,
                                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                                         contentScale = ContentScale.Crop
@@ -450,14 +452,12 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
                             }
                         }
 
-                        selectedSong?.let { song ->
+                        if (showSheet && selectedSong != null) {
+                            val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
-                                songId = song.id,
-                                imageUrl = song.image.getOrNull(2)?.url,
-                                songName = htmlToText(song.name),
-                                albumName = htmlToText(song.album?.name),
+                                song = song,
                                 onDismiss = {
                                     showSheet = false
                                     selectedSong = null
@@ -475,12 +475,8 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
                                     showSheet = false
                                 },
                                 isFavourite = isFavourite,
-                                onToggleFavourite = { id ->
-                                    likedViewModel.toggleLike(
-                                        songId = id,
-                                        songName = song.name,
-                                        imageUrl = song.image.getOrNull(2)?.url
-                                    )
+                                onToggleFavourite = {
+                                    likedViewModel.toggleLike(song)
                                 }
                             )
                         }
