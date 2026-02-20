@@ -6,6 +6,7 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -29,12 +30,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,6 +56,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -83,6 +90,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
@@ -95,6 +103,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
@@ -139,7 +148,10 @@ class PlaylistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel: PlaylistViewModel = viewModel())  {
+fun Playlist_Activity(
+    playlistId: String?, playlistImageUrl: String?,
+    viewModel: PlaylistViewModel = viewModel()
+)  {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -152,7 +164,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -587,7 +599,7 @@ fun Playlist_Activity(playlistId: String?, playlistImageUrl: String?, viewModel:
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                painter = painterResource(R.drawable.clock),
+                                                painter = painterResource(R.drawable.airpods_icon),
                                                 contentDescription = "Time Icon",
                                                 tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
@@ -902,10 +914,18 @@ fun SongOptionsBottomSheet(
     onToggleFavourite: (SongItem) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showPlaylistDialog by remember { mutableStateOf(false) }
+    var showArtistsDialog by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val artistsGridState = rememberLazyGridState()
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
+
+    val playlistViewModel: com.example.wavex.libraryScreen.PlaylistViewModel = viewModel()
+    val playlistsList by playlistViewModel.playlists.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         sheetState.show()
@@ -927,8 +947,180 @@ fun SongOptionsBottomSheet(
             song,
             onPlayNow,
             isFavourite,
-            onToggleFavourite
+            onToggleFavourite,
+            onAddToPlaylistClick = {
+                showPlaylistDialog = true
+            },
+            onShowArtistsClick = {
+                showArtistsDialog = true
+            }
         )
+    }
+
+    if (showArtistsDialog) {
+        Dialog(onDismissRequest = { showArtistsDialog = false}) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = colorResource(R.color.background_color)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth().padding(20.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.mic_icon),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Text(
+                            text = "Artists",
+                            fontFamily = fonts,
+                            fontSize = 18.sp, lineHeight = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                        thickness = 1.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
+                    )
+
+                    LazyVerticalGrid(
+                        state = artistsGridState,
+                        columns = GridCells.Fixed(3),
+                        contentPadding = PaddingValues(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(song.artist) { artist ->
+                            Column(
+                                modifier = Modifier.clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
+                                    val intent = Intent(context, ArtistActivity::class.java).apply {
+                                        putExtra("artist_id", artist.id)
+                                        putExtra("artist_imageUrl", artist.image)
+                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    }
+                                    context.startActivity(intent)
+                                } ,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                AsyncImage(
+                                    model = artist.image.takeIf { it.isNotBlank() },
+                                    contentDescription = artist.name,
+                                    contentScale = ContentScale.Crop,
+                                    error = painterResource(R.drawable.default_artist),
+                                    modifier = Modifier
+                                        .size(62.dp)
+                                        .clip(CircleShape)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val artistName = htmlToText(artist.name)
+
+                                Text(
+                                    modifier = Modifier.width(78.dp),
+                                    text = artistName,
+                                    fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showPlaylistDialog) {
+        Dialog(onDismissRequest = { showPlaylistDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = colorResource(R.color.background_color)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth().padding(20.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.playlist_icon),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Text(
+                            text = "Select Playlist",
+                            fontFamily = fonts,
+                            fontSize = 18.sp, lineHeight = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                        thickness = 1.2.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 400.dp)
+                    ) {
+                        items(
+                            items = playlistsList.playlists,
+                            key = { it.playlistId }
+                        ) { playlist ->
+                            Text(
+                                text = playlist.playlistName,
+                                fontFamily = fonts,
+                                fontSize = 14.sp, lineHeight = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                maxLines = 2,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showPlaylistDialog = false
+                                        playlistViewModel.addSongToPlaylist(
+                                            playlistId = playlist.playlistId,
+                                            song = song
+                                        ) { success, message ->
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    .padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -937,8 +1129,12 @@ private fun BottomSheetContent(
     song: SongItem,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
-    onToggleFavourite: (SongItem) -> Unit
+    onToggleFavourite: (SongItem) -> Unit,
+    onAddToPlaylistClick: () -> Unit,
+    onShowArtistsClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1002,7 +1198,7 @@ private fun BottomSheetContent(
         }
         //SheetOptionItem(R.drawable.next_icon, "Play Next")
         SheetOptionItem(R.drawable.add_playlist_icon, "Add to Playlist") {
-
+            onAddToPlaylistClick()
         }
 
         SheetOptionItem(R.drawable.queue_icon, "Add to queue") {
@@ -1014,11 +1210,16 @@ private fun BottomSheetContent(
         }
 
         SheetOptionItem(R.drawable.mic_icon, "View Artist") {
-
+            onShowArtistsClick()
         }
 
         SheetOptionItem(R.drawable.album_icon, "Go to Album") {
-
+            val intent = Intent(context, AlbumActivity::class.java).apply {
+                putExtra("album_id", song.album?.id)
+                putExtra("album_imageUrl", "")
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            context.startActivity(intent)
         }
 
         SheetOptionItem(R.drawable.share_icon, "Share") {

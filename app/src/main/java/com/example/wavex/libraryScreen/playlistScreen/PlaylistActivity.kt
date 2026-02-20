@@ -126,7 +126,10 @@ class PlaylistActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Playlist_Activity( playlistId: String?, viewModel: PlaylistViewModel = viewModel()) {
+private fun Playlist_Activity(
+    playlistId: String?,
+    viewModel: PlaylistViewModel = viewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -463,7 +466,7 @@ private fun Playlist_Activity( playlistId: String?, viewModel: PlaylistViewModel
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                painter = painterResource(R.drawable.clock),
+                                                painter = painterResource(R.drawable.airpods_icon),
                                                 contentDescription = "Time Icon",
                                                 tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)
@@ -703,7 +706,7 @@ private fun Playlist_Activity( playlistId: String?, viewModel: PlaylistViewModel
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
-                               song = song,
+                                song = song,
                                 onDismiss = {
                                     showSheet = false
                                     selectedSong = null

@@ -142,6 +142,12 @@ object RecentlyPlayedManager {
                 ?.let { gson.fromJson<List<SongItem>>(it, type) }
                 ?: emptyList()
         }
+
+    suspend fun clear(context: Context) {
+        context.musicDataStore.edit { prefs ->
+            prefs.remove(RECENTLY_PLAYED_KEY)
+        }
+    }
 }
 
 object ProfilePrefs {
@@ -171,6 +177,12 @@ object ProfilePrefs {
         context.dataStore.data.map {
             it[USER_NAME]
         }
+
+    suspend fun clear(context: Context) {
+        context.dataStore.edit { prefs ->
+            prefs.clear()
+        }
+    }
 }
 
 @Composable

@@ -48,6 +48,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -116,7 +117,9 @@ class FavouriteSongsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Favourite_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
+fun Favourite_Songs_Activity(
+    viewModel: FavouriteSongViewModel = viewModel(),
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val songsListState = rememberLazyListState()
@@ -131,7 +134,7 @@ fun Favourite_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.15f else 1f,

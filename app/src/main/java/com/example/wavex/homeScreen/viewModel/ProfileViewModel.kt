@@ -70,6 +70,20 @@ class ProfileViewModel(
         }
     }
 
+    fun reloadProfileFromFirebase(uid: String) {
+        database.child(uid).get().addOnSuccessListener { snapshot ->
+            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
+            val newName = snapshot.child("name").getValue(String::class.java)
+
+            viewModelScope.launch {
+                if (!newUrl.isNullOrEmpty()) saveProfileUrl(getApplication(), newUrl)
+                if (!newName.isNullOrEmpty()) saveUserName(getApplication(), newName)
+            }
+        }.addOnFailureListener { e ->
+            e.printStackTrace()
+        }
+    }
+
     private val _isUploading = MutableStateFlow(false)
     val isUploading = _isUploading.asStateFlow()
 

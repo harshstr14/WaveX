@@ -2,6 +2,7 @@ package com.example.wavex.libraryScreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wavex.homeScreen.SongItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -49,5 +50,13 @@ class PlaylistViewModel(
         onResult: (Boolean) -> Unit
     ) {
         repository.deletePlaylist(playlistId, onResult)
+    }
+
+    fun addSongToPlaylist(
+        playlistId: String,
+        song: SongItem,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        repository.addSongToPlaylist(playlistId, song, onResult)
     }
 }

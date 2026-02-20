@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -123,7 +124,9 @@ class LikedSongsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Liked_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
+fun Liked_Songs_Activity(
+    viewModel: FavouriteSongViewModel = viewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -136,7 +139,7 @@ fun Liked_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
     val totalDuration by viewModel.totalDuration.collectAsStateWithLifecycle()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val songsList by viewModel.songs.collectAsStateWithLifecycle()
 
@@ -446,7 +449,7 @@ fun Liked_Songs_Activity(viewModel: FavouriteSongViewModel = viewModel()) {
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                painter = painterResource(R.drawable.clock),
+                                                painter = painterResource(R.drawable.airpods_icon),
                                                 contentDescription = "Time Icon",
                                                 tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)

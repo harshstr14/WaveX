@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -137,7 +138,10 @@ class AlbumActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: AlbumViewModel = viewModel()) {
+private fun Album_Activity(
+    albumId: String?, albumImageUrl: String?,
+    viewModel: AlbumViewModel = viewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -149,8 +153,14 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
+    val imageToLoad = if (albumImageUrl.isNullOrBlank()) {
+        albums.albumImages.getOrNull(2)?.url
+    } else {
+        albumImageUrl
+    }
+
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -339,7 +349,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                                     val albumData = mapOf(
                                                         "albumId" to albumId,
                                                         "albumName" to albums.albumName,
-                                                        "albumImageUrl" to albumImageUrl,
+                                                        "albumImageUrl" to imageToLoad,
                                                         "primaryArtists" to artistsName,
                                                         "isFavourite" to true
                                                     )
@@ -502,7 +512,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                                 ) {
                                     AsyncImage(
-                                        model = albumImageUrl ?: R.drawable.default_image,
+                                        model = imageToLoad,
                                         contentDescription = "Album Image",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
@@ -591,7 +601,7 @@ private fun Album_Activity(albumId: String?, albumImageUrl: String?, viewModel: 
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                painter = painterResource(R.drawable.clock),
+                                                painter = painterResource(R.drawable.airpods_icon),
                                                 contentDescription = "Time Icon",
                                                 tint = colorResource(R.color.secondary_text_color),
                                                 modifier = Modifier.size(18.dp)

@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -119,7 +120,10 @@ class AllSongsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel = viewModel()) {
+private fun All_Songs_Activity(
+    artistId: String?,
+    viewModel: AllSongsViewModel = viewModel(),
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val songsListState = rememberLazyListState()
@@ -132,7 +136,7 @@ private fun All_Songs_Activity(artistId: String?, viewModel: AllSongsViewModel =
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableStateOf(-1) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current

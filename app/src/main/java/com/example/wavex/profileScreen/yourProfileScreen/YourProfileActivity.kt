@@ -766,7 +766,7 @@ private fun YourProfileScreen(
                             ExposedDropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
-                                containerColor = colorResource(R.color.secondary_text_color),
+                                containerColor = Color(0xFF3a3a3a),
                                 tonalElevation = 0.dp,
                                 shadowElevation = 0.dp,
                                 shape = RoundedCornerShape(12.dp)

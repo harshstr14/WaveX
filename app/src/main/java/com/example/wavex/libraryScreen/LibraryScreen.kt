@@ -5,6 +5,7 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -16,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +40,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -89,20 +94,15 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.BuildConfig
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.libraryScreen.importPlaylist.ImportPlaylistViewModel
 import com.example.wavex.libraryScreen.importPlaylist.ImportState
+import com.example.wavex.libraryScreen.likedSongsScreen.LikedSongsActivity
 import com.example.wavex.libraryScreen.playlistScreen.PlaylistActivity
+import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
-import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.ui.Alignment
-import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.libraryScreen.likedSongsScreen.LikedSongsActivity
 
 enum class SheetType {
     CREATE_PLAYLIST,
@@ -715,89 +715,38 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
     }
 
     if (showDeleteDialog && playlistToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            containerColor = colorResource(R.color.background_color),
-            shape = RoundedCornerShape(16.dp),
-            title = {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.delete_icon),
-                        contentDescription = null,
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(24.dp)
-                    )
+        ConfirmActionDialog(
+            title = "Delete Playlist",
+            message = "Are you sure you want to delete \"${playlistToDelete!!.playlistName}\" ?",
+            confirmText = "Delete",
+            icon = R.drawable.delete_icon,
+            onConfirm = {
+                viewModel.deletePlaylist(
+                    playlistToDelete!!.playlistId
+                ) { success ->
 
-                    Text(
-                        text = "Delete Playlist",
-                        fontFamily = fonts,
-                        fontSize = 18.sp, lineHeight = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                    if (success) {
+                        scope.launch {
+                            snackBarHostState.showSnackbar(
+                                "Playlist deleted",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    } else {
+                        scope.launch {
+                            snackBarHostState.showSnackbar(
+                                "Failed to delete playlist",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+
+                    showDeleteDialog = false
+                    playlistToDelete = null
                 }
             },
-            text = {
-                Text(
-                    text = "Are you sure you want to delete \"${playlistToDelete!!.playlistName}\" ?",
-                    fontFamily = fonts,
-                    fontSize = 14.sp, lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color)
-                )
-            },
-            confirmButton = {
-                Text(
-                    text = "Delete",
-                    fontSize = 14.sp, lineHeight = 15.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.theme_color),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                        .clickable {
-                            viewModel.deletePlaylist(
-                                playlistToDelete!!.playlistId
-                            ) { success ->
-
-                                if (success) {
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            "Playlist deleted",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                } else {
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            "Failed to delete playlist",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }
-
-                                showDeleteDialog = false
-                                playlistToDelete = null
-                            }
-                    }
-                )
-            },
-            dismissButton = {
-                Text(
-                    text = "Cancel",
-                    color = colorResource(R.color.theme_color),
-                    fontSize = 14.sp, lineHeight = 15.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Normal,
-                    modifier = Modifier.clickable {
-                        showDeleteDialog = false
-                    }
-                )
+            onDismiss = {
+                showDeleteDialog = false
             }
         )
     }

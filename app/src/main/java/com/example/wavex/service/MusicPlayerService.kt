@@ -42,6 +42,12 @@ import com.example.wavex.R
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -84,6 +90,7 @@ class  MusicPlayerService : LifecycleService() {
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
     var qualityIndex = 4
+    private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val imageLoader by lazy { ImageLoader(this) }
 
@@ -101,6 +108,15 @@ class  MusicPlayerService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+        qualityRef = FirebaseDatabase.getInstance()
+            .getReference("Users")
+            .child(userId.toString())
+            .child("streamingQuality")
+
+        listenForQualityChanges()
 
         val placeholderNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("WaveX is starting…")
@@ -173,6 +189,30 @@ class  MusicPlayerService : LifecycleService() {
             }
         })
     }
+
+    private fun listenForQualityChanges() {
+        qualityRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val quality = snapshot.getValue(String::class.java) ?: return
+
+                val index = when (quality) {
+                    "Low" -> 2
+                    "Normal" -> 3
+                    "High" -> 4
+                    else -> 4
+                }
+
+                if (qualityIndex != index) {
+                    setQuality(index)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("MusicService", "Quality listener cancelled: ${error.message}")
+            }
+        })
+    }
+
     private fun initMediaSession() {
         mediaSession = MediaSessionCompat(this, "MusicPlayerService")
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
@@ -383,6 +423,28 @@ class  MusicPlayerService : LifecycleService() {
         repeatMode.value = !repeatMode.value!!
         updateNotification()
     }
+
+    fun setQuality(index: Int) {
+        val currentSong = currentSongLive.value ?: return
+        val currentPosition = player.currentPosition
+        val wasPlaying = player.isPlaying
+
+        qualityIndex = index
+
+        player.stop()
+        player.clearMediaItems()
+
+        val mediaItem = MediaItem.fromUri(
+            currentSong.downloadUrl[qualityIndex].url.toUri()
+        )
+
+        player.setMediaItem(mediaItem)
+        player.prepare()
+        player.seekTo(currentPosition)
+
+        if (wasPlaying) player.play()
+    }
+
     private fun stopServiceAndNotification() {
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
