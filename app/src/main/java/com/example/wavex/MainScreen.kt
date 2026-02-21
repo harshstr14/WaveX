@@ -159,7 +159,7 @@ class MainScreen : ComponentActivity() {
 @Composable
 fun Main_Screen() {
     val navController = rememberNavController()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
@@ -168,16 +168,16 @@ fun Main_Screen() {
         },
         contentWindowInsets = WindowInsets(0),
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -207,7 +207,7 @@ fun Main_Screen() {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = colorResource(R.color.background_color)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -267,7 +267,7 @@ fun Main_Screen() {
                 SearchScreen(navController)
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController, snackBarHostState = snackbarHostState)
+                LibraryScreen(navController, snackBarHostState = snackBarHostState)
             }
         }
     }
@@ -310,16 +310,16 @@ private fun BottomNavBar(navController: NavController) {
             .fillMaxWidth()
             .padding(start = 18.dp, end = 18.dp, bottom = 8.dp)
             .navigationBarsPadding().height(68.dp).shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = Color(0xFF313131).copy(alpha = 0.2f),
-                spotColor = Color(0xFF313131).copy(alpha = 0.4f)
+                elevation = 28.dp,
+                shape = RoundedCornerShape(28.dp),
+                ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
+                spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
             ).background(Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF313131).copy(alpha = 0.95f),
-                    Color(0xFF313131).copy(alpha = 1f)
+                    Color(0xFF2C2C2C).copy(alpha = 0.95f),
+                    Color(0xFF2C2C2C).copy(alpha = 1f)
                 )
-            ), shape = RoundedCornerShape(24.dp)),
+            ), shape = RoundedCornerShape(28.dp)),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -331,7 +331,7 @@ private fun BottomNavBar(navController: NavController) {
             items.forEach { item ->
                 val selected = currentRoute == item.route
                 val animatedPadding by animateDpAsState(
-                    targetValue = if (selected) 14.dp else 20.dp,
+                    targetValue = if (selected) 14.dp else 22.dp,
                     label = "paddingAnim"
                 )
 
@@ -364,9 +364,9 @@ private fun BottomNavBar(navController: NavController) {
                             horizontal = animatedPadding,
                             vertical = 9.dp
                         ),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
                         painter = painterResource(
                             if (selected) item.filledIcon else item.outlineIcon
@@ -401,7 +401,7 @@ private fun BottomNavBar(navController: NavController) {
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 softWrap = false,
-                                lineHeight = 17.sp
+                                lineHeight = 16.sp
                             )
                         }
                     }

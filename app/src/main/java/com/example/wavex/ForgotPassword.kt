@@ -90,21 +90,26 @@ class ForgotPassword : ComponentActivity() {
 @Composable
 fun ForgotPasswordScreen() {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold (
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -116,7 +121,7 @@ fun ForgotPasswordScreen() {
                                 R.drawable.alert_icon
                             }
                         } ), contentDescription = "Icons",
-                            tint = Color(0xFF34A853), modifier = Modifier.size(24.dp)
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -127,7 +132,7 @@ fun ForgotPasswordScreen() {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = Color(0xFFF6F6F6)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -253,7 +258,7 @@ fun ForgotPasswordScreen() {
 
                     if (email.isBlank()) {
                         scope.launch {
-                            snackbarHostState.showSnackbar(
+                            snackBarHostState.showSnackbar(
                                 message = "Please enter email",
                                 duration = SnackbarDuration.Short
                             )
@@ -263,7 +268,7 @@ fun ForgotPasswordScreen() {
 
                     if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                         scope.launch {
-                            snackbarHostState.showSnackbar(
+                            snackBarHostState.showSnackbar(
                                 message = "Enter a valid email",
                                 duration = SnackbarDuration.Short
                             )
@@ -275,7 +280,7 @@ fun ForgotPasswordScreen() {
                             if (task.isSuccessful) {
                                 Log.d("RecoveryPassword", "Password reset email sent")
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = "Password reset email sent",
                                         duration = SnackbarDuration.Short
                                     )
@@ -283,7 +288,7 @@ fun ForgotPasswordScreen() {
                             } else {
                                 Log.e("RecoveryPassword", "Failed", task.exception)
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = task.exception?.localizedMessage ?: "Something went wrong",
                                         duration = SnackbarDuration.Short
                                     )

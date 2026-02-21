@@ -138,21 +138,26 @@ class SignUp : ComponentActivity() {
 @Composable
 fun SignUpScreen(onGoogleSignIn: () -> Unit) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold(
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -169,7 +174,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                 R.drawable.alert_icon
                             }
                         } ), contentDescription = "Icons",
-                            tint = if (data.visuals.message.contains("Welcome")) Color.Unspecified else Color(0xFF34A853), modifier = Modifier.size(24.dp)
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -180,7 +185,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = Color(0xFFF6F6F6)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -460,7 +465,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                             when {
                                 name.isBlank() && email.isBlank() && password.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "All fields are required",
                                             duration = SnackbarDuration.Short
                                         )
@@ -470,7 +475,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                                 name.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Please enter your name",
                                             duration = SnackbarDuration.Short
                                         )
@@ -480,7 +485,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                                 email.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Please enter your email",
                                             duration = SnackbarDuration.Short
                                         )
@@ -490,7 +495,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                                 password.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Please enter your password",
                                             duration = SnackbarDuration.Short
                                         )
@@ -500,7 +505,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                                 !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Enter a valid email",
                                             duration = SnackbarDuration.Short
                                         )
@@ -522,7 +527,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                         context.startActivity(intent)
                                     }?.addOnFailureListener {
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Failed to send verification email",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -534,7 +539,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     } catch (e: FirebaseAuthUserCollisionException) {
                                         // Email already in use
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "This email is already registered",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -543,7 +548,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     } catch (e: FirebaseAuthWeakPasswordException) {
                                         // Weak password
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Password is too weak. Use at least 6 characters",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -552,7 +557,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     } catch (e: FirebaseAuthInvalidCredentialsException) {
                                         // Invalid email format
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Invalid email format",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -561,7 +566,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     } catch (e: Exception) {
                                         // Other errors
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Sign-up failed: ${e.message}",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -666,7 +671,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                     }.addOnFailureListener { e ->
                                         Log.e("FirebaseDB", "Failed to save user data: ${e.message}", e)
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Could not save user info. Please try again",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -675,7 +680,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                 } else {
                                     Log.e("Auth", "UID is null after successful registration")
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Something went wrong. Please try again",
                                             duration = SnackbarDuration.Short
                                         )
@@ -683,7 +688,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                                 }
                             } else {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = "Anonymous login failed",
                                         duration = SnackbarDuration.Short
                                     )

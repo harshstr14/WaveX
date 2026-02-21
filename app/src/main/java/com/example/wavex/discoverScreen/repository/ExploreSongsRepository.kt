@@ -51,6 +51,7 @@ class ExploreSongsRepository {
                     album = album,
                     image = images.toMutableList(),
                     duration = song.optInt("duration"),
+                    playCount = song.optInt("playCount"),
                     downloadUrl = downloads.toMutableList()
                 )
             )

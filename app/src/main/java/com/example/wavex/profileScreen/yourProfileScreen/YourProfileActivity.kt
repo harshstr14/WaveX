@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -40,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -354,33 +356,33 @@ private fun YourProfileScreen(
             )
         },
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(
-                                when {
-                                    data.visuals.message.contains("Profile") -> R.drawable.user_icon
-                                    else -> {
-                                        R.drawable.alert_icon
-                                    }
-                                }
-                            ),
-                            contentDescription = "Icons",
-                            tint = colorResource(R.color.theme_color),
-                            modifier = Modifier.size(24.dp)
+                        Icon(painter = painterResource(when {
+                            data.visuals.message.contains("Profile") -> R.drawable.user_icon
+                            else -> {
+                                R.drawable.alert_icon
+                            }
+                        } ), contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -391,7 +393,7 @@ private fun YourProfileScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = colorResource(R.color.background_color)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -460,13 +462,16 @@ private fun YourProfileScreen(
                     )
                 }
 
-                Column(modifier = Modifier.constrainAs(formContainerRef){
-                    top.linkTo(profileImageRef.bottom, margin = 30.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                    bottom.linkTo(updateProfileButtonRef.bottom, margin = 8.dp)
-                    height = Dimension.fillToConstraints
-                }) {
+                Column(modifier = Modifier
+                    .constrainAs(formContainerRef) {
+                        top.linkTo(profileImageRef.bottom, margin = 30.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
+                        height = Dimension.fillToConstraints
+                    }.verticalScroll(rememberScrollState())
+                    .padding(bottom = 25.dp)
+                ) {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                         val (genderLabelRef, genderDropdownRef,
                             nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,

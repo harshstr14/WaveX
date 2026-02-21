@@ -2,14 +2,11 @@ package com.example.wavex.profileScreen.settingScreen
 
 import android.app.Activity
 import android.app.Application
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.IBinder
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -81,6 +78,7 @@ import com.example.wavex.homeScreen.ProfilePrefs
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -91,36 +89,7 @@ import java.io.File
 
 private lateinit var googleSignInManager: GoogleSignInManager
 
-private var musicService: MusicPlayerService? = null
-private var isBound = false
-
-private val serviceConnection = object : ServiceConnection {
-    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        val binder = service as MusicPlayerService.LocalBinder
-        musicService = binder.getService()
-        isBound = true
-    }
-
-    override fun onServiceDisconnected(name: ComponentName?) {
-        musicService = null
-        isBound = false
-    }
-}
 class SettingActivity : ComponentActivity() {
-    override fun onStart() {
-        super.onStart()
-        val intent = Intent(this, MusicPlayerService::class.java)
-        bindService(intent, serviceConnection, BIND_AUTO_CREATE)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        if (isBound) {
-            unbindService(serviceConnection)
-            isBound = false
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -190,6 +159,8 @@ fun Setting_Activity() {
         }
     }
 
+    val musicService = ServiceLocator.musicService
+
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
         topBar = {
@@ -245,38 +216,33 @@ fun Setting_Activity() {
             )
         },
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp)
+                    modifier = Modifier.fillMaxWidth()
                         .shadow(
-                            elevation = 12.dp,
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(
-                                when {
-                                    data.visuals.message.contains("like") -> R.drawable.heart_outline
-                                    data.visuals.message.contains("email") -> R.drawable.email_icon
-                                    data.visuals.message.contains("Welcome") -> R.drawable.logo2
-                                    data.visuals.message.contains("password") -> R.drawable.password_icon
-                                    else -> {
-                                        R.drawable.alert_icon
-                                    }
-                                }
-                            ),
-                            contentDescription = "Icons",
-                            tint = colorResource(R.color.theme_color),
-                            modifier = Modifier.size(24.dp)
+                        Icon(painter = painterResource(when {
+                            data.visuals.message.contains("Reset") -> R.drawable.filled_delete_icon
+                            else -> {
+                                R.drawable.alert_icon
+                            }
+                        } ), contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -287,7 +253,7 @@ fun Setting_Activity() {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = colorResource(R.color.background_color)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -952,7 +918,7 @@ fun ConfirmActionDialog(
     Dialog(onDismissRequest = { onDismiss() }) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = colorResource(R.color.background_color)
+            color = colorResource(R.color.off_white)
         ) {
             Column(
                 modifier = Modifier
@@ -982,7 +948,7 @@ fun ConfirmActionDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),

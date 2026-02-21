@@ -137,23 +137,28 @@ class VerifyEmail : ComponentActivity() {
 
 @Composable
 fun VerifyEmailScreen() {
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var secondsLeft by rememberSaveable { mutableIntStateOf(60) }
     var canResend by rememberSaveable { mutableStateOf(false) }
 
     Scaffold (
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -166,7 +171,7 @@ fun VerifyEmailScreen() {
                                 R.drawable.alert_icon
                             }
                         } ), contentDescription = "Icons",
-                            tint = Color(0xFF34A853), modifier = Modifier.size(24.dp)
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -177,7 +182,7 @@ fun VerifyEmailScreen() {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = Color(0xFFF6F6F6)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -260,7 +265,7 @@ fun VerifyEmailScreen() {
                             canResend = false
 
                             scope.launch {
-                                snackbarHostState.showSnackbar(
+                                snackBarHostState.showSnackbar(
                                     message = "Verification email sent",
                                     duration = SnackbarDuration.Short
                                 )
@@ -294,7 +299,7 @@ fun VerifyEmailScreen() {
                                 }.addOnFailureListener { e ->
                                     Log.e("FirebaseDB", "Failed to save user data: ${e.message}", e)
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Could not save user info. Please try again",
                                             duration = SnackbarDuration.Short
                                         )
@@ -303,7 +308,7 @@ fun VerifyEmailScreen() {
                             } else {
                                 Log.e("Auth", "UID is null after successful registration")
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(
+                                    snackBarHostState.showSnackbar(
                                         message = "Something went wrong. Please try again",
                                         duration = SnackbarDuration.Short
                                     )
@@ -311,7 +316,7 @@ fun VerifyEmailScreen() {
                             }
 
                             scope.launch {
-                                snackbarHostState.showSnackbar(
+                                snackBarHostState.showSnackbar(
                                     message = "Email Verification Successfully",
                                     duration = SnackbarDuration.Short
                                 )
@@ -319,7 +324,7 @@ fun VerifyEmailScreen() {
                         } else {
                             Log.d("Auth", "Email verification error")
                             scope.launch {
-                                snackbarHostState.showSnackbar(
+                                snackBarHostState.showSnackbar(
                                     message = "Email not verified yet",
                                     duration = SnackbarDuration.Short
                                 )

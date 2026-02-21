@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -34,10 +34,10 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF0D0C0C.toInt()
+                scrim = 0xFFFAF9F6.toInt()
             ),
             navigationBarStyle = SystemBarStyle.dark(
-                scrim = 0xFF0D0C0C.toInt()
+                scrim = 0xFFFAF9F6.toInt()
             )
         )
 
@@ -80,8 +80,10 @@ fun SplashScreen(onTimeout: () -> Unit) {
     }
 
     Box(modifier = Modifier.fillMaxSize()
-        .background( Color(0xFF0D0C0C))) {
-        Image(painter = painterResource(R.drawable.wavex_logo_light), contentDescription = "Logo",
+        .background(colorResource(R.color.off_white)
+        )
+    ){
+        Image(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo",
             modifier = Modifier.align(Alignment.Center).size(280.dp))
     }
 }

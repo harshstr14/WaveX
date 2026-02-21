@@ -172,7 +172,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
             },
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            containerColor = colorResource(R.color.background_color),
+            containerColor = colorResource(R.color.off_white),
             dragHandle = null
         ) {
             when (currentSheet.value) {
@@ -762,6 +762,7 @@ private fun AddPlaylistBottomSheet(apiUrl: String,
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val trimUrl = url.substringAfter("playlist/").substringBefore("?")
+    val interactionSource = remember { MutableInteractionSource() }
 
     Column(
         modifier = Modifier
@@ -874,7 +875,10 @@ private fun AddPlaylistBottomSheet(apiUrl: String,
                             end.linkTo(parent.end, margin = 15.dp)
                         }
                         .size(22.dp)
-                        .clickable {
+                        .clickable (
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
                             scope.launch {
                                 val clipEntry = clipboard.getClipEntry()
                                 val clipboardText = clipEntry?.clipData

@@ -40,6 +40,7 @@ class SearchSongsRepository {
             val id = song.optString("id")
             val name = song.optString("name")
             val duration = song.optInt("duration")
+            val playCount = song.optInt("playCount")
 
             val images = mutableListOf<Image>()
             song.optJSONArray("image")?.let { arr ->
@@ -101,6 +102,7 @@ class SearchSongsRepository {
                     album = album,
                     image = images,
                     duration = duration,
+                    playCount = playCount,
                     downloadUrl = downloads
                 )
             )

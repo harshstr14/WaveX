@@ -61,6 +61,7 @@ class NewReleasesSongsViewModel : ViewModel() {
             val id = song.optString("id")
             val name = song.optString("name")
             val duration = song.optInt("duration")
+            val playCount = song.optInt("playCount")
 
             val image = mutableListOf<Image>()
             song.optJSONArray("image")?.let { arr ->
@@ -105,7 +106,7 @@ class NewReleasesSongsViewModel : ViewModel() {
             )
 
             parsedSongs.add(
-                SongItem(id, name, primaryArtists, album, image, duration, download)
+                SongItem(id, name, primaryArtists, album, image, duration, playCount, download)
             )
         }
 

@@ -66,6 +66,7 @@ class AlbumRepository {
                         album = album,
                         image = images,
                         duration = song.optInt("duration"),
+                        playCount = song.optInt("playCount"),
                         downloadUrl = downloads
                     )
                 )

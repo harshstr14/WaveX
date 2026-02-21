@@ -44,8 +44,10 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -113,6 +115,7 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -120,6 +123,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class PlaylistActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -416,16 +420,21 @@ fun Playlist_Activity(
             }
         },
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -448,7 +457,7 @@ fun Playlist_Activity(
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = colorResource(R.color.background_color)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -688,181 +697,185 @@ fun Playlist_Activity(
                                 }
                             }
 
-                            item {
-                                Text(
-                                    modifier = Modifier.padding(top = 15.dp, start = 24.dp),
-                                    text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                )
-                            }
+                            if (playlists.artists.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        modifier = Modifier.padding(top = 15.dp, start = 24.dp),
+                                        text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                    )
+                                }
 
-                            val uniqueArtists = playlists.artists.distinctBy { it.id }
+                                val uniqueArtists = playlists.artists.distinctBy { it.id }
 
-                            item {
-                                LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
-                                    contentPadding = PaddingValues(horizontal = 24.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                                ) {
-                                    items(uniqueArtists) { artist ->
-                                        Column(
-                                            modifier = Modifier
-                                                .clickable(
-                                                    interactionSource = interactionSource,
-                                                    indication = null
-                                                ) {
-                                                    val intent = Intent(context, ArtistActivity::class.java).apply {
-                                                        putExtra("artist_id", artist.id)
-                                                        putExtra("artist_imageUrl", artist.image)
-                                                    }
-                                                    context.startActivity(intent)
-                                                },
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            AsyncImage(
-                                                model = artist.image.takeIf { it.isNotBlank() },
-                                                contentDescription = artist.name,
-                                                contentScale = ContentScale.Crop,
-                                                error = painterResource(R.drawable.default_artist),
+                                item {
+                                    LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
+                                        contentPadding = PaddingValues(horizontal = 24.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                                    ) {
+                                        items(uniqueArtists) { artist ->
+                                            Column(
                                                 modifier = Modifier
-                                                    .size(78.dp)
-                                                    .clip(CircleShape)
-                                            )
+                                                    .clickable(
+                                                        interactionSource = interactionSource,
+                                                        indication = null
+                                                    ) {
+                                                        val intent = Intent(context, ArtistActivity::class.java).apply {
+                                                            putExtra("artist_id", artist.id)
+                                                            putExtra("artist_imageUrl", artist.image)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    },
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                AsyncImage(
+                                                    model = artist.image.takeIf { it.isNotBlank() },
+                                                    contentDescription = artist.name,
+                                                    contentScale = ContentScale.Crop,
+                                                    error = painterResource(R.drawable.default_artist),
+                                                    modifier = Modifier
+                                                        .size(78.dp)
+                                                        .clip(CircleShape)
+                                                )
 
-                                            Spacer(modifier = Modifier.height(8.dp))
+                                                Spacer(modifier = Modifier.height(8.dp))
 
-                                            val artistName = htmlToText(artist.name)
+                                                val artistName = htmlToText(artist.name)
 
-                                            Text(
-                                                modifier = Modifier.width(78.dp),
-                                                text = artistName,
-                                                fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                                Text(
+                                                    modifier = Modifier.width(78.dp),
+                                                    text = artistName,
+                                                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
 
-                            item {
-                                Text(
-                                    modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
-                                    text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                )
-                            }
-
-                            itemsIndexed(playlists.songs, key = { _, song -> song.id }) { index, song ->
-                                Row (
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
-                                        .clickable(
-                                            interactionSource = interactionSource,
-                                            indication = null
-                                        ) {
-                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                action = MusicPlayerService.ACTION_PLAY_NEW
-                                                putExtra("index", index)
-                                            }
-
-                                            PlayerManager.currentPlaylist = playlists.songs
-                                            PlayerManager.currentIndex = selectedIndex
-
-                                            ContextCompat.startForegroundService(context, intent)
-
-                                            scope.launch {
-                                                RecentlyPlayedManager.add(context, song)
-                                            }
-                                        }, verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    AsyncImage(
-                                        model = song.image.getOrNull(2)?.url,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
-                                        contentScale = ContentScale.Crop
+                            if (playlists.songs.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
+                                        text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
+                                }
 
-                                    Spacer(modifier = Modifier.width(14.dp))
+                                itemsIndexed(playlists.songs, key = { _, song -> song.id }) { index, song ->
+                                    Row (
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                    action = MusicPlayerService.ACTION_PLAY_NEW
+                                                    putExtra("index", index)
+                                                }
 
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.Center
+                                                PlayerManager.currentPlaylist = playlists.songs
+                                                PlayerManager.currentIndex = selectedIndex
+
+                                                ContextCompat.startForegroundService(context, intent)
+
+                                                scope.launch {
+                                                    RecentlyPlayedManager.add(context, song)
+                                                }
+                                            }, verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val songName = htmlToText(song.name)
-
-                                        Text(
-                                            text = songName,
-                                            fontSize = 15.sp,
-                                            lineHeight = 16.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                        AsyncImage(
+                                            model = song.image.getOrNull(2)?.url,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
+                                            contentScale = ContentScale.Crop
                                         )
 
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.width(14.dp))
 
-                                        val artistsList = song.artist
-                                            .takeIf { it.isNotEmpty() }
-                                            ?.joinToString(", ") { it.name }
-                                            ?: "Unknown Artist"
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            val songName = htmlToText(song.name)
 
-                                        val artistsName = htmlToText(artistsList)
+                                            Text(
+                                                text = songName,
+                                                fontSize = 15.sp,
+                                                lineHeight = 16.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
 
-                                        Text(
-                                            text = artistsName,
-                                            fontSize = 13.sp,
-                                            lineHeight = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                            Spacer(modifier = Modifier.height(4.dp))
 
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                            val artistsList = song.artist
+                                                .takeIf { it.isNotEmpty() }
+                                                ?.joinToString(", ") { it.name }
+                                                ?: "Unknown Artist"
 
-                                        Text(
-                                            text = formatDuration(song.duration),
-                                            fontSize = 12.sp,
-                                            lineHeight = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                                            val artistsName = htmlToText(artistsList)
 
-                                    Spacer(modifier = Modifier.width(14.dp))
+                                            Text(
+                                                text = artistsName,
+                                                fontSize = 13.sp,
+                                                lineHeight = 14.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(onClick = { }) {
-                                            Icon(
-                                                modifier = Modifier.size(22.dp),
-                                                painter = painterResource(R.drawable.download_icon),
-                                                contentDescription = "Download",
-                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Text(
+                                                text = formatDuration(song.duration),
+                                                fontSize = 12.sp,
+                                                lineHeight = 14.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
 
-                                        IconButton(onClick = {
-                                            selectedSong = song
-                                            selectedIndex = index
-                                            showSheet = true
-                                        }) {
-                                            Icon(
-                                                modifier = Modifier.size(20.dp),
-                                                painter = painterResource(R.drawable.three_dots_icon),
-                                                contentDescription = "Three Dots",
-                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
-                                            )
+                                        Spacer(modifier = Modifier.width(14.dp))
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(onClick = { }) {
+                                                Icon(
+                                                    modifier = Modifier.size(22.dp),
+                                                    painter = painterResource(R.drawable.download_icon),
+                                                    contentDescription = "Download",
+                                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                )
+                                            }
+
+                                            IconButton(onClick = {
+                                                selectedSong = song
+                                                selectedIndex = index
+                                                showSheet = true
+                                            }) {
+                                                Icon(
+                                                    modifier = Modifier.size(20.dp),
+                                                    painter = painterResource(R.drawable.three_dots_icon),
+                                                    contentDescription = "Three Dots",
+                                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -939,7 +952,7 @@ fun SongOptionsBottomSheet(
             }
         },
         sheetState = sheetState,
-        containerColor = colorResource(R.color.background_color),
+        containerColor = colorResource(R.color.off_white),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
@@ -961,7 +974,7 @@ fun SongOptionsBottomSheet(
         Dialog(onDismissRequest = { showArtistsDialog = false}) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = colorResource(R.color.background_color)
+                color = colorResource(R.color.off_white)
             ) {
                 Column(
                     modifier = Modifier
@@ -1052,7 +1065,7 @@ fun SongOptionsBottomSheet(
         Dialog(onDismissRequest = { showPlaylistDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = colorResource(R.color.background_color)
+                color = colorResource(R.color.off_white)
             ) {
                 Column(
                     modifier = Modifier
@@ -1135,45 +1148,90 @@ private fun BottomSheetContent(
 ) {
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val queue by musicService?.queueFlow?.collectAsState(initial = emptyList())
+        ?: remember { mutableStateOf(emptyList()) }
+    val isInQueue = queue.any { it.id == song.id }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        AsyncImage(
-            model = song.image.getOrNull(2)?.url,
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .size(180.dp)
-                .align(Alignment.CenterHorizontally)
-                .shadow(
-                    elevation = 18.dp,
-                    shape = RoundedCornerShape(18.dp),
-                    clip = false
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            AsyncImage(
+                model = song.image.getOrNull(2)?.url,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(120.dp)
+                    .shadow(
+                        elevation = 18.dp,
+                        shape = RoundedCornerShape(18.dp),
+                        clip = false
+                    )
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Column {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = htmlToText(song.name), maxLines = 1,overflow = TextOverflow.Ellipsis,
+                    fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
                 )
-                .clip(RoundedCornerShape(18.dp)),
-            contentScale = ContentScale.Crop
-        )
 
-        Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = htmlToText(song.name), textAlign = TextAlign.Center,
-            fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
-        )
+                Text(
+                    text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}", overflow = TextOverflow.Ellipsis,
+                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
+                )
 
-        Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Album • ${htmlToText(song.album?.name)}", textAlign = TextAlign.Center,
-            fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-            color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 28.dp)
-        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.headset_icon),
+                        contentDescription = "Headset Icon",
+                        tint = colorResource(R.color.primary_text_color),
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Text(
+                        text = "PlayCount • ${formatCount(song.playCount.toLong())}", overflow = TextOverflow.Ellipsis,
+                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -1201,8 +1259,18 @@ private fun BottomSheetContent(
             onAddToPlaylistClick()
         }
 
-        SheetOptionItem(R.drawable.queue_icon, "Add to queue") {
+        SheetOptionItem(
+            R.drawable.queue_icon,
+            if (isInQueue) "Remove from queue" else "Add to queue"
+        ) {
 
+            if (isInQueue) {
+                musicService?.removeFromQueue(song.id)
+                Toast.makeText(context, "Removed from queue", Toast.LENGTH_SHORT).show()
+            } else {
+                musicService?.addToQueue(song)
+                Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+            }
         }
 
         SheetOptionItem(R.drawable.download_icon, "Download") {
@@ -1343,6 +1411,15 @@ private fun formatTotalDuration(totalSeconds: Int): String {
         if (seconds > 0) append("$seconds s")
         if (isEmpty()) append("0s") // handle 0 case
     }.trim()
+}
+
+private fun formatCount(count: Long): String {
+    return when {
+        count >= 1_000_000_000 -> String.format(Locale.US,"%.1fB", count / 1_000_000_000.0)
+        count >= 1_000_000 -> String.format(Locale.US,"%.1fM", count / 1_000_000.0)
+        count >= 1_000 -> String.format(Locale.US,"%.1fK", count / 1_000.0)
+        else -> count.toString()
+    }.replace(".0", "")
 }
 
 @Composable

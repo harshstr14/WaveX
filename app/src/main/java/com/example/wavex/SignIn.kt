@@ -125,21 +125,26 @@ class SignIn : ComponentActivity() {
 @Composable
 fun SignInScreen(onGoogleSignIn: () -> Unit) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold(
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -154,7 +159,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                                 R.drawable.alert_icon
                             }
                         } ), contentDescription = "Icons",
-                            tint = Color(0xFF34A853), modifier = Modifier.size(24.dp)
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -165,7 +170,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = Color(0xFFF6F6F6)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -391,7 +396,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                             when {
                                 email.isBlank() && password.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "All fields are required",
                                             duration = SnackbarDuration.Short
                                         )
@@ -401,7 +406,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
 
                                 email.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Please enter your email",
                                             duration = SnackbarDuration.Short
                                         )
@@ -411,7 +416,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
 
                                 password.isBlank() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Please enter your password",
                                             duration = SnackbarDuration.Short
                                         )
@@ -421,7 +426,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
 
                                 !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
+                                        snackBarHostState.showSnackbar(
                                             message = "Enter a valid email",
                                             duration = SnackbarDuration.Short
                                         )
@@ -452,7 +457,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                                                 context.startActivity(intent)
                                             }?.addOnFailureListener {
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar(
+                                                    snackBarHostState.showSnackbar(
                                                         message = "Failed to send verification email",
                                                         duration = SnackbarDuration.Short
                                                     )
@@ -467,7 +472,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                                         // Email not registered
                                         Log.e("Auth", "Email : ${e.message}")
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "This email is not registered",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -476,7 +481,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                                         // Wrong password
                                         Log.e("Auth", "Password : ${e.message}")
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Incorrect password",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -485,7 +490,7 @@ fun SignInScreen(onGoogleSignIn: () -> Unit) {
                                         // Other errors
                                         Log.e("Auth", "Other : ${e.message}")
                                         scope.launch {
-                                            snackbarHostState.showSnackbar(
+                                            snackBarHostState.showSnackbar(
                                                 message = "Login failed: ${e.message}",
                                                 duration = SnackbarDuration.Short
                                             )

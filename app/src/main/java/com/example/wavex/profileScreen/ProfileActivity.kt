@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,8 +24,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -227,14 +231,17 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             }
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(colorResource(R.color.background_color)),
-            contentAlignment = Alignment.Center
+                .background(colorResource(R.color.background_color))
+                .verticalScroll(rememberScrollState())
         ) {
-            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+            ConstraintLayout(modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+            ) {
                 val (profileImageRef, yourProfileRowRef, userNameTextRef, favouriteSongsRowRef, artistsRowRef,
                     albumsRowRef, settingsRowRef, playlistsRowRef, profileEditIconRef
                 ) = createRefs()
@@ -561,7 +568,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 Row(
                     modifier = Modifier.constrainAs(settingsRowRef){
                         top.linkTo(playlistsRowRef.bottom, margin = 30.dp)
-                    }.fillMaxWidth().padding(horizontal = 25.dp)
+                    }.fillMaxWidth().padding(start = 25.dp, end = 25.dp, bottom = 30.dp)
                         .clickable(
                             interactionSource = interactionSource,
                             indication = null

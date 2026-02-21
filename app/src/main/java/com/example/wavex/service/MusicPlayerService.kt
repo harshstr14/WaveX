@@ -25,7 +25,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.MutableLiveData
 import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -54,6 +53,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class  MusicPlayerService : LifecycleService() {
     companion object {
@@ -77,22 +80,16 @@ class  MusicPlayerService : LifecycleService() {
     private val binder = LocalBinder()
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSessionCompat
-    // LiveData to share with UI
-    val currentSongLive = MutableLiveData<SongItem?>(null)
-    val isPlayingLive = MutableLiveData(false)
-    val progressLive = MutableLiveData(0)
-    val durationLive = MutableLiveData(0)
-    val bufferLive = MutableLiveData(0)
     private val handler = Handler(Looper.getMainLooper())
     private val progressRefreshMs = 500L
-    val isShuffle = MutableLiveData(false)
-    val repeatMode = MutableLiveData(false)
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
     var qualityIndex = 4
     private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val imageLoader by lazy { ImageLoader(this) }
+    private val queue: MutableList<SongItem> = mutableListOf()
+    private val history: MutableList<SongItem> = mutableListOf()
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -105,8 +102,34 @@ class  MusicPlayerService : LifecycleService() {
     private var playlist: MutableList<SongItem> = mutableListOf()
     private var currentIndex = -1
 
+    private val _currentSong = MutableStateFlow<SongItem?>(null)
+    val currentSong: StateFlow<SongItem?> = _currentSong.asStateFlow()
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val _progress = MutableStateFlow(0)
+    val progress: StateFlow<Int> = _progress.asStateFlow()
+
+    private val _duration = MutableStateFlow(0)
+    val duration: StateFlow<Int> = _duration.asStateFlow()
+
+    private val _buffer = MutableStateFlow(0)
+    val buffer: StateFlow<Int> = _buffer.asStateFlow()
+
+    private val _isShuffle = MutableStateFlow(false)
+    var isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
+
+    private val _repeatMode = MutableStateFlow(false)
+    var repeatMode: StateFlow<Boolean> = _repeatMode.asStateFlow()
+
+    private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
+    val queueFlow: StateFlow<List<SongItem>> = _queue.asStateFlow()
+
     override fun onCreate() {
         super.onCreate()
+
+        ServiceLocator.musicService = this
         createNotificationChannel()
 
         val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -156,8 +179,8 @@ class  MusicPlayerService : LifecycleService() {
                     val song = playlist[currentIndex]
                     val duration = player.duration.coerceAtLeast(song.duration.toLong()) // Use actual player duration if available
 
-                    durationLive.postValue(duration.toInt())
-                    bufferLive.postValue(player.bufferedPosition.toInt())
+                    _duration.value = duration.toInt()
+                    _buffer.value = player.bufferedPosition.toInt()
 
                     val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
                     updateMetadata(song, bitmap)
@@ -171,7 +194,7 @@ class  MusicPlayerService : LifecycleService() {
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                isPlayingLive.postValue(isPlaying)
+                _isPlaying.value = isPlaying
                 if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable)
                 updatePlaybackState()
                 CoroutineScope(Dispatchers.Main).launch {
@@ -181,7 +204,7 @@ class  MusicPlayerService : LifecycleService() {
 
             override fun onIsLoadingChanged(isLoading: Boolean) {
                 super.onIsLoadingChanged(isLoading)
-                bufferLive.postValue(player.bufferedPosition.toInt())
+                _buffer.value = player.bufferedPosition.toInt()
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -226,6 +249,7 @@ class  MusicPlayerService : LifecycleService() {
         mediaSession.isActive = true
         updatePlaybackState()
     }
+
     private fun updatePlaybackState() {
         val stateBuilder = PlaybackStateCompat.Builder()
             .setActions(
@@ -269,7 +293,7 @@ class  MusicPlayerService : LifecycleService() {
                     if (playlist.isNotEmpty() && index in playlist.indices) {
                         setPlaylist(playlist, index)
                         // Only start foreground if a song is available
-                        currentSongLive.value?.let { song ->
+                        _currentSong.value?.let { song ->
                             startForegroundWithNotification(song)
                         }
                     }
@@ -281,7 +305,7 @@ class  MusicPlayerService : LifecycleService() {
                     if (playlist.isNotEmpty() && index in playlist.indices) {
                         play(playlist[index])
                         // Only start foreground if a song is available
-                        currentSongLive.value?.let { song ->
+                        _currentSong.value?.let { song ->
                             startForegroundWithNotification(song)
                         }
                     }
@@ -308,10 +332,14 @@ class  MusicPlayerService : LifecycleService() {
 
         return START_STICKY
     }
+
     fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
-        playlist.clear(); playlist.addAll(songs!!)
+        playlist.clear()
+        history.clear()
+        playlist.addAll(songs!!)
         if (startAtIndex in playlist.indices) playIndex(startAtIndex)
     }
+
     fun play(song: SongItem) {
         val idx = playlist.indexOfFirst { it.id == song.id }
         if (idx >= 0) {
@@ -321,16 +349,18 @@ class  MusicPlayerService : LifecycleService() {
             playIndex(playlist.lastIndex)
         }
     }
+
     private fun playIndex(index: Int) {
         if (index !in playlist.indices) return
         currentIndex = index
         val song = playlist[index]
-        currentSongLive.postValue(song)
+        _currentSong.value = song
         prepareAndPlay(song)
         serviceScope.launch {
             RecentlyPlayedManager.add(this@MusicPlayerService, song)
         }
     }
+
     private fun prepareAndPlay(song: SongItem) {
         currentAlbumArt = null
         currentArtSongId = null
@@ -345,87 +375,152 @@ class  MusicPlayerService : LifecycleService() {
         startForegroundWithNotification(song)
         updatePlaybackState()
     }
+
     fun getCurrentPosition(): Int {
         return player.currentPosition.toInt()
     }
+
     fun getDuration(): Int {
         return player.duration.toInt()
     }
+
     fun pause() {
         if (::player.isInitialized && player.isPlaying) {
             player.pause()
-            isPlayingLive.postValue(false)
+            _isPlaying.value = false
         }
     }
+
     fun resume() {
         if (::player.isInitialized) player.play()
-        isPlayingLive.postValue(true)
+        _isPlaying.value = true
     }
+
     fun seekTo(positionMs: Long) {
         if (::player.isInitialized) player.seekTo(positionMs)
     }
 
     fun next() {
+        val current = _currentSong.value
+
+        if (queue.isNotEmpty()) {
+            current?.let { history.add(it) }
+
+            val nextSong = queue.removeAt(0)
+            _queue.value = queue.toList()
+
+            _currentSong.value = nextSong
+            prepareAndPlay(nextSong)
+
+            serviceScope.launch {
+                RecentlyPlayedManager.add(this@MusicPlayerService, nextSong)
+            }
+            return
+        }
+
         if (playlist.isEmpty()) return
+        current?.let { history.add(it) }
 
         when {
-            repeatMode.value == true -> {
-                // Repeat current song
+            repeatMode.value -> {
                 playIndex(currentIndex)
             }
-            isShuffle.value == true -> {
-                // Pick a random song
-                val randomIndex = (playlist.indices).random()
+
+            isShuffle.value -> {
+                val randomIndex = playlist.indices.random()
                 playIndex(randomIndex)
             }
+
             else -> {
-                // Normal next
                 val nextIndex = currentIndex + 1
                 if (nextIndex in playlist.indices) {
                     playIndex(nextIndex)
                 } else {
-                    // reached end → stop or repeat whole playlist
                     playIndex(0)
                 }
             }
         }
     }
+
     fun previous() {
-        if (playlist.isEmpty()) return
+        if (playlist.isEmpty() && history.isEmpty()) return
+
+        if (::player.isInitialized && player.currentPosition > 5000) {
+            player.seekTo(0)
+            return
+        }
+
+        if (history.isNotEmpty()) {
+
+            val previousSong = history.removeAt(history.lastIndex)
+
+            _currentSong.value = previousSong
+            prepareAndPlay(previousSong)
+
+            return
+        }
 
         when {
-            repeatMode.value == true -> {
-                // Repeat current song
+            repeatMode.value -> {
                 playIndex(currentIndex)
             }
-            isShuffle.value == true -> {
-                // Pick a random song
-                val randomIndex = (playlist.indices).random()
+
+            isShuffle.value -> {
+                val randomIndex = playlist.indices.random()
                 playIndex(randomIndex)
             }
+
             else -> {
-                // Normal previous
                 val prevIndex = currentIndex - 1
                 if (prevIndex >= 0) {
                     playIndex(prevIndex)
                 } else {
-                    // At beginning → restart current song
                     player.seekTo(0)
                 }
             }
         }
     }
+
     fun shuffleToggle() {
-        isShuffle.value = !isShuffle.value!!
-        updateNotification()
-    }
-    fun repeatToggle() {
-        repeatMode.value = !repeatMode.value!!
+        _isShuffle.update { !it }
         updateNotification()
     }
 
+    fun repeatToggle() {
+        _repeatMode.update { !it }
+        updateNotification()
+    }
+
+    fun addToQueue(song: SongItem) {
+        if (!queue.any { it.id == song.id }) {
+            queue.add(song)
+            _queue.value = queue.toList()
+        }
+    }
+
+    fun isInQueue(songId: String): Boolean {
+        return queue.any { it.id == songId }
+    }
+
+    fun playNext(song: SongItem) {
+        if (!queue.any { it.id == song.id }) {
+            queue.add(0, song)
+            _queue.value = queue.toList()
+        }
+    }
+
+    fun removeFromQueue(songId: String) {
+        queue.removeAll { it.id == songId }
+        _queue.value = queue.toList()
+    }
+
+    fun clearQueue() {
+        queue.clear()
+        _queue.value = emptyList()
+    }
+
     fun setQuality(index: Int) {
-        val currentSong = currentSongLive.value ?: return
+        val currentSong = _currentSong.value ?: return
         val currentPosition = player.currentPosition
         val wasPlaying = player.isPlaying
 
@@ -459,8 +554,10 @@ class  MusicPlayerService : LifecycleService() {
         if (::mediaSession.isInitialized) mediaSession.release()
         try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (e: Exception) {}
         serviceScope.cancel()
+        ServiceLocator.musicService = null
         super.onDestroy()
     }
+
     private fun startForegroundWithNotification(song: SongItem) {
         val placeholder = BitmapFactory.decodeResource(resources, R.drawable.playlist)
         val notif = buildNotification(song, placeholder)
@@ -523,7 +620,7 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun updateNotification() {
-        val song = currentSongLive.value ?: return
+        val song = _currentSong.value ?: return
 
         if (song.id == currentArtSongId && currentAlbumArt != null) {
             val notif = buildNotification(song, currentAlbumArt!!)
@@ -606,21 +703,21 @@ class  MusicPlayerService : LifecycleService() {
         //val openIntent = Intent(this, PlaySong::class.java)
         //val openPending = PendingIntent.getActivity(this, 200, openIntent, PendingIntent.FLAG_IMMUTABLE)
 
-        val isPlaying = isPlayingLive.value ?: false
+        val isPlaying = _isPlaying.value
         val playPauseAction = if (isPlaying) {
             NotificationCompat.Action(R.drawable.notificationpausebutton, "Pause", pausePending)
         } else {
             NotificationCompat.Action(R.drawable.notificationplaybutton, "Play", playPending)
         }
 
-        val isShuffle = isShuffle.value ?: false
+        val isShuffle = _isShuffle.value
         val shuffleAction = if (isShuffle) {
             NotificationCompat.Action(R.drawable.notificationshufflebutton, "shuffle", shufflePending)
         } else {
             NotificationCompat.Action(R.drawable.disableshuffle, "disableShuffle", shufflePending)
         }
 
-        val isRepeat = repeatMode.value ?: false
+        val isRepeat = _repeatMode.value
         val repeatAction = if (isRepeat) {
             NotificationCompat.Action(R.drawable.notificationrepeatbutton, "repeat", repeatPending)
         } else {
@@ -669,6 +766,7 @@ class  MusicPlayerService : LifecycleService() {
 
         return notifBuilder.build()
     }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -703,8 +801,9 @@ class  MusicPlayerService : LifecycleService() {
                 .build()
         )
     }
+
     private fun updatePlaybackInfo() {
-        val song = currentSongLive.value ?: return
+        val song = _currentSong.value ?: return
         if (!::player.isInitialized) return
 
         val duration = player.duration.coerceAtLeast(song.duration.toLong())
@@ -712,9 +811,9 @@ class  MusicPlayerService : LifecycleService() {
         val buffered = player.bufferedPosition
 
         // Update LiveData
-        durationLive.postValue(duration.toInt())
-        progressLive.postValue(position.toInt())
-        bufferLive.postValue(buffered.toInt())
+        _duration.value = duration.toInt()
+        _progress.value = position.toInt()
+        _buffer.value = buffered.toInt()
 
         // Update playback state
         val playbackState = PlaybackStateCompat.Builder()

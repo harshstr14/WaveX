@@ -66,6 +66,7 @@ class AllSongsRepository {
                     album = album,
                     image = parseImages(song.optJSONArray("image")).toMutableList(),
                     duration = song.optInt("duration"),
+                    playCount = song.optInt("playCount"),
                     downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
                 )
             )

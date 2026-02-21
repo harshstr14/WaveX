@@ -113,6 +113,7 @@ class ImportPlaylistViewModel : ViewModel() {
                             album = album,
                             image = parseImages(song.optJSONArray("image")).toMutableList(),
                             duration = duration,
+                            playCount = song.optInt("playCount"),
                             downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
                         )
                     )

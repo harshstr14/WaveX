@@ -276,16 +276,21 @@ fun Liked_Songs_Activity(
             }
         },
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(
+                snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
+                        .shadow(
+                            elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
+                    containerColor = Color(0xFF2C2C2C),
                     shape = RoundedCornerShape(9.dp)
                 ) {
                     Row(
@@ -308,7 +313,7 @@ fun Liked_Songs_Activity(
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             fontSize = 13.sp,
-                            color = colorResource(R.color.background_color)
+                            color = colorResource(R.color.off_white)
                         )
                     }
                 }
@@ -574,7 +579,7 @@ fun Liked_Songs_Activity(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "No Songs Yet", fontSize = 16.sp,
+                                            text = "No Songs Yet", fontSize = 14.sp,
                                             fontFamily = fonts, fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color),
