@@ -641,7 +641,17 @@ fun Playlist_Activity(
                                         modifier = Modifier.width(158.dp).padding(top = 25.dp)
                                             .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.theme_color))
-                                            .clickable { }
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                PlayerManager.currentPlaylist = playlists.songs
+
+                                                ServiceLocator.musicService?.let { service ->
+                                                    service.shuffleToggle()
+                                                    service.setPlaylist(playlists.songs, playlists.songs.indices.random())
+                                                }
+                                            }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -671,7 +681,13 @@ fun Playlist_Activity(
                                         modifier = Modifier.width(158.dp).padding(top = 25.dp)
                                             .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
-                                            .clickable { }
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                PlayerManager.currentPlaylist = playlists.songs
+                                                ServiceLocator.musicService?.setPlaylist(playlists.songs, 0)
+                                            }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {

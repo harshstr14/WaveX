@@ -97,6 +97,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -504,7 +505,20 @@ private fun Playlist_Activity(
                                         modifier = Modifier.width(158.dp).padding(top = 25.dp)
                                             .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.theme_color))
-                                            .clickable { }
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                if (playlistData?.songs?.isNotEmpty() == true) {
+                                                    PlayerManager.currentPlaylist = playlistData.songs
+
+                                                    ServiceLocator.musicService?.let { service ->
+                                                        service.shuffleToggle()
+                                                        service.setPlaylist(playlistData.songs,
+                                                            playlistData.songs.indices.random())
+                                                    }
+                                                }
+                                            }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -534,7 +548,15 @@ private fun Playlist_Activity(
                                         modifier = Modifier.width(158.dp).padding(top = 25.dp)
                                             .clip(RoundedCornerShape(28.dp))
                                             .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
-                                            .clickable { }
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                if (playlistData?.songs?.isNotEmpty() == true) {
+                                                    PlayerManager.currentPlaylist = playlistData.songs
+                                                    ServiceLocator.musicService?.setPlaylist(playlistData.songs, 0)
+                                                }
+                                            }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {

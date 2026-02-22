@@ -1,5 +1,6 @@
 package com.example.wavex
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -9,17 +10,23 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -38,7 +45,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,24 +58,32 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
+import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.libraryScreen.LibraryScreen
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
+import com.example.wavex.profileScreen.yourProfileScreen.YourProfileActivity
 import com.example.wavex.searchScreen.SearchScreen
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -164,7 +181,28 @@ fun Main_Screen() {
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
-            BottomNavBar(navController)
+            Column {
+                val musicService = ServiceLocator.musicService
+
+                val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+                    ?: remember { mutableStateOf(false) }
+
+                val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+                    ?: remember { mutableStateOf(null) }
+
+                currentSong?.let { song ->
+                    MiniPlayer(
+                        song = song,
+                        isPlaying = isPlaying,
+                        onPlayPause = {
+                            musicService?.togglePlayPause()
+                        },
+                        onClick = { }
+                    )
+                }
+
+                BottomNavBar(navController)
+            }
         },
         contentWindowInsets = WindowInsets(0),
         snackbarHost = {
@@ -271,7 +309,143 @@ fun Main_Screen() {
             }
         }
     }
+}
 
+@Composable
+fun MiniPlayer(
+    song: SongItem,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onClick: () -> Unit
+) {
+    val playInteractionSource = remember { MutableInteractionSource() }
+    val isPressed by playInteractionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ShareScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(1f)
+            .padding(start = 18.dp, end = 18.dp, bottom = 4.dp)
+            .height(68.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                onClick()
+            }
+            .shadow(
+                elevation = 14.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
+                spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
+            ).background(Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF2C2C2C).copy(alpha = 0.95f),
+                    Color(0xFF2C2C2C).copy(alpha = 1f)
+                )
+            ),
+        shape = RoundedCornerShape(14.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Top
+        ) {
+            AsyncImage(
+                model = song.image.getOrNull(2)?.url,
+                contentDescription = null,
+                modifier = Modifier.size(54.dp).clip(RoundedCornerShape(10.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val songName = htmlToText(song.name)
+
+                Text(
+                    text = songName,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.off_white),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val artistsList = song.artist
+                    .takeIf { it.isNotEmpty() }
+                    ?.joinToString(", ") { it.name }
+                    ?: "Unknown Artist"
+
+                val artistsName = htmlToText(artistsList)
+
+                Text(
+                    text = artistsName,
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.Normal,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.secondary_text_color),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .padding(end = 8.dp)
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colorResource(R.color.theme_color))
+                    .clickable(
+                        interactionSource = playInteractionSource,
+                        indication = null
+                    ) {
+                        onPlayPause()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (isPlaying) R.drawable.notificationpausebutton
+                        else R.drawable.notificationplaybutton
+                    ),
+                    contentDescription = "Play Icon",
+                    tint = colorResource(R.color.background_color),
+                    modifier = Modifier
+                        .padding(start = if (isPlaying) 0.dp else 1.dp)
+                        .size(18.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                )
+            }
+        }
+    }
 }
 
 @Composable

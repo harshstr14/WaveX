@@ -125,6 +125,8 @@ class  MusicPlayerService : LifecycleService() {
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queueFlow: StateFlow<List<SongItem>> = _queue.asStateFlow()
+    private val shuffleOrder: MutableList<Int> = mutableListOf()
+    private var shufflePointer = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -240,7 +242,7 @@ class  MusicPlayerService : LifecycleService() {
         mediaSession = MediaSessionCompat(this, "MusicPlayerService")
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
             override fun onPlay() { resume() }
-            override fun onPause() { pause() }
+            override fun onPause() { togglePlayPause() }
             override fun onSkipToNext() { next() }
             override fun onSkipToPrevious() { previous() }
             override fun onStop() { stopServiceAndNotification() }
@@ -311,7 +313,7 @@ class  MusicPlayerService : LifecycleService() {
                     }
                 }
                 ACTION_PLAY -> resume()
-                ACTION_PAUSE -> pause()
+                ACTION_PAUSE -> togglePlayPause()
                 ACTION_NEXT -> next()
                 ACTION_PREV -> previous()
                 ACTION_SHUFFLE -> shuffleToggle()
@@ -333,7 +335,15 @@ class  MusicPlayerService : LifecycleService() {
         return START_STICKY
     }
 
+    private fun generateShuffleOrder() {
+        shuffleOrder.clear()
+        shuffleOrder.addAll(playlist.indices.shuffled())
+        shufflePointer = 0
+    }
+
     fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
+        shuffleOrder.clear()
+        shufflePointer = 0
         playlist.clear()
         history.clear()
         playlist.addAll(songs!!)
@@ -353,6 +363,7 @@ class  MusicPlayerService : LifecycleService() {
     private fun playIndex(index: Int) {
         if (index !in playlist.indices) return
         currentIndex = index
+
         val song = playlist[index]
         _currentSong.value = song
         prepareAndPlay(song)
@@ -384,16 +395,14 @@ class  MusicPlayerService : LifecycleService() {
         return player.duration.toInt()
     }
 
-    fun pause() {
-        if (::player.isInitialized && player.isPlaying) {
-            player.pause()
-            _isPlaying.value = false
+    fun togglePlayPause() {
+        if (::player.isInitialized) {
+            player.playWhenReady = !player.playWhenReady
         }
     }
 
     fun resume() {
         if (::player.isInitialized) player.play()
-        _isPlaying.value = true
     }
 
     fun seekTo(positionMs: Long) {
@@ -427,8 +436,18 @@ class  MusicPlayerService : LifecycleService() {
             }
 
             isShuffle.value -> {
-                val randomIndex = playlist.indices.random()
-                playIndex(randomIndex)
+                if (shuffleOrder.isEmpty()) {
+                    generateShuffleOrder()
+                }
+
+                shufflePointer++
+
+                if (shufflePointer >= shuffleOrder.size) {
+                    shufflePointer = 0
+                }
+
+                val nextIndex = shuffleOrder[shufflePointer]
+                playIndex(nextIndex)
             }
 
             else -> {
@@ -466,8 +485,18 @@ class  MusicPlayerService : LifecycleService() {
             }
 
             isShuffle.value -> {
-                val randomIndex = playlist.indices.random()
-                playIndex(randomIndex)
+                if (shuffleOrder.isEmpty()) {
+                    generateShuffleOrder()
+                }
+
+                shufflePointer--
+
+                if (shufflePointer < 0) {
+                    shufflePointer = shuffleOrder.lastIndex
+                }
+
+                val prevIndex = shuffleOrder[shufflePointer]
+                playIndex(prevIndex)
             }
 
             else -> {
@@ -482,7 +511,23 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun shuffleToggle() {
-        _isShuffle.update { !it }
+        val newState = !_isShuffle.value
+        _isShuffle.value = newState
+
+        if (newState) {
+            generateShuffleOrder()
+
+            shufflePointer = shuffleOrder.indexOf(currentIndex)
+
+            if (shufflePointer == -1) {
+                shufflePointer = 0
+            }
+
+        } else {
+            shuffleOrder.clear()
+            shufflePointer = 0
+        }
+
         updateNotification()
     }
 
