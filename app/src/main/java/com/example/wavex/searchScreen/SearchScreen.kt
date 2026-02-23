@@ -57,6 +57,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -126,6 +127,7 @@ import com.example.wavex.searchScreen.viewModel.SearchArtistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchPlaylistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchSongsViewModel
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -134,7 +136,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
 @Composable
-fun SearchScreen(navController: NavController) {
+fun SearchScreen(navController: NavController, showSheet: Boolean) {
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -145,7 +147,7 @@ fun SearchScreen(navController: NavController) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    var showSheet by remember { mutableStateOf(false) }
+    var showSongSheet by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var currentSongs by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -154,7 +156,7 @@ fun SearchScreen(navController: NavController) {
     val likedSongs by likedViewModel.likedSongs.collectAsStateWithLifecycle()
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSheet) 22f else 0f,
+        targetValue = if (showSongSheet || showSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -244,7 +246,7 @@ fun SearchScreen(navController: NavController) {
                 selectedSong = song
                 currentSongs = songs
                 selectedIndex = index
-                showSheet = true
+                showSongSheet = true
             }
         )
 
@@ -258,7 +260,7 @@ fun SearchScreen(navController: NavController) {
         }
     }
 
-    if (showSheet && selectedSong != null) {
+    if (showSongSheet && selectedSong != null) {
 
         val song = selectedSong!!
         val isFavourite = likedSongs.contains(song.id)
@@ -267,7 +269,7 @@ fun SearchScreen(navController: NavController) {
             song = song,
             isFavourite = isFavourite,
             onDismiss = {
-                showSheet = false
+                showSongSheet = false
                 selectedSong = null
             },
             onPlayNow = {
@@ -285,7 +287,7 @@ fun SearchScreen(navController: NavController) {
                     RecentlyPlayedManager.add(context, song)
                 }
 
-                showSheet = false
+                showSongSheet = false
             },
             onToggleFavourite = {
                 likedViewModel.toggleLike(song)
@@ -556,6 +558,10 @@ private fun SearchArtists(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         when {
             query.isBlank() -> {
@@ -596,7 +602,7 @@ private fun SearchArtists(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -653,6 +659,10 @@ private fun SearchSongs(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         when {
             query.isBlank() -> {
@@ -692,7 +702,7 @@ private fun SearchSongs(
             LazyColumn (
                 state = listState,
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                 itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
@@ -819,6 +829,10 @@ private fun SearchAlbums(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         when {
             query.isBlank() -> {
@@ -859,7 +873,7 @@ private fun SearchAlbums(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
@@ -927,6 +941,10 @@ private fun SearchPlaylists(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         when {
             query.isBlank() -> {
@@ -967,7 +985,7 @@ private fun SearchPlaylists(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
@@ -1074,5 +1092,5 @@ private fun LoadingEffect() {
 @Composable
 private fun SearchScreenPreview() {
     val navController = rememberNavController()
-    SearchScreen(navController)
+    SearchScreen(navController, false)
 }

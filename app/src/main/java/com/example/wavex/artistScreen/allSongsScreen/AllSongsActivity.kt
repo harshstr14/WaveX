@@ -81,6 +81,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
@@ -91,6 +92,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -159,10 +161,21 @@ private fun All_Songs_Activity(
         label = "ShareScale"
     )
 
-    var showSheet by remember { mutableStateOf(false) }
+    val musicService = ServiceLocator.musicService
+
+    val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
+        ?: remember { mutableIntStateOf(-1) }
+
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
+    var showSongSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSheet) 22f else 0f,
+        targetValue = if (showSongSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -300,7 +313,7 @@ private fun All_Songs_Activity(
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val(songList) = createRefs()
+                        val(songList, miniPlayer) = createRefs()
 
                         LazyColumn (
                             state = songsListState,
@@ -311,7 +324,7 @@ private fun All_Songs_Activity(
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 25.dp),
+                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = if (currentSong != null) 95.dp else 25.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                             itemsIndexed(songs.songs, key = { _, song -> song.id }) { index, song ->
@@ -419,7 +432,7 @@ private fun All_Songs_Activity(
                                         IconButton(onClick = {
                                             selectedSong = song
                                             selectedIndex = index
-                                            showSheet = true
+                                            showSongSheet = true
                                         }) {
                                             Icon(
                                                 modifier = Modifier.size(20.dp),
@@ -458,14 +471,14 @@ private fun All_Songs_Activity(
                             }
                         }
 
-                        if (showSheet && selectedSong != null) {
+                        if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
                                 song = song,
                                 onDismiss = {
-                                    showSheet = false
+                                    showSongSheet = false
                                     selectedSong = null
                                 },
                                 onPlayNow = {
@@ -478,13 +491,37 @@ private fun All_Songs_Activity(
                                     PlayerManager.currentIndex = selectedIndex
 
                                     ContextCompat.startForegroundService(context, intent)
-                                    showSheet = false
+                                    showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
                                 onToggleFavourite = {
                                     likedViewModel.toggleLike(song)
                                 }
                             )
+                        }
+
+                        Box(
+                            modifier = Modifier.constrainAs(miniPlayer) {
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                                bottom.linkTo(parent.bottom)
+                            }.fillMaxWidth().padding(bottom = 20.dp)
+                        ) {
+                            currentSong?.let { song ->
+                                MiniPlayer(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    onPlayPause = {
+                                        musicService?.togglePlayPause()
+                                    },
+                                    onClick = { },
+                                    onAddClick = {
+                                        selectedSong = song
+                                        selectedIndex = currentIndex
+                                        showSongSheet = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }

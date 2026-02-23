@@ -2,6 +2,9 @@ package com.example.wavex.artistScreen.allAlbumsScreen
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -46,14 +49,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -74,10 +82,13 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 
 class AllAlbumsActivity : ComponentActivity() {
@@ -134,6 +145,31 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
             stiffness = Spring.StiffnessLow
         ),
         label = "ShareScale"
+    )
+
+    var showSongSheet by remember { mutableStateOf(false) }
+
+    val musicService = ServiceLocator.musicService
+
+    val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
+        ?: remember { mutableIntStateOf(-1) }
+
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (showSongSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
     )
 
     Scaffold(
@@ -236,7 +272,18 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(colorResource(R.color.background_color)),
+                .background(colorResource(R.color.background_color))
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -255,7 +302,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
 
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (albumsGrid) = createRefs()
+                        val (albumsGrid, miniPlayer) = createRefs()
 
                         LazyVerticalGrid(
                             state = albumsGridState,
@@ -267,7 +314,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 25.dp),
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 95.dp else 25.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)
                         ) {
@@ -354,6 +401,30 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier.constrainAs(miniPlayer) {
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                                bottom.linkTo(parent.bottom)
+                            }.fillMaxWidth().padding(bottom = 20.dp)
+                        ) {
+                            currentSong?.let { song ->
+                                MiniPlayer(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    onPlayPause = {
+                                        musicService?.togglePlayPause()
+                                    },
+                                    onClick = { },
+                                    onAddClick = {
+                                        selectedSong = song
+                                        selectedIndex = currentIndex
+                                        showSongSheet = true
+                                    }
+                                )
                             }
                         }
                     }

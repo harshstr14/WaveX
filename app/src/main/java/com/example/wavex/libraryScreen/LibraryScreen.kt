@@ -100,6 +100,7 @@ import com.example.wavex.libraryScreen.importPlaylist.ImportState
 import com.example.wavex.libraryScreen.likedSongsScreen.LikedSongsActivity
 import com.example.wavex.libraryScreen.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -112,7 +113,7 @@ enum class SheetType {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostState,
+fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostState, showSheet: Boolean,
                   viewModel: PlaylistViewModel = viewModel()
 ) {
     val apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
@@ -140,13 +141,17 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
     var showDeleteDialog by remember { mutableStateOf(false) }
     var playlistToDelete by remember { mutableStateOf<PlaylistData?>(null) }
 
-    val showSheet = remember { mutableStateOf(false) }
+    val showBottomSheet = remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
     val currentSheet = remember { mutableStateOf<SheetType?>(null) }
     val playlistState = rememberLazyListState()
     val context = LocalContext.current
+
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
 
     val scope = rememberCoroutineScope()
 
@@ -161,13 +166,13 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
 
     val selectedPlaylist = remember { mutableStateOf<PlaylistData?>(null) }
 
-    if (showSheet.value) {
+    if (showBottomSheet.value) {
         ModalBottomSheet(
             onDismissRequest = {
                 scope.launch {
                     sheetState.hide()
                 }.invokeOnCompletion {
-                    showSheet.value = false
+                    showBottomSheet.value = false
                 }
             },
             sheetState = sheetState,
@@ -181,7 +186,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
-                                showSheet.value = false
+                                showBottomSheet.value = false
                             }
                         }, onShowMessage = { message ->
                             scope.launch {
@@ -201,7 +206,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
-                                showSheet.value = false
+                                showBottomSheet.value = false
                             }
                         }
                     )
@@ -213,7 +218,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
-                                showSheet.value = false
+                                showBottomSheet.value = false
                             }
                         }, onShowMessage = { message ->
                             scope.launch {
@@ -231,7 +236,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
         }
     }
 
-    val shouldBlur = importState is ImportState.Loading || showSheet.value
+    val shouldBlur = importState is ImportState.Loading || showBottomSheet.value || showSheet
 
     val animatedBlur by animateFloatAsState(
         targetValue = if (shouldBlur) 22f else 0f,
@@ -332,7 +337,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                     indication = null
                 ) {
                     currentSheet.value = SheetType.CREATE_PLAYLIST
-                    showSheet.value = true
+                    showBottomSheet.value = true
                     scope.launch { sheetState.show() }
                 }, contentAlignment = Alignment.Center
             ) {
@@ -370,7 +375,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                         indication = null
                     ) {
                         currentSheet.value = SheetType.ADD_PLAYLIST
-                        showSheet.value = true
+                        showBottomSheet.value = true
                         scope.launch { sheetState.show() }
                     }
             )
@@ -472,7 +477,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                     else -> {
                         LazyColumn (
                             state = playlistState,
-                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = 25.dp),
+                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                             items(playlistsList.playlists) { playlist ->
@@ -567,7 +572,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                                                     menuExpanded = false
                                                     selectedPlaylist.value = playlist
                                                     currentSheet.value = SheetType.RENAME_PLAYLIST
-                                                    showSheet.value = true
+                                                    showBottomSheet.value = true
                                                     scope.launch { sheetState.show() }
                                                 }
                                             )
@@ -617,7 +622,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                     progress.animateTo(
                         targetValue = 1f,
                         animationSpec = tween(
-                            durationMillis = 100_000,
+                            durationMillis = 30_000,
                             easing = LinearEasing
                         )
                     )
@@ -1521,7 +1526,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
 }
 
 @Composable
-private fun pressScale(
+fun pressScale(
     pressedScale: Float = 1.15f
 ): Pair<MutableInteractionSource, Float> {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1589,5 +1594,5 @@ private fun ErrorState(message: String) {
 private fun LibraryScreenPreview() {
     val navController = rememberNavController()
     val snackbarHostState = SnackbarHostState()
-    LibraryScreen(navController,snackbarHostState)
+    LibraryScreen(navController, snackbarHostState, false)
 }

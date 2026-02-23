@@ -2,9 +2,14 @@ package com.example.wavex.homeScreen
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.text.Html
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -92,6 +99,7 @@ import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.ProfileActivity
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -186,7 +194,7 @@ object ProfilePrefs {
 }
 
 @Composable
-fun HomeScreen (navController: NavController) {
+fun HomeScreen (navController: NavController, showSheet: Boolean) {
     val isPreview = LocalInspectionMode.current
 
     val auth = remember(isPreview) {
@@ -251,7 +259,28 @@ fun HomeScreen (navController: NavController) {
         label = "Logo Fade"
     )
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (showSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
+    )
+
+    ConstraintLayout(modifier = Modifier.fillMaxSize()
+        .graphicsLayer {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                renderEffect = RenderEffect
+                    .createBlurEffect(
+                        animatedBlur,
+                        animatedBlur,
+                        Shader.TileMode.CLAMP
+                    )
+                    .asComposeRenderEffect()
+            }
+        }
+    ) {
         val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
         Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
@@ -263,7 +292,8 @@ fun HomeScreen (navController: NavController) {
                 .size(158.dp)
                 .graphicsLayer {
                     alpha = logoAlpha
-                }.zIndex(20f)
+                }
+                .zIndex(20f)
         )
 
         AsyncImage(
@@ -297,7 +327,7 @@ fun HomeScreen (navController: NavController) {
             bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .verticalScroll(scrollState))
+            .verticalScroll(scrollState).zIndex(0f))
         {
             ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
                 val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
@@ -864,6 +894,10 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
     val albums = viewModel.albums.value
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         viewModel.fetchAlbumByQuery(query, root)
     }
@@ -873,7 +907,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
     if (albums.isEmpty()) return
 
     LazyRow(modifier = modifier,
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 100.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         items(albums, key = { it.id }) { album ->
             Column(
@@ -962,5 +996,5 @@ fun LoadingEffect() {
 @Preview(showSystemUi = true)
 private fun HomeScreenPreview() {
     val navController = rememberNavController()
-    HomeScreen(navController = navController)
+    HomeScreen(navController = navController, false)
 }

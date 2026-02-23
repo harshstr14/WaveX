@@ -92,6 +92,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
@@ -237,16 +238,27 @@ private fun Album_Activity(
 
     val isTitleVisible = !isLoading && !albums.isError
 
-    var showSheet by remember { mutableStateOf(false) }
+    var showSongSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSheet) 22f else 0f,
+        targetValue = if (showSongSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
         ),
         label = "BlurAnim"
     )
+
+    val musicService = ServiceLocator.musicService
+
+    val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
+        ?: remember { mutableIntStateOf(-1) }
+
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -500,7 +512,7 @@ private fun Album_Activity(
                     ConstraintLayout(
                         modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))
                     ) {
-                        val (contentList) = createRefs()
+                        val (contentList, miniPlayer) = createRefs()
 
                         LazyColumn (
                             state = listState,
@@ -511,7 +523,7 @@ private fun Album_Activity(
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(bottom = 25.dp)
+                            contentPadding = PaddingValues(bottom = if (currentSong != null) 95.dp else 25.dp)
                         ) {
                             item {
                                 Row(
@@ -879,7 +891,7 @@ private fun Album_Activity(
                                             IconButton(onClick = {
                                                 selectedSong = song
                                                 selectedIndex = index
-                                                showSheet = true
+                                                showSongSheet = true
                                             }) {
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
@@ -894,14 +906,14 @@ private fun Album_Activity(
                             }
                         }
 
-                        if (showSheet && selectedSong != null) {
+                        if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
 
                             SongOptionsBottomSheet(
                                 song = song,
                                 onDismiss = {
-                                    showSheet = false
+                                    showSongSheet = false
                                     selectedSong = null
                                 },
                                 onPlayNow = {
@@ -914,13 +926,37 @@ private fun Album_Activity(
                                     PlayerManager.currentIndex = selectedIndex
 
                                     ContextCompat.startForegroundService(context, intent)
-                                    showSheet = false
+                                    showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
                                 onToggleFavourite = {
                                     likedViewModel.toggleLike(song)
                                 }
                             )
+                        }
+
+                        Box(
+                            modifier = Modifier.constrainAs(miniPlayer) {
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                                bottom.linkTo(parent.bottom)
+                            }.fillMaxWidth().padding(bottom = 20.dp)
+                        ) {
+                            currentSong?.let { song ->
+                                MiniPlayer(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    onPlayPause = {
+                                        musicService?.togglePlayPause()
+                                    },
+                                    onClick = { },
+                                    onAddClick = {
+                                        selectedSong = song
+                                        selectedIndex = currentIndex
+                                        showSongSheet = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }

@@ -30,9 +30,9 @@ class ImportPlaylistViewModel : ViewModel() {
     val importState: StateFlow<ImportState> = _importState
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(100, TimeUnit.SECONDS)
-        .readTimeout(100, TimeUnit.SECONDS)
-        .writeTimeout(100, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     fun importPlaylistByUrl(apiUrl: String, url: String) {

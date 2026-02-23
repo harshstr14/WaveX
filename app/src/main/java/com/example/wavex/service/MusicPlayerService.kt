@@ -122,6 +122,11 @@ class  MusicPlayerService : LifecycleService() {
 
     private val _repeatMode = MutableStateFlow(false)
     var repeatMode: StateFlow<Boolean> = _repeatMode.asStateFlow()
+    private val _playlistFlow = MutableStateFlow<List<SongItem>>(emptyList())
+    val playlistFlow: StateFlow<List<SongItem>> = _playlistFlow.asStateFlow()
+
+    private val _currentIndexFlow = MutableStateFlow(-1)
+    val currentIndexFlow: StateFlow<Int> = _currentIndexFlow.asStateFlow()
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queueFlow: StateFlow<List<SongItem>> = _queue.asStateFlow()
@@ -346,8 +351,13 @@ class  MusicPlayerService : LifecycleService() {
         shufflePointer = 0
         playlist.clear()
         history.clear()
+
         playlist.addAll(songs!!)
-        if (startAtIndex in playlist.indices) playIndex(startAtIndex)
+        _playlistFlow.value = playlist.toList()
+
+        if (startAtIndex in playlist.indices) {
+            playIndex(startAtIndex)
+        }
     }
 
     fun play(song: SongItem) {
@@ -362,11 +372,14 @@ class  MusicPlayerService : LifecycleService() {
 
     private fun playIndex(index: Int) {
         if (index !in playlist.indices) return
+
         currentIndex = index
+        _currentIndexFlow.value = index
 
         val song = playlist[index]
         _currentSong.value = song
         prepareAndPlay(song)
+
         serviceScope.launch {
             RecentlyPlayedManager.add(this@MusicPlayerService, song)
         }
@@ -417,6 +430,12 @@ class  MusicPlayerService : LifecycleService() {
 
             val nextSong = queue.removeAt(0)
             _queue.value = queue.toList()
+
+            val idx = playlist.indexOfFirst { it.id == nextSong.id }
+            if (idx >= 0) {
+                currentIndex = idx
+                _currentIndexFlow.value = idx
+            }
 
             _currentSong.value = nextSong
             prepareAndPlay(nextSong)

@@ -107,11 +107,12 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
 @Composable
-fun DiscoverScreen(navController: NavController) {
+fun DiscoverScreen(navController: NavController, showSheet: Boolean) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -128,10 +129,10 @@ fun DiscoverScreen(navController: NavController) {
         label = "ShareScale"
     )
 
-    var showSheet by remember { mutableStateOf(false) }
+    var showSongSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSheet) 22f else 0f,
+        targetValue = if (showSheet || showSongSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -308,7 +309,7 @@ fun DiscoverScreen(navController: NavController) {
                             selectedIndex = index
                             PlayerManager.currentPlaylist = songsList
                             PlayerManager.currentIndex = index
-                            showSheet = true
+                            showSongSheet = true
                         }
                     )
                 }
@@ -359,7 +360,7 @@ fun DiscoverScreen(navController: NavController) {
         }
     }
 
-    if (showSheet && selectedSong != null) {
+    if (showSongSheet && selectedSong != null) {
 
         val context = LocalContext.current
         val song = selectedSong!!
@@ -370,7 +371,7 @@ fun DiscoverScreen(navController: NavController) {
             song = song,
             isFavourite = isFavourite,
             onDismiss = {
-                showSheet = false
+                showSongSheet = false
                 selectedSong = null
             },
             onPlayNow = {
@@ -379,7 +380,7 @@ fun DiscoverScreen(navController: NavController) {
                     putExtra("index", selectedIndex)
                 }
                 ContextCompat.startForegroundService(context, intent)
-                showSheet = false
+                showSongSheet = false
             },
             onToggleFavourite = {
                 likedViewModel.toggleLike(
@@ -468,6 +469,10 @@ fun ExploreSongs(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
     }
@@ -487,7 +492,7 @@ fun ExploreSongs(
             LazyColumn (
                 state = listState,
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 12.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                     Row (
@@ -621,6 +626,10 @@ fun ExploreArtists(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         viewModel.fetchArtistsByQuery(query, root)
     }
@@ -641,7 +650,7 @@ fun ExploreArtists(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -700,6 +709,10 @@ fun ExploreAlbums(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         viewModel.fetchAlbumByQuery(query, root)
     }
@@ -720,7 +733,7 @@ fun ExploreAlbums(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
@@ -795,6 +808,10 @@ fun ExplorePlaylist(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query, root)
     }
@@ -815,7 +832,7 @@ fun ExplorePlaylist(
                 state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = modifier,
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
@@ -911,5 +928,5 @@ private fun ErrorState(message: String) {
 @Composable
 private fun DiscoverScreenPreview() {
     val navController = rememberNavController()
-    DiscoverScreen(navController)
+    DiscoverScreen(navController, false)
 }

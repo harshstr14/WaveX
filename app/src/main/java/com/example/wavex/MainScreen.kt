@@ -1,6 +1,8 @@
 package com.example.wavex
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -20,7 +22,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -45,12 +46,16 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -59,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -68,21 +74,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.palette.graphics.Palette
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
+import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.libraryScreen.LibraryScreen
+import com.example.wavex.libraryScreen.pressScale
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
-import com.example.wavex.profileScreen.yourProfileScreen.YourProfileActivity
+import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.SearchScreen
+import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.Dispatchers
@@ -177,12 +193,28 @@ class MainScreen : ComponentActivity() {
 fun Main_Screen() {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
-    
+
+    var showSheet by remember { mutableStateOf(false) }
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
+
+    val likedViewModel: LikedSongsViewModel = viewModel()
+    val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    val context = LocalContext.current
+
+    val musicService = ServiceLocator.musicService
+
+    val playlist by musicService?.playlistFlow?.collectAsState(initial = emptyList())
+        ?: remember { mutableStateOf(emptyList()) }
+
+    val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
+        ?: remember { mutableIntStateOf(-1) }
+
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             Column {
-                val musicService = ServiceLocator.musicService
 
                 val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
                     ?: remember { mutableStateOf(false) }
@@ -197,7 +229,12 @@ fun Main_Screen() {
                         onPlayPause = {
                             musicService?.togglePlayPause()
                         },
-                        onClick = { }
+                        onClick = { },
+                        onAddClick = {
+                            selectedSong = song
+                            selectedIndex = currentIndex
+                            showSheet = true
+                        }
                     )
                 }
 
@@ -296,18 +333,47 @@ fun Main_Screen() {
             }
         ) {
             composable(BottomNavRoute.Home.route) {
-                HomeScreen(navController)  // ⬅ current Home UI
+                HomeScreen(navController, showSheet = showSheet)  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
-                DiscoverScreen(navController)
+                DiscoverScreen(navController, showSheet = showSheet)
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen(navController)
+                SearchScreen(navController, showSheet = showSheet)
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController, snackBarHostState = snackBarHostState)
+                LibraryScreen(navController, snackBarHostState = snackBarHostState, showSheet = showSheet)
             }
         }
+    }
+
+    if (showSheet && selectedSong != null) {
+        val song = selectedSong!!
+        val isFavourite = likedSongs.contains(song.id)
+
+        SongOptionsBottomSheet(
+            song = song,
+            onDismiss = {
+                showSheet = false
+                selectedSong = null
+            },
+            onPlayNow = {
+                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putExtra("index", selectedIndex)
+                }
+
+                PlayerManager.currentPlaylist = playlist.toMutableList()
+                PlayerManager.currentIndex = selectedIndex
+
+                ContextCompat.startForegroundService(context, intent)
+                showSheet = false
+            },
+            isFavourite = isFavourite,
+            onToggleFavourite = {
+                likedViewModel.toggleLike(song)
+            }
+        )
     }
 }
 
@@ -316,10 +382,12 @@ fun MiniPlayer(
     song: SongItem,
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddClick: () -> Unit
 ) {
     val playInteractionSource = remember { MutableInteractionSource() }
     val isPressed by playInteractionSource.collectIsPressedAsState()
+    val (addInteraction, addScale) = pressScale()
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.15f else 1f,
@@ -330,32 +398,59 @@ fun MiniPlayer(
         label = "ShareScale"
     )
 
+    val context = LocalContext.current
+    var gradientColors by remember { mutableStateOf(listOf(Color(0xFF2C2C2C))) }
+
+    LaunchedEffect(song.image) {
+        gradientColors = extractColors(
+            context,
+            song.image.getOrNull(2)?.url
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .zIndex(1f)
             .padding(start = 18.dp, end = 18.dp, bottom = 4.dp)
             .height(68.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF2C2C2C).copy(alpha = 0.80f)  )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
                 onClick()
-            }
-            .shadow(
-                elevation = 14.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
-                spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
-            ).background(Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFF2C2C2C).copy(alpha = 0.95f),
-                    Color(0xFF2C2C2C).copy(alpha = 1f)
-                )
-            ),
-        shape = RoundedCornerShape(14.dp)),
+            },
         contentAlignment = Alignment.Center
     ) {
+        AsyncImage(
+            model = song.image.getOrNull(2)?.url,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .matchParentSize()
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.65f),  // left strong
+                            Color.Black.copy(alpha = 0.45f),  // middle
+                            Color.Black.copy(alpha = 0.80f)   // right darker
+                        )
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.Black.copy(alpha = 0.25f))
+        )
+
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.Center,
@@ -364,7 +459,7 @@ fun MiniPlayer(
             AsyncImage(
                 model = song.image.getOrNull(2)?.url,
                 contentDescription = null,
-                modifier = Modifier.size(54.dp).clip(RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),
                 contentScale = ContentScale.Crop
             )
 
@@ -416,7 +511,6 @@ fun MiniPlayer(
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterVertically)
-                    .padding(end = 8.dp)
                     .size(36.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(colorResource(R.color.theme_color))
@@ -444,6 +538,52 @@ fun MiniPlayer(
                         }
                 )
             }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Icon(
+                painter = painterResource(R.drawable.plus_icon),
+                contentDescription = "Add Icon",
+                tint = colorResource(R.color.off_white),
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .padding(end = 6.dp)
+                    .size(28.dp)
+                    .clickable(
+                        interactionSource = addInteraction,
+                        indication = null
+                    ) {
+                        onAddClick()
+                    }
+                    .graphicsLayer {
+                        scaleX = addScale
+                        scaleY = addScale
+                    }
+            )
+        }
+    }
+}
+
+suspend fun extractColors(context: Context, imageUrl: String?): List<Color> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .allowHardware(false)
+                .build()
+
+            val result = (loader.execute(request) as SuccessResult).drawable
+            val bitmap = (result as BitmapDrawable).bitmap
+
+            val palette = Palette.from(bitmap).generate()
+
+            val dominant = palette.getDominantColor(0xFF2C2C2C.toInt())
+            val vibrant = palette.getVibrantColor(dominant)
+
+            listOf(Color(dominant), Color(vibrant))
+        } catch (e: Exception) {
+            listOf(Color(0xFF2C2C2C), Color(0xFF1E1E1E))
         }
     }
 }
