@@ -437,9 +437,9 @@ fun MiniPlayer(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.65f),  // left strong
-                            Color.Black.copy(alpha = 0.45f),  // middle
-                            Color.Black.copy(alpha = 0.80f)   // right darker
+                            colorResource(R.color.primary_text_color).copy(alpha = 0.65f),  // left strong
+                            colorResource(R.color.primary_text_color).copy(alpha = 0.45f),  // middle
+                            colorResource(R.color.primary_text_color).copy(alpha = 0.80f)   // right darker
                         )
                     )
                 )
@@ -448,18 +448,20 @@ fun MiniPlayer(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Color.Black.copy(alpha = 0.25f))
+                .background(colorResource(R.color.primary_text_color).copy(alpha = 0.65f))
         )
 
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.Top
         ) {
             AsyncImage(
                 model = song.image.getOrNull(2)?.url,
                 contentDescription = null,
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),
+                modifier = Modifier.size(48.dp)
+                    .align(Alignment.CenterVertically)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
 
