@@ -64,6 +64,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.pratikfagadiya.animatedsmoothbottomnavigation.jetpackcompose)
     implementation(libs.ucrop)
     implementation(libs.cloudinary.android)
     implementation(libs.gson)

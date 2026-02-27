@@ -1,5 +1,6 @@
 [versions]
 agp = "9.0.0"
+animatedsmoothbottomnavigationJetpackcomposeVersion = "1.1.2"
 coreKtx = "1.17.0"
 constraintlayoutCompose = "1.1.1"
 junit = "4.13.2"
@@ -38,6 +39,7 @@ cloudinaryAndroid = "3.1.2"
 ucrop = "2.2.8"
 
 [libraries]
+pratikfagadiya-animatedsmoothbottomnavigation-jetpackcompose = { module = "com.github.PratikFagadiya:AnimatedSmoothBottomNavigation-JetpackCompose", version.ref = "animatedsmoothbottomnavigationJetpackcomposeVersion" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
 cloudinary-android = { module = "com.cloudinary:cloudinary-android", version.ref = "cloudinaryAndroid" }
 androidx-palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "paletteKtx" }

@@ -52,10 +52,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -86,6 +86,9 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.PratikFagadiya.smoothanimationbottombar.model.SmoothAnimationBottomBarScreens
+import com.PratikFagadiya.smoothanimationbottombar.properties.BottomBarProperties
+import com.PratikFagadiya.smoothanimationbottombar.ui.SmoothAnimationBottomBar
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
 import com.example.wavex.homeScreen.PlayerManager
@@ -211,34 +214,69 @@ fun Main_Screen() {
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
         ?: remember { mutableIntStateOf(-1) }
 
+    val bottomNavigationItems = listOf(
+        SmoothAnimationBottomBarScreens(
+            BottomNavRoute.Home.route,
+            "Home",
+            R.drawable.home_filled
+        ),
+        SmoothAnimationBottomBarScreens(
+            BottomNavRoute.Discover.route,
+            "Discover",
+            R.drawable.discover_filled
+        ),
+        SmoothAnimationBottomBarScreens(
+            BottomNavRoute.Search.route,
+            "Search",
+            R.drawable.search_filled
+        ),
+        SmoothAnimationBottomBarScreens(
+            BottomNavRoute.Library.route,
+            "Library",
+            R.drawable.library_filled
+        )
+    )
+
+    val currentIndexBottomNav = rememberSaveable {
+        mutableIntStateOf(0)
+    }
+
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
-            Column {
-
-                val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
-                    ?: remember { mutableStateOf(false) }
-
-                val currentSong by musicService?.currentSong?.collectAsState(initial = null)
-                    ?: remember { mutableStateOf(null) }
-
-                currentSong?.let { song ->
-                    MiniPlayer(
-                        song = song,
-                        isPlaying = isPlaying,
-                        onPlayPause = {
-                            musicService?.togglePlayPause()
-                        },
-                        onClick = { },
-                        onAddClick = {
-                            selectedSong = song
-                            selectedIndex = currentIndex
-                            showSheet = true
-                        }
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 14.dp, end = 14.dp, bottom = 8.dp)
+                .navigationBarsPadding().height(68.dp).shadow(
+                    elevation = 28.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
+                    spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
+                ).background(Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2C2C2C).copy(alpha = 0.95f),
+                        Color(0xFF2C2C2C).copy(alpha = 1f)
                     )
-                }
-
-                BottomNavBar(navController)
+                ), shape = RoundedCornerShape(28.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                SmoothAnimationBottomBar(navController,
+                    bottomNavigationItems,
+                    initialIndex = currentIndexBottomNav,
+                    bottomBarProperties = BottomBarProperties(
+                        backgroundColor = Color(0xFF2C2C2C),     // Change the background color
+                        indicatorColor = colorResource(R.color.off_white).copy(alpha = 0.2F),  // Change the indicator color with Alpha
+                        iconTintColor = colorResource(R.color.theme_color), // Change the icon tint color
+                        iconTintActiveColor = colorResource(R.color.off_white), // Change the active icon tint color
+                        textActiveColor = colorResource(R.color.off_white), // Change the active text color
+                        cornerRadius = 24.dp,  // Increase the corner radius
+                        fontFamily = fonts,  // Change the font family
+                        fontWeight = FontWeight.SemiBold,  // Change the font weight
+                        fontSize = 14.sp
+                    ),
+                    onSelectItem = {
+                        Log.i("SELECTED_ITEM", "onCreate: Selected Item ${it.name}")
+                    })
             }
         },
         contentWindowInsets = WindowInsets(0),
