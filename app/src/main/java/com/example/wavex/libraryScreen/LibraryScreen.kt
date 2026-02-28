@@ -269,7 +269,7 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                 }
             }
         ) {
-            val(backButton, titleText, addButton, spotifyLogo, likedSongsRow, playlistList) = createRefs()
+            val(backButton, titleText, addButton, spotifyLogo, playlistList) = createRefs()
 
             Text(
                 text = "Library", modifier = Modifier
@@ -380,61 +380,10 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                     }
             )
 
-            Row (
-                modifier = Modifier
-                    .constrainAs(likedSongsRow) {
-                        top.linkTo(titleText.bottom, margin = 35.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
-                    .padding(start = 24.dp, end = 12.dp)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        val intent = Intent(context, LikedSongsActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        }
-                        context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.liked),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(10.dp)),
-                    contentScale = ContentScale.Crop
-                )
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "Liked Songs",
-                        fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "${likedSongs.size} Songs",
-                        fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .constrainAs(playlistList) {
-                        top.linkTo(likedSongsRow.bottom, margin = 12.dp)
+                        top.linkTo(titleText.bottom, margin = 25.dp)
                         start.linkTo(parent.start)
                         bottom.linkTo(parent.bottom)
                         end.linkTo(parent.end)
@@ -479,6 +428,53 @@ fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostS
                             state = playlistState,
                             contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                            item {
+                                Row (
+                                    modifier = Modifier
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            val intent = Intent(context, LikedSongsActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(R.drawable.liked),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = "Liked Songs",
+                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Text(
+                                            text = "${likedSongs.size} Songs",
+                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
 
                             items(playlistsList.playlists) { playlist ->
                                 var menuExpanded by remember { mutableStateOf(false) }

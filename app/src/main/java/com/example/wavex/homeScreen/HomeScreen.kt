@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.text.Html
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -54,9 +55,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -79,9 +84,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -160,7 +165,6 @@ object RecentlyPlayedManager {
 
 object ProfilePrefs {
     val Context.dataStore by preferencesDataStore("profile")
-
     val PROFILE_URL = stringPreferencesKey("profile_url")
     val USER_NAME = stringPreferencesKey("user_name")
 
@@ -194,7 +198,7 @@ object ProfilePrefs {
 }
 
 @Composable
-fun HomeScreen (navController: NavController, showSheet: Boolean) {
+fun HomeScreen (showSheet: Boolean) {
     val isPreview = LocalInspectionMode.current
 
     val auth = remember(isPreview) {
@@ -268,6 +272,24 @@ fun HomeScreen (navController: NavController, showSheet: Boolean) {
         label = "BlurAnim"
     )
 
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 0.8f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 50f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowBlur"
+    )
+
+    val shadowScale by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0.8f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowScale"
+    )
+
     ConstraintLayout(modifier = Modifier.fillMaxSize()
         .graphicsLayer {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
@@ -296,29 +318,80 @@ fun HomeScreen (navController: NavController, showSheet: Boolean) {
                 .zIndex(20f)
         )
 
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Profile Image",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.constrainAs(profileAvatar) {
-                top.linkTo(parent.top, margin = 15.dp)
-                end.linkTo(parent.end, margin = 22.dp)
-            }.clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) {
-                val intent = Intent(context, ProfileActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+
+        Box(
+            modifier = Modifier
+                .constrainAs(profileAvatar) {
+                    top.linkTo(parent.top, margin = 10.dp)
+                    end.linkTo(parent.end, margin = 22.dp)
                 }
-                context.startActivity(intent)
-            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(52.dp)
-                .clip(CircleShape)
-                .graphicsLayer {
-                    alpha = logoAlpha
-                }
-                .zIndex(20f)
-        )
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(68.dp)
+                .drawBehind {
+                    val glowRadius = (size.minDimension / 3) * shadowScale
+                    val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = shadowColor.copy(alpha = shadowAlpha)
+                            asFrameworkPaint().apply {
+                                isAntiAlias = true
+
+                                maskFilter = if (shadowBlur > 0f) {
+                                    android.graphics.BlurMaskFilter(
+                                        safeBlur,
+                                        android.graphics.BlurMaskFilter.Blur.NORMAL
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
+                        }
+
+                        canvas.drawCircle(
+                            center,
+                            glowRadius,
+                            paint
+                        )
+                    }
+                }.zIndex(20f)
+            , contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .allowHardware(false)
+                    .build(),
+                contentDescription = "Profile Image",
+                contentScale = ContentScale.Crop,
+                onSuccess = { result ->
+                    val drawable = result.result.drawable
+                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                    Palette.from(bitmap).generate { palette ->
+                        palette?.dominantSwatch?.rgb?.let { colorInt ->
+                            shadowColor = Color(colorInt)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        val intent = Intent(context, ProfileActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        context.startActivity(intent)
+                    }
+                    .graphicsLayer {
+                        alpha = logoAlpha
+                    }
+            )
+        }
 
         Column(modifier = Modifier.constrainAs(mainContent) {
             top.linkTo(parent.top, margin = 5.dp)
@@ -426,6 +499,13 @@ fun HomeScreen (navController: NavController, showSheet: Boolean) {
                     }
                     .fillMaxSize()
                     .background(colorResource(R.color.background_color))
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent()
+                            }
+                        }
+                    }
                     .zIndex(10f),
                 contentAlignment = Alignment.Center
             ) {
@@ -456,7 +536,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val itemWidth = 140.dp
+    val itemWidth = 160.dp
     val itemSpacing = 18.dp
     val sidePadding = (screenWidth - itemWidth) / 2
 
@@ -995,6 +1075,5 @@ fun LoadingEffect() {
 @Composable
 @Preview(showSystemUi = true)
 private fun HomeScreenPreview() {
-    val navController = rememberNavController()
-    HomeScreen(navController = navController, false)
+    HomeScreen(false)
 }

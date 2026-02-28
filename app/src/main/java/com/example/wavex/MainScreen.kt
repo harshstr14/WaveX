@@ -1,8 +1,7 @@
 package com.example.wavex
 
-import android.content.Context
+import android.app.Activity
 import android.content.Intent
-import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -46,13 +45,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,14 +78,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.palette.graphics.Palette
-import coil.ImageLoader
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import coil.request.SuccessResult
-import com.PratikFagadiya.smoothanimationbottombar.model.SmoothAnimationBottomBarScreens
-import com.PratikFagadiya.smoothanimationbottombar.properties.BottomBarProperties
-import com.PratikFagadiya.smoothanimationbottombar.ui.SmoothAnimationBottomBar
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
 import com.example.wavex.homeScreen.PlayerManager
@@ -99,6 +89,7 @@ import com.example.wavex.libraryScreen.LibraryScreen
 import com.example.wavex.libraryScreen.pressScale
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
+import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.service.MusicPlayerService
@@ -214,69 +205,44 @@ fun Main_Screen() {
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
         ?: remember { mutableIntStateOf(-1) }
 
-    val bottomNavigationItems = listOf(
-        SmoothAnimationBottomBarScreens(
-            BottomNavRoute.Home.route,
-            "Home",
-            R.drawable.home_filled
-        ),
-        SmoothAnimationBottomBarScreens(
-            BottomNavRoute.Discover.route,
-            "Discover",
-            R.drawable.discover_filled
-        ),
-        SmoothAnimationBottomBarScreens(
-            BottomNavRoute.Search.route,
-            "Search",
-            R.drawable.search_filled
-        ),
-        SmoothAnimationBottomBarScreens(
-            BottomNavRoute.Library.route,
-            "Library",
-            R.drawable.library_filled
-        )
-    )
-
-    val currentIndexBottomNav = rememberSaveable {
-        mutableIntStateOf(0)
-    }
-
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 14.dp, end = 14.dp, bottom = 8.dp)
-                .navigationBarsPadding().height(68.dp).shadow(
-                    elevation = 28.dp,
-                    shape = RoundedCornerShape(28.dp),
-                    ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
-                    spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
-                ).background(Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF2C2C2C).copy(alpha = 0.95f),
-                        Color(0xFF2C2C2C).copy(alpha = 1f)
+            Column {
+
+                val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+                    ?: remember { mutableStateOf(false) }
+
+                val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+                    ?: remember({ mutableStateOf(null) })
+
+                currentSong?.let { song ->
+                    MiniPlayer(
+                        song = song,
+                        isPlaying = isPlaying,
+                        onPlayPause = {
+                            musicService?.togglePlayPause()
+                        },
+                        onClick = {
+                            val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+
+                            (context as? Activity)?.overridePendingTransition(
+                                R.anim.slide_up,
+                                R.anim.fade_out
+                            )
+                        },
+                        onAddClick = {
+                            selectedSong = song
+                            selectedIndex = currentIndex
+                            showSheet = true
+                        }
                     )
-                ), shape = RoundedCornerShape(28.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                SmoothAnimationBottomBar(navController,
-                    bottomNavigationItems,
-                    initialIndex = currentIndexBottomNav,
-                    bottomBarProperties = BottomBarProperties(
-                        backgroundColor = Color(0xFF2C2C2C),     // Change the background color
-                        indicatorColor = colorResource(R.color.off_white).copy(alpha = 0.2F),  // Change the indicator color with Alpha
-                        iconTintColor = colorResource(R.color.theme_color), // Change the icon tint color
-                        iconTintActiveColor = colorResource(R.color.off_white), // Change the active icon tint color
-                        textActiveColor = colorResource(R.color.off_white), // Change the active text color
-                        cornerRadius = 24.dp,  // Increase the corner radius
-                        fontFamily = fonts,  // Change the font family
-                        fontWeight = FontWeight.SemiBold,  // Change the font weight
-                        fontSize = 14.sp
-                    ),
-                    onSelectItem = {
-                        Log.i("SELECTED_ITEM", "onCreate: Selected Item ${it.name}")
-                    })
+                }
+
+                BottomNavBar(navController = navController)
             }
         },
         contentWindowInsets = WindowInsets(0),
@@ -371,7 +337,7 @@ fun Main_Screen() {
             }
         ) {
             composable(BottomNavRoute.Home.route) {
-                HomeScreen(navController, showSheet = showSheet)  // ⬅ current Home UI
+                HomeScreen(showSheet = showSheet)  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
                 DiscoverScreen(navController, showSheet = showSheet)
@@ -435,16 +401,6 @@ fun MiniPlayer(
         ),
         label = "ShareScale"
     )
-
-    val context = LocalContext.current
-    var gradientColors by remember { mutableStateOf(listOf(Color(0xFF2C2C2C))) }
-
-    LaunchedEffect(song.image) {
-        gradientColors = extractColors(
-            context,
-            song.image.getOrNull(2)?.url
-        )
-    }
 
     Box(
         modifier = Modifier
@@ -604,30 +560,6 @@ fun MiniPlayer(
     }
 }
 
-suspend fun extractColors(context: Context, imageUrl: String?): List<Color> {
-    return withContext(Dispatchers.IO) {
-        try {
-            val loader = ImageLoader(context)
-            val request = ImageRequest.Builder(context)
-                .data(imageUrl)
-                .allowHardware(false)
-                .build()
-
-            val result = (loader.execute(request) as SuccessResult).drawable
-            val bitmap = (result as BitmapDrawable).bitmap
-
-            val palette = Palette.from(bitmap).generate()
-
-            val dominant = palette.getDominantColor(0xFF2C2C2C.toInt())
-            val vibrant = palette.getVibrantColor(dominant)
-
-            listOf(Color(dominant), Color(vibrant))
-        } catch (e: Exception) {
-            listOf(Color(0xFF2C2C2C), Color(0xFF1E1E1E))
-        }
-    }
-}
-
 @Composable
 private fun BottomNavBar(navController: NavController) {
     val currentRoute =
@@ -670,7 +602,7 @@ private fun BottomNavBar(navController: NavController) {
                 spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
             ).background(Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF2C2C2C).copy(alpha = 0.95f),
+                    Color(0xFF2C2C2C).copy(alpha = 0.98f),
                     Color(0xFF2C2C2C).copy(alpha = 1f)
                 )
             ), shape = RoundedCornerShape(28.dp)),
@@ -696,8 +628,8 @@ private fun BottomNavBar(navController: NavController) {
                             brush = if (selected)
                                 Brush.horizontalGradient(
                                     listOf(
-                                        Color(0xFF34A853),
-                                        Color(0x2F34A853)
+                                        colorResource(R.color.off_white).copy(alpha = 0.2F),
+                                        colorResource(R.color.off_white).copy(alpha = 0.2F)
                                     )
                                 )
                             else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
