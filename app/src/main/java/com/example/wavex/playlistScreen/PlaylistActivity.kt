@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -12,9 +13,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,9 +79,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -100,7 +106,9 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -116,6 +124,7 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -267,6 +276,12 @@ fun Playlist_Activity(
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
+
+    val progress by musicService?.progress?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
+
+    val duration by musicService?.duration?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -951,10 +966,23 @@ fun Playlist_Activity(
                                 MiniPlayer(
                                     song = song,
                                     isPlaying = isPlaying,
+                                    progress = if (duration > 0)
+                                        progress.toFloat() / duration.toFloat()
+                                    else 0f,
                                     onPlayPause = {
                                         musicService?.togglePlayPause()
                                     },
-                                    onClick = { },
+                                    onClick = {
+                                        val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+                                        context.startActivity(intent)
+
+                                        (context as? Activity)?.overridePendingTransition(
+                                            R.anim.slide_up,
+                                            R.anim.fade_out
+                                        )
+                                    },
                                     onAddClick = {
                                         selectedSong = song
                                         selectedIndex = currentIndex
@@ -1206,6 +1234,22 @@ private fun BottomSheetContent(
         ?: remember { mutableStateOf(emptyList()) }
     val isInQueue = queue.any { it.id == song.id }
 
+    var isScrollingDown by remember { mutableStateOf(false) }
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 0.8f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 50f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowBlur"
+    )
+
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1230,15 +1274,54 @@ private fun BottomSheetContent(
                 .fillMaxWidth()
         ) {
             AsyncImage(
-                model = song.image.getOrNull(2)?.url,
+                model = ImageRequest.Builder(context)
+                    .data(song.image.getOrNull(2)?.url)
+                    .allowHardware(false)
+                    .build(),
                 contentDescription = null,
+                onSuccess = { result ->
+                    val drawable = result.result.drawable
+                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                    Palette.from(bitmap).generate { palette ->
+                        palette?.dominantSwatch?.rgb?.let { colorInt ->
+                            shadowColor = Color(colorInt)
+                        }
+                    }
+                },
                 modifier = Modifier
                     .size(120.dp)
-                    .shadow(
-                        elevation = 18.dp,
-                        shape = RoundedCornerShape(18.dp),
-                        clip = false
-                    )
+                    .drawBehind {
+                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+                        val cornerRadius = 18.dp.toPx()
+
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = shadowColor.copy(alpha = shadowAlpha)
+                                asFrameworkPaint().apply {
+                                    isAntiAlias = true
+
+                                    maskFilter = if (shadowBlur > 0f) {
+                                        android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+
+                            canvas.drawRoundRect(
+                                0f,
+                                0f,
+                                size.width,
+                                size.height,
+                                cornerRadius,
+                                cornerRadius,
+                                paint
+                            )                        }
+                    }
                     .clip(RoundedCornerShape(18.dp)),
                 contentScale = ContentScale.Crop
             )

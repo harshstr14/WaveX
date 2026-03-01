@@ -51,12 +51,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class  MusicPlayerService : LifecycleService() {
     companion object {
@@ -74,6 +75,13 @@ class  MusicPlayerService : LifecycleService() {
         const val ACTION_SHUFFLE = "com.example.app.ACTION_SHUFFLE"
         const val ACTION_STOP = "com.example.app.ACTION_STOP"
     }
+
+    enum class RepeatMode {
+        OFF,
+        ALL,
+        ONE
+    }
+
     inner class LocalBinder : Binder() {
         fun getService(): MusicPlayerService = this@MusicPlayerService
     }
@@ -99,6 +107,7 @@ class  MusicPlayerService : LifecycleService() {
             }
         }
     }
+
     private var playlist: MutableList<SongItem> = mutableListOf()
     private var currentIndex = -1
 
@@ -120,8 +129,9 @@ class  MusicPlayerService : LifecycleService() {
     private val _isShuffle = MutableStateFlow(false)
     var isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
 
-    private val _repeatMode = MutableStateFlow(false)
-    var repeatMode: StateFlow<Boolean> = _repeatMode.asStateFlow()
+    private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
+    val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
+
     private val _playlistFlow = MutableStateFlow<List<SongItem>>(emptyList())
     val playlistFlow: StateFlow<List<SongItem>> = _playlistFlow.asStateFlow()
 
@@ -130,6 +140,7 @@ class  MusicPlayerService : LifecycleService() {
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queueFlow: StateFlow<List<SongItem>> = _queue.asStateFlow()
+
     private val shuffleOrder: MutableList<Int> = mutableListOf()
     private var shufflePointer = 0
 
@@ -157,6 +168,15 @@ class  MusicPlayerService : LifecycleService() {
 
         initPlayer()
         initMediaSession()
+
+        serviceScope.launch {
+            _currentSong
+                .filterNotNull()
+                .distinctUntilChangedBy { it.id }
+                .collect { song ->
+                    RecentlyPlayedManager.add(this@MusicPlayerService, song)
+                }
+        }
     }
 
     @OptIn(UnstableApi::class)
@@ -379,10 +399,6 @@ class  MusicPlayerService : LifecycleService() {
         val song = playlist[index]
         _currentSong.value = song
         prepareAndPlay(song)
-
-        serviceScope.launch {
-            RecentlyPlayedManager.add(this@MusicPlayerService, song)
-        }
     }
 
     private fun prepareAndPlay(song: SongItem) {
@@ -440,41 +456,49 @@ class  MusicPlayerService : LifecycleService() {
             _currentSong.value = nextSong
             prepareAndPlay(nextSong)
 
-            serviceScope.launch {
-                RecentlyPlayedManager.add(this@MusicPlayerService, nextSong)
-            }
             return
         }
 
         if (playlist.isEmpty()) return
         current?.let { history.add(it) }
 
-        when {
-            repeatMode.value -> {
+        when (repeatMode.value) {
+            RepeatMode.ONE -> {
                 playIndex(currentIndex)
+                return
             }
 
-            isShuffle.value -> {
-                if (shuffleOrder.isEmpty()) {
-                    generateShuffleOrder()
-                }
+            RepeatMode.ALL,
+            RepeatMode.OFF -> {
+                if (isShuffle.value) {
+                    if (shuffleOrder.isEmpty()) {
+                        generateShuffleOrder()
+                    }
 
-                shufflePointer++
+                    shufflePointer++
 
-                if (shufflePointer >= shuffleOrder.size) {
-                    shufflePointer = 0
-                }
+                    if (shufflePointer >= shuffleOrder.size) {
 
-                val nextIndex = shuffleOrder[shufflePointer]
-                playIndex(nextIndex)
-            }
+                        if (repeatMode.value == RepeatMode.ALL) {
+                            shufflePointer = 0
+                        } else {
+                            return
+                        }
+                    }
 
-            else -> {
-                val nextIndex = currentIndex + 1
-                if (nextIndex in playlist.indices) {
+                    val nextIndex = shuffleOrder[shufflePointer]
                     playIndex(nextIndex)
+
                 } else {
-                    playIndex(0)
+                    val nextIndex = currentIndex + 1
+
+                    if (nextIndex in playlist.indices) {
+                        playIndex(nextIndex)
+                    } else {
+                        if (repeatMode.value == RepeatMode.ALL) {
+                            playIndex(0)
+                        }
+                    }
                 }
             }
         }
@@ -498,32 +522,46 @@ class  MusicPlayerService : LifecycleService() {
             return
         }
 
-        when {
-            repeatMode.value -> {
+        when (repeatMode.value) {
+            RepeatMode.ONE -> {
                 playIndex(currentIndex)
+                return
             }
 
-            isShuffle.value -> {
-                if (shuffleOrder.isEmpty()) {
-                    generateShuffleOrder()
-                }
+            RepeatMode.ALL,
+            RepeatMode.OFF -> {
 
-                shufflePointer--
+                if (isShuffle.value) {
+                    if (shuffleOrder.isEmpty()) {
+                        generateShuffleOrder()
+                    }
 
-                if (shufflePointer < 0) {
-                    shufflePointer = shuffleOrder.lastIndex
-                }
+                    shufflePointer--
 
-                val prevIndex = shuffleOrder[shufflePointer]
-                playIndex(prevIndex)
-            }
+                    if (shufflePointer < 0) {
 
-            else -> {
-                val prevIndex = currentIndex - 1
-                if (prevIndex >= 0) {
+                        if (repeatMode.value == RepeatMode.ALL) {
+                            shufflePointer = shuffleOrder.lastIndex
+                        } else {
+                            return
+                        }
+                    }
+
+                    val prevIndex = shuffleOrder[shufflePointer]
                     playIndex(prevIndex)
+
                 } else {
-                    player.seekTo(0)
+                    val prevIndex = currentIndex - 1
+
+                    if (prevIndex >= 0) {
+                        playIndex(prevIndex)
+                    } else {
+                        if (repeatMode.value == RepeatMode.ALL) {
+                            playIndex(playlist.lastIndex)
+                        } else {
+                            player.seekTo(0)
+                        }
+                    }
                 }
             }
         }
@@ -551,7 +589,12 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun repeatToggle() {
-        _repeatMode.update { !it }
+        _repeatMode.value = when (_repeatMode.value) {
+            RepeatMode.OFF -> RepeatMode.ALL
+            RepeatMode.ALL -> RepeatMode.ONE
+            RepeatMode.ONE -> RepeatMode.OFF
+        }
+
         updateNotification()
     }
 
@@ -781,11 +824,27 @@ class  MusicPlayerService : LifecycleService() {
             NotificationCompat.Action(R.drawable.disableshuffle, "disableShuffle", shufflePending)
         }
 
-        val isRepeat = _repeatMode.value
-        val repeatAction = if (isRepeat) {
-            NotificationCompat.Action(R.drawable.notificationrepeatbutton, "repeat", repeatPending)
-        } else {
-            NotificationCompat.Action(R.drawable.disablerepeat, "disableRepeat", repeatPending)
+        val repeatAction = when (_repeatMode.value) {
+            RepeatMode.OFF ->
+                NotificationCompat.Action(
+                    R.drawable.disablerepeat,
+                    "Repeat Off",
+                    repeatPending
+                )
+
+            RepeatMode.ALL ->
+                NotificationCompat.Action(
+                    R.drawable.notificationrepeatbutton,
+                    "Repeat All",
+                    repeatPending
+                )
+
+            RepeatMode.ONE ->
+                NotificationCompat.Action(
+                    R.drawable.notificationrepeatonebutton,
+                    "Repeat One",
+                    repeatPending
+                )
         }
 
         val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)

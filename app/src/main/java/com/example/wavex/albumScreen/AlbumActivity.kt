@@ -102,6 +102,7 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
@@ -259,6 +260,12 @@ private fun Album_Activity(
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
+
+    val progress by musicService?.progress?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
+
+    val duration by musicService?.duration?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -946,10 +953,23 @@ private fun Album_Activity(
                                 MiniPlayer(
                                     song = song,
                                     isPlaying = isPlaying,
+                                    progress = if (duration > 0)
+                                        progress.toFloat() / duration.toFloat()
+                                    else 0f,
                                     onPlayPause = {
                                         musicService?.togglePlayPause()
                                     },
-                                    onClick = { },
+                                    onClick = {
+                                        val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+                                        context.startActivity(intent)
+
+                                        (context as? Activity)?.overridePendingTransition(
+                                            R.anim.slide_up,
+                                            R.anim.fade_out
+                                        )
+                                    },
                                     onAddClick = {
                                         selectedSong = song
                                         selectedIndex = currentIndex

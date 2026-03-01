@@ -134,13 +134,10 @@ object RecentlyPlayedManager {
                 ?.toMutableList()
                 ?: mutableListOf()
 
-            // Remove duplicate
             currentList.removeAll { it.id == song.id }
 
-            // Add to top
             currentList.add(0, song)
 
-            // Limit size
             if (currentList.size > maxSize) {
                 currentList.subList(maxSize, currentList.size).clear()
             }

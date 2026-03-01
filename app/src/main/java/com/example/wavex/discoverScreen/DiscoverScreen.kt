@@ -361,7 +361,6 @@ fun DiscoverScreen(navController: NavController, showSheet: Boolean) {
     }
 
     if (showSongSheet && selectedSong != null) {
-
         val context = LocalContext.current
         val song = selectedSong!!
         val likedSongs by likedViewModel.likedSongs.collectAsState()

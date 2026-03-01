@@ -37,4 +37,13 @@
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent" />
 
+    <!-- Number 1 -->
+    <path
+        android:pathData="M11 10h1v4"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+
 </vector>

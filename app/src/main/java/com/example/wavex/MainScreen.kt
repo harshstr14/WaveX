@@ -8,9 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -30,6 +33,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +49,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,10 +60,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -214,12 +222,21 @@ fun Main_Screen() {
                     ?: remember { mutableStateOf(false) }
 
                 val currentSong by musicService?.currentSong?.collectAsState(initial = null)
-                    ?: remember({ mutableStateOf(null) })
+                    ?: remember { mutableStateOf(null) }
+
+                val progress by musicService?.progress?.collectAsState(initial = 0)
+                    ?: remember { mutableIntStateOf(0) }
+
+                val duration by musicService?.duration?.collectAsState(initial = 0)
+                    ?: remember { mutableIntStateOf(0) }
 
                 currentSong?.let { song ->
                     MiniPlayer(
                         song = song,
                         isPlaying = isPlaying,
+                        progress = if (duration > 0)
+                            progress.toFloat() / duration.toFloat()
+                        else 0f,
                         onPlayPause = {
                             musicService?.togglePlayPause()
                         },
@@ -385,6 +402,7 @@ fun Main_Screen() {
 fun MiniPlayer(
     song: SongItem,
     isPlaying: Boolean,
+    progress: Float,
     onPlayPause: () -> Unit,
     onClick: () -> Unit,
     onAddClick: () -> Unit
@@ -402,6 +420,32 @@ fun MiniPlayer(
         label = "ShareScale"
     )
 
+    var isScrollingDown by remember { mutableStateOf(false) }
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 0.8f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 50f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowBlur"
+    )
+
+    val shadowScale by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0.8f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowScale"
+    )
+
+    val shadowColor by animateColorAsState(
+        targetValue = if (isPlaying) Color(0xFF34A853) else Color(0xFF797979),
+        animationSpec = tween(durationMillis = 200),
+        label = "shadowColorAnimation"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -409,7 +453,7 @@ fun MiniPlayer(
             .padding(start = 18.dp, end = 18.dp, bottom = 4.dp)
             .height(68.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF2C2C2C).copy(alpha = 0.80f)  )
+            .background(Color(0xFF2C2C2C))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -418,32 +462,32 @@ fun MiniPlayer(
             },
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = song.image.getOrNull(2)?.url,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .matchParentSize()
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            colorResource(R.color.primary_text_color).copy(alpha = 0.65f),  // left strong
-                            colorResource(R.color.primary_text_color).copy(alpha = 0.45f),  // middle
-                            colorResource(R.color.primary_text_color).copy(alpha = 0.80f)   // right darker
-                        )
-                    )
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(colorResource(R.color.primary_text_color).copy(alpha = 0.65f))
-        )
+//        AsyncImage(
+//            model = song.image.getOrNull(2)?.url,
+//            contentDescription = null,
+//            contentScale = ContentScale.Crop,
+//            modifier = Modifier.fillMaxSize()
+//        )
+//
+//        Box(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .background(
+//                    Brush.horizontalGradient(
+//                        colors = listOf(
+//                            colorResource(R.color.primary_text_color).copy(alpha = 0.65f),  // left strong
+//                            colorResource(R.color.primary_text_color).copy(alpha = 0.45f),  // middle
+//                            colorResource(R.color.primary_text_color).copy(alpha = 0.80f)   // right darker
+//                        )
+//                    )
+//                )
+//        )
+//
+//        Box(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .background(colorResource(R.color.primary_text_color).copy(alpha = 0.65f))
+//        )
 
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -464,7 +508,7 @@ fun MiniPlayer(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 val songName = htmlToText(song.name)
 
@@ -507,32 +551,69 @@ fun MiniPlayer(
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterVertically)
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(colorResource(R.color.theme_color))
-                    .clickable(
-                        interactionSource = playInteractionSource,
-                        indication = null
-                    ) {
-                        onPlayPause()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (isPlaying) R.drawable.notificationpausebutton
-                        else R.drawable.notificationplaybutton
-                    ),
-                    contentDescription = "Play Icon",
-                    tint = colorResource(R.color.background_color),
-                    modifier = Modifier
-                        .padding(start = if (isPlaying) 0.dp else 1.dp)
-                        .size(18.dp)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
+                    .size(46.dp)
+                    .drawBehind {
+                        val glowRadius = (size.minDimension / 2.5f) * shadowScale
+                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = shadowColor.copy(alpha = shadowAlpha)
+                                asFrameworkPaint().apply {
+                                    isAntiAlias = true
+
+                                    maskFilter = if (shadowBlur > 0f) {
+                                        android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+
+                            canvas.drawCircle(
+                                center,
+                                glowRadius,
+                                paint
+                            )
                         }
-                )
+                    }
+                , contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(80.dp))
+                        .background(
+                            if (isPlaying) colorResource(R.color.theme_color)
+                            else colorResource(R.color.secondary_text_color)
+                        )
+                        .clickable(
+                            interactionSource = playInteractionSource,
+                            indication = null
+                        ) {
+                            onPlayPause()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            if (isPlaying) R.drawable.notificationpausebutton
+                            else R.drawable.notificationplaybutton
+                        ),
+                        contentDescription = "Play Icon",
+                        tint = colorResource(R.color.background_color),
+                        modifier = Modifier
+                            .padding(start = if (isPlaying) 0.dp else 1.dp)
+                            .size(18.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -555,6 +636,36 @@ fun MiniPlayer(
                         scaleX = addScale
                         scaleY = addScale
                     }
+            )
+        }
+
+        val animatedProgress = remember { Animatable(0f) }
+
+        LaunchedEffect(progress) {
+            animatedProgress.animateTo(
+                targetValue = progress.coerceIn(0f, 1f),
+                animationSpec = tween(
+                    durationMillis = 500,
+                    easing = LinearEasing
+                )
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(3.dp)
+                .clip(RoundedCornerShape(50))
+                .background(
+                    colorResource(R.color.secondary_text_color).copy(alpha = 0.3f)
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(animatedProgress.value)
+                    .background(colorResource(R.color.theme_color))
             )
         }
     }
