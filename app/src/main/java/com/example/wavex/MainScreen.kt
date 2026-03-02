@@ -2,6 +2,7 @@ package com.example.wavex
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -241,15 +242,29 @@ fun Main_Screen() {
                             musicService?.togglePlayPause()
                         },
                         onClick = {
+                            val activity = context as? Activity
+
                             val intent = Intent(context, PlayerActivityScreen::class.java).apply {
                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
+
                             context.startActivity(intent)
 
-                            (context as? Activity)?.overridePendingTransition(
-                                R.anim.slide_up,
-                                R.anim.fade_out
-                            )
+                            activity?.let {
+                                if (Build.VERSION.SDK_INT >= 34) {
+                                    it.overrideActivityTransition(
+                                        Activity.OVERRIDE_TRANSITION_OPEN,
+                                        R.anim.slide_up,
+                                        R.anim.fade_out
+                                    )
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    it.overridePendingTransition(
+                                        R.anim.slide_up,
+                                        R.anim.fade_out
+                                    )
+                                }
+                            }
                         },
                         onAddClick = {
                             selectedSong = song

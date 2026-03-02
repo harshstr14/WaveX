@@ -3,6 +3,7 @@ package com.example.wavex.profileScreen.yourProfileScreen
 import android.app.Activity
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -71,13 +73,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -97,7 +102,9 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -304,6 +311,27 @@ private fun YourProfileScreen(
         label = ""
     )
 
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+    var isScrollingDown by remember { mutableStateOf(false) }
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 0.8f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 50f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowBlur"
+    )
+
+    val shadowScale by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0.8f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowScale"
+    )
+
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
         topBar = {
@@ -422,14 +450,55 @@ private fun YourProfileScreen(
                 val (profileImageRef, formContainerRef, editProfileImageRef, updateProfileButtonRef) = createRefs()
 
                 AsyncImage(
-                    model = imageUrl,
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .allowHardware(false)
+                        .build(),
                     contentDescription = "Profile Image",
+                    onSuccess = { result ->
+                        val drawable = result.result.drawable
+                        val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                        Palette.from(bitmap).generate { palette ->
+                            palette?.dominantSwatch?.rgb?.let { colorInt ->
+                                shadowColor = Color(colorInt)
+                            }
+                        }
+                    },
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.constrainAs(profileImageRef) {
                         top.linkTo(parent.top, margin = 15.dp)
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
-                    }.size(162.dp)
+                    }.padding(top = 10.dp).size(162.dp)
+                        .drawBehind {
+                            val glowRadius = (size.minDimension / 2) * shadowScale
+                            val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+
+                            drawIntoCanvas { canvas ->
+                                val paint = Paint().apply {
+                                    color = shadowColor.copy(alpha = shadowAlpha)
+                                    asFrameworkPaint().apply {
+                                        isAntiAlias = true
+
+                                        maskFilter = if (shadowBlur > 0f) {
+                                            android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                }
+
+                                canvas.drawCircle(
+                                    center,
+                                    glowRadius,
+                                    paint
+                                )
+                            }
+                        }
                         .clip(CircleShape)
                 )
 

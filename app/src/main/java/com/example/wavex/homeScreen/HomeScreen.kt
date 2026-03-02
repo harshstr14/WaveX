@@ -984,7 +984,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
     if (albums.isEmpty()) return
 
     LazyRow(modifier = modifier,
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = if (currentSong != null) 170.dp else 100.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         items(albums, key = { it.id }) { album ->
             Column(

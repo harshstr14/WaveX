@@ -85,11 +85,12 @@ class  MusicPlayerService : LifecycleService() {
     inner class LocalBinder : Binder() {
         fun getService(): MusicPlayerService = this@MusicPlayerService
     }
+
     private val binder = LocalBinder()
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSessionCompat
     private val handler = Handler(Looper.getMainLooper())
-    private val progressRefreshMs = 500L
+    private val progressRefreshMs = 100L
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
     var qualityIndex = 4
@@ -134,6 +135,9 @@ class  MusicPlayerService : LifecycleService() {
 
     private val _playlistFlow = MutableStateFlow<List<SongItem>>(emptyList())
     val playlistFlow: StateFlow<List<SongItem>> = _playlistFlow.asStateFlow()
+
+    private val _upNextFlow = MutableStateFlow<List<SongItem>>(emptyList())
+    val upNextFlow: StateFlow<List<SongItem>> = _upNextFlow.asStateFlow()
 
     private val _currentIndexFlow = MutableStateFlow(-1)
     val currentIndexFlow: StateFlow<Int> = _currentIndexFlow.asStateFlow()
@@ -378,6 +382,8 @@ class  MusicPlayerService : LifecycleService() {
         if (startAtIndex in playlist.indices) {
             playIndex(startAtIndex)
         }
+
+        updateUpNext()
     }
 
     fun play(song: SongItem) {
@@ -390,14 +396,43 @@ class  MusicPlayerService : LifecycleService() {
         }
     }
 
+    fun play() {
+        if (::player.isInitialized) {
+            player.play()
+        }
+    }
+
+    fun pause() {
+        if (::player.isInitialized) {
+            player.pause()
+        }
+    }
+
+    fun isPlaying(): Boolean {
+        return ::player.isInitialized && player.isPlaying
+    }
+
     private fun playIndex(index: Int) {
         if (index !in playlist.indices) return
 
         currentIndex = index
         _currentIndexFlow.value = index
 
+        if (isShuffle.value) {
+            if (shuffleOrder.isEmpty()) {
+                generateShuffleOrder()
+            }
+
+            shufflePointer = shuffleOrder.indexOf(index)
+            if (shufflePointer == -1) {
+                shufflePointer = 0
+            }
+        }
+
         val song = playlist[index]
         _currentSong.value = song
+
+        updateUpNext()
         prepareAndPlay(song)
     }
 
@@ -435,7 +470,11 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun seekTo(positionMs: Long) {
-        if (::player.isInitialized) player.seekTo(positionMs)
+        if (::player.isInitialized) {
+            player.seekTo(positionMs)
+
+            _progress.value = positionMs.toInt()
+        }
     }
 
     fun next() {
@@ -598,11 +637,37 @@ class  MusicPlayerService : LifecycleService() {
         updateNotification()
     }
 
+    private fun updateUpNext() {
+        val current = _currentSong.value ?: return
+
+        val combined = buildList {
+
+            if (currentIndex in playlist.indices) {
+
+                addAll(playlist.take(currentIndex + 1))
+
+                addAll(queue)
+
+                addAll(playlist.drop(currentIndex + 1))
+
+            } else {
+                addAll(playlist)
+                addAll(queue)
+            }
+        }
+
+        _upNextFlow.value = combined
+    }
+
     fun addToQueue(song: SongItem) {
+        if (playlist.any { it.id == song.id }) return
+
         if (!queue.any { it.id == song.id }) {
             queue.add(song)
             _queue.value = queue.toList()
         }
+
+        updateUpNext()
     }
 
     fun isInQueue(songId: String): Boolean {
@@ -614,16 +679,22 @@ class  MusicPlayerService : LifecycleService() {
             queue.add(0, song)
             _queue.value = queue.toList()
         }
+
+        updateUpNext()
     }
 
     fun removeFromQueue(songId: String) {
         queue.removeAll { it.id == songId }
         _queue.value = queue.toList()
+
+        updateUpNext()
     }
 
     fun clearQueue() {
         queue.clear()
         _queue.value = emptyList()
+
+        updateUpNext()
     }
 
     fun setQuality(index: Int) {

@@ -10,10 +10,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -85,6 +91,7 @@ import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
@@ -629,121 +636,164 @@ fun Liked_Songs_Activity(
                                 }
                             }
 
+                            val uniqueSongs = songsList.songs.distinctBy { it.id }
+
                             itemsIndexed(
-                                items = songsList.songs
+                                items = uniqueSongs,
+                                key = { _, song -> song.id }
                             ) { index, song ->
-
-                                Row (
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
-                                        .clickable(
-                                            interactionSource = interactionSource,
-                                            indication = null
-                                        ) {
-                                            val intent = Intent(context,MusicPlayerService::class.java
-                                            ).apply {
-                                                action = MusicPlayerService.ACTION_PLAY_NEW
-                                                putExtra("index", index)
-                                            }
-
-                                            PlayerManager.currentPlaylist = songsList.songs
-                                            PlayerManager.currentIndex = index
-
-                                            ContextCompat.startForegroundService(context, intent)
-
-                                            scope.launch {
-                                                RecentlyPlayedManager.add(context, song)
-                                            }
-                                        }, verticalAlignment = Alignment.CenterVertically
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    AsyncImage(
-                                        model = song.image.getOrNull(2)?.url,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
-
-                                    Spacer(modifier = Modifier.width(14.dp))
-
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.Center
+                                    AnimatedVisibility(
+                                        visible = currentSong?.id == song.id,
+                                        enter = fadeIn() + expandHorizontally(),
+                                        exit = fadeOut() + shrinkHorizontally()
                                     ) {
-                                        val songName = htmlToText(song.name)
-
-                                        Text(
-                                            text = songName,
-                                            fontSize = 15.sp,
-                                            lineHeight = 16.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                        val composition by rememberLottieComposition(
+                                            LottieCompositionSpec.RawRes(R.raw.music_spectrum)
                                         )
 
-                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                        val artistsList = song.artist
-                                            .takeIf { it.isNotEmpty() }
-                                            ?.joinToString(", ") { it.name }
-                                            ?: "Unknown Artist"
-
-                                        val artistsName = htmlToText(artistsList)
-
-                                        Text(
-                                            text = artistsName,
-                                            fontSize = 13.sp,
-                                            lineHeight = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                        val progress by animateLottieCompositionAsState(
+                                            composition = composition,
+                                            isPlaying = isPlaying && currentSong?.id == song.id,
+                                            iterations = LottieConstants.IterateForever
                                         )
 
-                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                        Text(
-                                            text = formatDuration(song.duration),
-                                            fontSize = 12.sp,
-                                            lineHeight = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(50.dp)
+                                                .clip(RectangleShape)
+                                        ) {
+                                            LottieAnimation(
+                                                composition = composition,
+                                                progress = { progress },
+                                                modifier = Modifier
+                                                    .size(50.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = 2.2f
+                                                        scaleY = 2.2f
+                                                    }
+                                            )
+                                        }
                                     }
 
-                                    Spacer(modifier = Modifier.width(14.dp))
-
                                     Row(
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                    action = MusicPlayerService.ACTION_PLAY_NEW
+                                                    putExtra("index", index)
+                                                }
+
+                                                PlayerManager.currentPlaylist = uniqueSongs
+                                                PlayerManager.currentIndex = index
+
+                                                ContextCompat.startForegroundService(context, intent)
+
+                                                scope.launch {
+                                                    RecentlyPlayedManager.add(context, song)
+                                                }
+                                            },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        IconButton(onClick = { }) {
-                                            Icon(
-                                                modifier = Modifier.size(22.dp),
-                                                painter = painterResource(R.drawable.download_icon),
-                                                contentDescription = "Download",
-                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                        AsyncImage(
+                                            model = song.image.getOrNull(2)?.url,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(64.dp)
+                                                .clip(RoundedCornerShape(10.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        Spacer(modifier = Modifier.width(14.dp))
+
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            val songName = htmlToText(song.name)
+
+                                            Text(
+                                                text = songName,
+                                                fontSize = 15.sp,
+                                                lineHeight = 16.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            val artistsList = song.artist
+                                                .takeIf { it.isNotEmpty() }
+                                                ?.joinToString(", ") { it.name }
+                                                ?: "Unknown Artist"
+
+                                            val artistsName = htmlToText(artistsList)
+
+                                            Text(
+                                                text = artistsName,
+                                                fontSize = 13.sp,
+                                                lineHeight = 14.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Text(
+                                                text = formatDuration(song.duration),
+                                                fontSize = 12.sp,
+                                                lineHeight = 14.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
 
-                                        IconButton(onClick = {
-                                            selectedSong = song
-                                            selectedIndex = index
-                                            showSongSheet = true
-                                        }) {
-                                            Icon(
-                                                modifier = Modifier.size(20.dp),
-                                                painter = painterResource(R.drawable.three_dots_icon),
-                                                contentDescription = "Three Dots",
-                                                tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
-                                            )
+                                        Spacer(modifier = Modifier.width(14.dp))
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(onClick = { }) {
+                                                Icon(
+                                                    modifier = Modifier.size(22.dp),
+                                                    painter = painterResource(R.drawable.download_icon),
+                                                    contentDescription = "Download",
+                                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                )
+                                            }
+
+                                            IconButton(onClick = {
+                                                selectedSong = song
+                                                selectedIndex = index
+                                                showSongSheet = true
+                                            }) {
+                                                Icon(
+                                                    modifier = Modifier.size(20.dp),
+                                                    painter = painterResource(R.drawable.three_dots_icon),
+                                                    contentDescription = "Three Dots",
+                                                    tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -797,15 +847,29 @@ fun Liked_Songs_Activity(
                                         musicService?.togglePlayPause()
                                     },
                                     onClick = {
+                                        val activity = context as? Activity
+
                                         val intent = Intent(context, PlayerActivityScreen::class.java).apply {
                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                         }
+
                                         context.startActivity(intent)
 
-                                        (context as? Activity)?.overridePendingTransition(
-                                            R.anim.slide_up,
-                                            R.anim.fade_out
-                                        )
+                                        activity?.let {
+                                            if (Build.VERSION.SDK_INT >= 34) {
+                                                it.overrideActivityTransition(
+                                                    Activity.OVERRIDE_TRANSITION_OPEN,
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            } else {
+                                                @Suppress("DEPRECATION")
+                                                it.overridePendingTransition(
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            }
+                                        }
                                     },
                                     onAddClick = {
                                         selectedSong = song

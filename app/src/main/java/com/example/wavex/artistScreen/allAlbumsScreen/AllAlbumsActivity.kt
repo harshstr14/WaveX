@@ -120,7 +120,7 @@ class AllAlbumsActivity : ComponentActivity() {
 @Composable
 private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewModel()) {
     val snackBarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    rememberCoroutineScope()
     val albumsGridState = rememberLazyGridState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -429,15 +429,29 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                         musicService?.togglePlayPause()
                                     },
                                     onClick = {
+                                        val activity = context as? Activity
+
                                         val intent = Intent(context, PlayerActivityScreen::class.java).apply {
                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                         }
+
                                         context.startActivity(intent)
 
-                                        (context as? Activity)?.overridePendingTransition(
-                                            R.anim.slide_up,
-                                            R.anim.fade_out
-                                        )
+                                        activity?.let {
+                                            if (Build.VERSION.SDK_INT >= 34) {
+                                                it.overrideActivityTransition(
+                                                    Activity.OVERRIDE_TRANSITION_OPEN,
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            } else {
+                                                @Suppress("DEPRECATION")
+                                                it.overridePendingTransition(
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            }
+                                        }
                                     },
                                     onAddClick = {
                                         selectedSong = song

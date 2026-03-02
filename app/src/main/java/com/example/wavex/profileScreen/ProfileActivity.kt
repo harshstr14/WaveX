@@ -2,14 +2,17 @@ package com.example.wavex.profileScreen
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,13 +45,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,7 +69,9 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
@@ -120,7 +129,6 @@ private fun Profile_Activity() {
 @Composable
 private fun ProfileScreen(imageUrl: String?, name: String) {
     val snackBarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
@@ -135,6 +143,27 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             stiffness = Spring.StiffnessLow
         ),
         label = "ShareScale"
+    )
+
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+    var isScrollingDown by remember { mutableStateOf(false) }
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 0.8f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0f else 50f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowBlur"
+    )
+
+    val shadowScale by animateFloatAsState(
+        targetValue = if (isScrollingDown) 0.8f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "ShadowScale"
     )
 
     Scaffold(
@@ -247,14 +276,55 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 ) = createRefs()
 
                 AsyncImage(
-                    model = imageUrl,
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .allowHardware(false)
+                        .build(),
                     contentDescription = "Profile Image",
+                    onSuccess = { result ->
+                        val drawable = result.result.drawable
+                        val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                        Palette.from(bitmap).generate { palette ->
+                            palette?.dominantSwatch?.rgb?.let { colorInt ->
+                                shadowColor = Color(colorInt)
+                            }
+                        }
+                    },
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.constrainAs(profileImageRef) {
                         top.linkTo(parent.top, margin = 15.dp)
                         end.linkTo(parent.end)
                         start.linkTo(parent.start)
-                    }.size(162.dp)
+                    }.padding(top = 10.dp).size(162.dp)
+                        .drawBehind {
+                            val glowRadius = (size.minDimension / 2) * shadowScale
+                            val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+
+                            drawIntoCanvas { canvas ->
+                                val paint = Paint().apply {
+                                    color = shadowColor.copy(alpha = shadowAlpha)
+                                    asFrameworkPaint().apply {
+                                        isAntiAlias = true
+
+                                        maskFilter = if (shadowBlur > 0f) {
+                                            android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                }
+
+                                canvas.drawCircle(
+                                    center,
+                                    glowRadius,
+                                    paint
+                                )
+                            }
+                        }
                         .clip(CircleShape)
                 )
 
