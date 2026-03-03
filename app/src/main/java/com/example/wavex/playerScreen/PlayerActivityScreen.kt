@@ -70,6 +70,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -106,7 +107,9 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Player
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -125,7 +128,6 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
-import com.example.wavex.service.MusicPlayerService.RepeatMode
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
@@ -230,8 +232,8 @@ private fun Player_Activity_Screen() {
     val isShuffle by musicService?.isShuffle?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
 
-    val repeatMode by musicService?.repeatMode?.collectAsState(initial = RepeatMode.OFF)
-        ?: remember { mutableStateOf(RepeatMode.OFF) }
+    val repeatMode by musicService?.repeatMode?.collectAsState(initial = Player.REPEAT_MODE_OFF)
+        ?: remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
 
     val progressFraction =
         if (duration > 0L)
@@ -239,18 +241,34 @@ private fun Player_Activity_Screen() {
         else 0f
 
     val tintColor = when (repeatMode) {
-        RepeatMode.OFF -> colorResource(R.color.primary_text_color)
-        RepeatMode.ALL -> colorResource(R.color.theme_color)
-        RepeatMode.ONE -> colorResource(R.color.theme_color)
+        Player.REPEAT_MODE_OFF ->
+            colorResource(R.color.primary_text_color)
+
+        Player.REPEAT_MODE_ALL ->
+            colorResource(R.color.theme_color)
+
+        Player.REPEAT_MODE_ONE ->
+            colorResource(R.color.theme_color)
+
+        else ->
+            colorResource(R.color.primary_text_color)
     }
 
     val repeatIcon = when (repeatMode) {
-        RepeatMode.OFF -> R.drawable.notificationrepeatbutton
-        RepeatMode.ALL -> R.drawable.notificationrepeatbutton
-        RepeatMode.ONE -> R.drawable.notificationrepeatonebutton
+        Player.REPEAT_MODE_OFF ->
+            R.drawable.notificationrepeatbutton
+
+        Player.REPEAT_MODE_ALL ->
+            R.drawable.notificationrepeatbutton
+
+        Player.REPEAT_MODE_ONE ->
+            R.drawable.notificationrepeatonebutton
+
+        else ->
+            R.drawable.notificationrepeatbutton
     }
 
-    val upNextList by musicService?.upNextFlow?.collectAsState()
+    val upNextList by musicService?.upNextFlow?.collectAsStateWithLifecycle(initialValue = emptyList())
         ?: remember { mutableStateOf(emptyList()) }
 
     val likedViewModel: LikedSongsViewModel = viewModel()
@@ -1073,7 +1091,7 @@ fun AudioWaveform(
     inactiveColor: Color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
 ) {
     var isDragging by remember { mutableStateOf(false) }
-    var dragProgress by remember { mutableStateOf(0f) }
+    var dragProgress by remember { mutableFloatStateOf(0f) }
 
     val displayProgress = if (isDragging) dragProgress else progress
 
@@ -1114,7 +1132,10 @@ fun AudioWaveform(
                 }
             }
     ) {
+        if (amplitudes.isEmpty()) return@Canvas
+
         val widthPerBar = size.width / amplitudes.size
+
         val centerY = size.height / 2
 
         amplitudes.forEachIndexed { index, amplitude ->

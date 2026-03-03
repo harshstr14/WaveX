@@ -1297,6 +1297,7 @@ private fun BottomSheetContent(
     val context = LocalContext.current
 
     val musicService = ServiceLocator.musicService
+
     val queue by musicService?.queueFlow?.collectAsState(initial = emptyList())
         ?: remember { mutableStateOf(emptyList()) }
 

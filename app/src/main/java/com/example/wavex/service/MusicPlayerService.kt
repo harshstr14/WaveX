@@ -76,12 +76,6 @@ class  MusicPlayerService : LifecycleService() {
         const val ACTION_STOP = "com.example.app.ACTION_STOP"
     }
 
-    enum class RepeatMode {
-        OFF,
-        ALL,
-        ONE
-    }
-
     inner class LocalBinder : Binder() {
         fun getService(): MusicPlayerService = this@MusicPlayerService
     }
@@ -97,8 +91,6 @@ class  MusicPlayerService : LifecycleService() {
     private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val imageLoader by lazy { ImageLoader(this) }
-    private val queue: MutableList<SongItem> = mutableListOf()
-    private val history: MutableList<SongItem> = mutableListOf()
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -109,6 +101,8 @@ class  MusicPlayerService : LifecycleService() {
         }
     }
 
+    private val history: MutableList<SongItem> = mutableListOf()
+    private val queue: MutableList<SongItem> = mutableListOf()
     private var playlist: MutableList<SongItem> = mutableListOf()
     private var currentIndex = -1
 
@@ -128,10 +122,10 @@ class  MusicPlayerService : LifecycleService() {
     val buffer: StateFlow<Int> = _buffer.asStateFlow()
 
     private val _isShuffle = MutableStateFlow(false)
-    var isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
+    val isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
 
-    private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
-    val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
     private val _playlistFlow = MutableStateFlow<List<SongItem>>(emptyList())
     val playlistFlow: StateFlow<List<SongItem>> = _playlistFlow.asStateFlow()
@@ -335,7 +329,6 @@ class  MusicPlayerService : LifecycleService() {
 
                     if (playlist.isNotEmpty() && index in playlist.indices) {
                         play(playlist[index])
-                        // Only start foreground if a song is available
                         _currentSong.value?.let { song ->
                             startForegroundWithNotification(song)
                         }
@@ -351,7 +344,6 @@ class  MusicPlayerService : LifecycleService() {
             }
         }
 
-        // If the player is not initialized yet, start with a placeholder notification
         if (!::player.isInitialized) {
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("WaveX is running…")
@@ -364,19 +356,14 @@ class  MusicPlayerService : LifecycleService() {
         return START_STICKY
     }
 
-    private fun generateShuffleOrder() {
-        shuffleOrder.clear()
-        shuffleOrder.addAll(playlist.indices.shuffled())
-        shufflePointer = 0
-    }
-
     fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
         shuffleOrder.clear()
         shufflePointer = 0
         playlist.clear()
         history.clear()
 
-        playlist.addAll(songs!!)
+        val safeSongs = songs?.distinctBy { it.id } ?: emptyList()
+        playlist.addAll(safeSongs)
         _playlistFlow.value = playlist.toList()
 
         if (startAtIndex in playlist.indices) {
@@ -392,6 +379,7 @@ class  MusicPlayerService : LifecycleService() {
             playIndex(idx)
         } else {
             playlist.add(song)
+            _playlistFlow.value = playlist.toList()
             playIndex(playlist.lastIndex)
         }
     }
@@ -419,14 +407,8 @@ class  MusicPlayerService : LifecycleService() {
         _currentIndexFlow.value = index
 
         if (isShuffle.value) {
-            if (shuffleOrder.isEmpty()) {
-                generateShuffleOrder()
-            }
-
-            shufflePointer = shuffleOrder.indexOf(index)
-            if (shufflePointer == -1) {
-                shufflePointer = 0
-            }
+            val pointer = shuffleOrder.indexOf(index)
+            if (pointer != -1) shufflePointer = pointer
         }
 
         val song = playlist[index]
@@ -478,129 +460,116 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun next() {
+        if (playlist.isEmpty()) return
         val current = _currentSong.value
+
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
+            playIndex(currentIndex)
+            return
+        }
 
         if (queue.isNotEmpty()) {
             current?.let { history.add(it) }
-
             val nextSong = queue.removeAt(0)
             _queue.value = queue.toList()
-
             val idx = playlist.indexOfFirst { it.id == nextSong.id }
             if (idx >= 0) {
                 currentIndex = idx
                 _currentIndexFlow.value = idx
             }
-
             _currentSong.value = nextSong
             prepareAndPlay(nextSong)
-
             return
         }
 
-        if (playlist.isEmpty()) return
-        current?.let { history.add(it) }
+        if (current != null) history.add(current)
 
-        when (repeatMode.value) {
-            RepeatMode.ONE -> {
-                playIndex(currentIndex)
-                return
+        if (isShuffle.value) {
+            if (shuffleOrder.isEmpty()) {
+                regenerateShuffleKeepingCurrent()
             }
 
-            RepeatMode.ALL,
-            RepeatMode.OFF -> {
-                if (isShuffle.value) {
-                    if (shuffleOrder.isEmpty()) {
-                        generateShuffleOrder()
-                    }
+            shufflePointer++
 
-                    shufflePointer++
-
-                    if (shufflePointer >= shuffleOrder.size) {
-
-                        if (repeatMode.value == RepeatMode.ALL) {
-                            shufflePointer = 0
-                        } else {
-                            return
-                        }
-                    }
-
-                    val nextIndex = shuffleOrder[shufflePointer]
-                    playIndex(nextIndex)
-
+            if (shufflePointer >= shuffleOrder.size) {
+                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    shufflePointer = 0
                 } else {
-                    val nextIndex = currentIndex + 1
+                    updateUpNext()
+                    return
+                }
+            }
 
-                    if (nextIndex in playlist.indices) {
-                        playIndex(nextIndex)
-                    } else {
-                        if (repeatMode.value == RepeatMode.ALL) {
-                            playIndex(0)
-                        }
-                    }
+            playIndex(shuffleOrder[shufflePointer])
+        } else {
+            val nextIndex = currentIndex + 1
+
+            if (nextIndex in playlist.indices) {
+                playIndex(nextIndex)
+
+            } else {
+                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    playIndex(0)
+                } else {
+                    updateUpNext()
+                    return
                 }
             }
         }
     }
 
     fun previous() {
-        if (playlist.isEmpty() && history.isEmpty()) return
+        if (playlist.isEmpty()) return
 
         if (::player.isInitialized && player.currentPosition > 5000) {
             player.seekTo(0)
             return
         }
 
-        if (history.isNotEmpty()) {
-
-            val previousSong = history.removeAt(history.lastIndex)
-
-            _currentSong.value = previousSong
-            prepareAndPlay(previousSong)
-
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
+            player.seekTo(0)
+            player.play()
             return
         }
 
-        when (repeatMode.value) {
-            RepeatMode.ONE -> {
-                playIndex(currentIndex)
-                return
+        if (history.isNotEmpty()) {
+            val previousSong = history.removeAt(history.lastIndex)
+
+            val index = playlist.indexOfFirst { it.id == previousSong.id }
+            if (index != -1) {
+                playIndex(index)
+            }
+            return
+        }
+
+        if (isShuffle.value) {
+            if (shuffleOrder.isEmpty()) {
+                regenerateShuffleKeepingCurrent()
             }
 
-            RepeatMode.ALL,
-            RepeatMode.OFF -> {
+            shufflePointer--
 
-                if (isShuffle.value) {
-                    if (shuffleOrder.isEmpty()) {
-                        generateShuffleOrder()
-                    }
-
-                    shufflePointer--
-
-                    if (shufflePointer < 0) {
-
-                        if (repeatMode.value == RepeatMode.ALL) {
-                            shufflePointer = shuffleOrder.lastIndex
-                        } else {
-                            return
-                        }
-                    }
-
-                    val prevIndex = shuffleOrder[shufflePointer]
-                    playIndex(prevIndex)
-
+            if (shufflePointer < 0) {
+                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    shufflePointer = shuffleOrder.lastIndex
                 } else {
-                    val prevIndex = currentIndex - 1
+                    player.seekTo(0)
+                    return
+                }
+            }
 
-                    if (prevIndex >= 0) {
-                        playIndex(prevIndex)
-                    } else {
-                        if (repeatMode.value == RepeatMode.ALL) {
-                            playIndex(playlist.lastIndex)
-                        } else {
-                            player.seekTo(0)
-                        }
-                    }
+            playIndex(shuffleOrder[shufflePointer])
+        } else {
+            val prevIndex = currentIndex - 1
+
+            if (prevIndex >= 0) {
+                playIndex(prevIndex)
+
+            } else {
+                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    playIndex(playlist.lastIndex)
+                } else {
+                    player.seekTo(0)
                 }
             }
         }
@@ -611,28 +580,40 @@ class  MusicPlayerService : LifecycleService() {
         _isShuffle.value = newState
 
         if (newState) {
-            generateShuffleOrder()
-
-            shufflePointer = shuffleOrder.indexOf(currentIndex)
-
-            if (shufflePointer == -1) {
-                shufflePointer = 0
-            }
-
-        } else {
-            shuffleOrder.clear()
-            shufflePointer = 0
+            regenerateShuffleKeepingCurrent()
         }
 
+        updateUpNext()
         updateNotification()
     }
 
+    private fun regenerateShuffleKeepingCurrent() {
+        if (playlist.isEmpty() || currentIndex !in playlist.indices) return
+
+        shuffleOrder.clear()
+
+        val current = currentIndex
+
+        val shuffled = playlist.indices
+            .filter { it != current }
+            .shuffled()
+
+        shuffleOrder.add(current)
+        shuffleOrder.addAll(shuffled)
+
+        shufflePointer = 0
+    }
+
     fun repeatToggle() {
-        _repeatMode.value = when (_repeatMode.value) {
-            RepeatMode.OFF -> RepeatMode.ALL
-            RepeatMode.ALL -> RepeatMode.ONE
-            RepeatMode.ONE -> RepeatMode.OFF
+        val newMode = when (player.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+            else -> Player.REPEAT_MODE_OFF
         }
+
+        player.repeatMode = newMode
+        _repeatMode.value = newMode
 
         updateNotification()
     }
@@ -640,23 +621,42 @@ class  MusicPlayerService : LifecycleService() {
     private fun updateUpNext() {
         val current = _currentSong.value ?: return
 
+        val seen = mutableSetOf<String>()
+
         val combined = buildList {
-
             if (currentIndex in playlist.indices) {
-
-                addAll(playlist.take(currentIndex + 1))
-
-                addAll(queue)
-
-                addAll(playlist.drop(currentIndex + 1))
-
+                playlist.take(currentIndex + 1).forEach { if (seen.add(it.id)) add(it) }
+                queue.forEach { if (seen.add(it.id)) add(it) }
+                playlist.drop(currentIndex + 1).forEach { if (seen.add(it.id)) add(it) }
             } else {
-                addAll(playlist)
-                addAll(queue)
+                playlist.forEach { if (seen.add(it.id)) add(it) }
+                queue.forEach { if (seen.add(it.id)) add(it) }
             }
+
         }
 
         _upNextFlow.value = combined
+    }
+
+    fun setQuality(index: Int) {
+        val currentSong = _currentSong.value ?: return
+        val currentPosition = player.currentPosition
+        val wasPlaying = player.isPlaying
+
+        qualityIndex = index
+
+        player.stop()
+        player.clearMediaItems()
+
+        val mediaItem = MediaItem.fromUri(
+            currentSong.downloadUrl[qualityIndex].url.toUri()
+        )
+
+        player.setMediaItem(mediaItem)
+        player.prepare()
+        player.seekTo(currentPosition)
+
+        if (wasPlaying) player.play()
     }
 
     fun addToQueue(song: SongItem) {
@@ -697,26 +697,84 @@ class  MusicPlayerService : LifecycleService() {
         updateUpNext()
     }
 
-    fun setQuality(index: Int) {
-        val currentSong = _currentSong.value ?: return
-        val currentPosition = player.currentPosition
-        val wasPlaying = player.isPlaying
-
-        qualityIndex = index
-
-        player.stop()
-        player.clearMediaItems()
-
-        val mediaItem = MediaItem.fromUri(
-            currentSong.downloadUrl[qualityIndex].url.toUri()
-        )
-
-        player.setMediaItem(mediaItem)
-        player.prepare()
-        player.seekTo(currentPosition)
-
-        if (wasPlaying) player.play()
-    }
+//    fun insertNext(song: SongItem) {
+//        if (currentIndex !in playlist.indices) return
+//
+//        val oldIndex = playlist.indexOfFirst { it.id == song.id }
+//
+//        if (oldIndex != -1 && oldIndex < currentIndex) {
+//            currentIndex--
+//        }
+//
+//        playlist.removeAll { it.id == song.id }
+//
+//        val insertIndex = (currentIndex + 1).coerceAtMost(playlist.size)
+//
+//        playlist.add(insertIndex, song)
+//
+//        _playlistFlow.value = playlist.toList()
+//        _currentIndexFlow.value = currentIndex
+//
+//        updateUpNext()
+//
+//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
+//    }
+//
+//    fun moveSongToNext(song: SongItem) {
+//        val oldIndex = playlist.indexOfFirst { it.id == song.id }
+//
+//        if (oldIndex != -1 && oldIndex < currentIndex) {
+//            currentIndex--
+//        }
+//
+//        playlist.removeAll { it.id == song.id }
+//
+//        val insertIndex = (currentIndex + 1).coerceAtMost(playlist.size)
+//
+//        playlist.add(insertIndex, song)
+//
+//        _playlistFlow.value = playlist.toList()
+//        _currentIndexFlow.value = currentIndex
+//
+//        updateUpNext()
+//
+//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
+//    }
+//
+//    fun removeFromPlaylistAt(index: Int) {
+//        if (index !in playlist.indices) return
+//
+//        if (index < currentIndex) {
+//            currentIndex--
+//        }
+//
+//        if (index == currentIndex) {
+//            val hasNext = currentIndex < playlist.lastIndex
+//
+//            playlist.removeAt(index)
+//
+//            if (playlist.isEmpty()) {
+//                player.stop()
+//                currentIndex = -1
+//                _currentSong.value = null
+//            } else {
+//                currentIndex = if (hasNext) currentIndex else playlist.lastIndex
+//                playIndex(currentIndex)
+//            }
+//
+//            _playlistFlow.value = playlist.toList()
+//            return
+//        }
+//
+//        playlist.removeAt(index)
+//
+//        _playlistFlow.value = playlist.toList()
+//        _currentIndexFlow.value = currentIndex
+//
+//        updateUpNext()
+//
+//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
+//    }
 
     private fun stopServiceAndNotification() {
         try {
@@ -736,8 +794,12 @@ class  MusicPlayerService : LifecycleService() {
         super.onDestroy()
     }
 
+    private val placeholderBitmap by lazy {
+        BitmapFactory.decodeResource(resources, R.drawable.playlist)
+    }
+
     private fun startForegroundWithNotification(song: SongItem) {
-        val placeholder = BitmapFactory.decodeResource(resources, R.drawable.playlist)
+        val placeholder = placeholderBitmap
         val notif = buildNotification(song, placeholder)
 
         if (ActivityCompat.checkSelfPermission(
@@ -815,8 +877,7 @@ class  MusicPlayerService : LifecycleService() {
 
         serviceScope.launch(Dispatchers.IO) {
 
-            val placeholder =
-                BitmapFactory.decodeResource(resources, R.drawable.playlist)
+            val placeholder = placeholderBitmap
 
             val bitmap = try {
                 if (song.image.size > 2 && song.image[2].url.isNotBlank()) {
@@ -895,27 +956,33 @@ class  MusicPlayerService : LifecycleService() {
             NotificationCompat.Action(R.drawable.disableshuffle, "disableShuffle", shufflePending)
         }
 
-        val repeatAction = when (_repeatMode.value) {
-            RepeatMode.OFF ->
+        val repeatAction = when (player.repeatMode) {
+            Player.REPEAT_MODE_OFF ->
                 NotificationCompat.Action(
                     R.drawable.disablerepeat,
                     "Repeat Off",
                     repeatPending
                 )
 
-            RepeatMode.ALL ->
+            Player.REPEAT_MODE_ALL ->
                 NotificationCompat.Action(
                     R.drawable.notificationrepeatbutton,
                     "Repeat All",
                     repeatPending
                 )
 
-            RepeatMode.ONE ->
+            Player.REPEAT_MODE_ONE ->
                 NotificationCompat.Action(
                     R.drawable.notificationrepeatonebutton,
                     "Repeat One",
                     repeatPending
                 )
+
+            else -> NotificationCompat.Action(
+                R.drawable.disablerepeat,
+                "Repeat Off",
+                repeatPending
+            )
         }
 
         val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)
