@@ -539,9 +539,10 @@ private fun Playlist_Activity(
                                                     PlayerManager.currentPlaylist = playlistData.songs
 
                                                     ServiceLocator.musicService?.let { service ->
-                                                        service.shuffleToggle()
-                                                        service.setPlaylist(playlistData.songs,
-                                                            playlistData.songs.indices.random())
+                                                        service.setPlaylist(playlistData.songs, 0)
+                                                        if (!service.isShuffle.value) {
+                                                            service.shuffleToggle()
+                                                        }
                                                     }
                                                 }
                                             }

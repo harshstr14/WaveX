@@ -522,8 +522,10 @@ fun Liked_Songs_Activity(
                                                     PlayerManager.currentPlaylist = songsList.songs
 
                                                     ServiceLocator.musicService?.let { service ->
-                                                        service.shuffleToggle()
-                                                        service.setPlaylist(songsList.songs, songsList.songs.indices.random())
+                                                        service.setPlaylist(songsList.songs, 0)
+                                                        if (!service.isShuffle.value) {
+                                                            service.shuffleToggle()
+                                                        }
                                                     }
                                                 }
                                             }

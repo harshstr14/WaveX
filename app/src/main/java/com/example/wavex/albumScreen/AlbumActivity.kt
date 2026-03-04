@@ -1,9 +1,11 @@
 package com.example.wavex.albumScreen
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -31,12 +33,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -48,6 +52,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -56,6 +61,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -93,7 +100,10 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.palette.graphics.Palette
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -120,6 +130,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 
 class AlbumActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -247,9 +258,10 @@ private fun Album_Activity(
     val isTitleVisible = !isLoading && !albums.isError
 
     var showSongSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSongSheet) 22f else 0f,
+        targetValue = if (showSongSheet || showShareSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -331,7 +343,7 @@ private fun Album_Activity(
                                         interactionSource = shareInteraction,
                                         indication = null
                                     ) {
-
+                                        showShareSheet = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -673,8 +685,10 @@ private fun Album_Activity(
                                                 PlayerManager.currentPlaylist = albums.songs
 
                                                 ServiceLocator.musicService?.let { service ->
-                                                    service.shuffleToggle()
-                                                    service.setPlaylist(albums.songs, albums.songs.indices.random())
+                                                    service.setPlaylist(albums.songs, 0)
+                                                    if (!service.isShuffle.value) {
+                                                        service.shuffleToggle()
+                                                    }
                                                 }
                                             }
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -996,6 +1010,16 @@ private fun Album_Activity(
                             )
                         }
 
+                        if (showShareSheet) {
+                            ShareBottomSheet(
+                                albumName = albums.albumName,
+                                albumImage = imageToLoad,
+                                artists = albums.primaryArtists.joinToString(", ") { htmlToText(it.name) },
+                                albumId = albumId ?: "",
+                                onDismiss = { showShareSheet = false }
+                            )
+                        }
+
                         Box(
                             modifier = Modifier.constrainAs(miniPlayer) {
                                 start.linkTo(parent.start)
@@ -1051,6 +1075,204 @@ private fun Album_Activity(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShareBottomSheet(
+    albumName: String,
+    albumImage: String?,
+    artists: String,
+    albumId: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    LaunchedEffect(Unit) {
+        sheetState.expand()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorResource(R.color.off_white),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = null
+    ) {
+        ShareContent(
+            albumName,
+            albumImage,
+            artists,
+            albumId,
+            context
+        )
+    }
+}
+
+@Composable
+fun ShareContent(
+    albumName: String,
+    albumImage: String?,
+    artists: String,
+    albumId: String,
+    context: Context
+) {
+    var dominantColor by remember { mutableStateOf(Color(0xFFD32F2F)) }
+
+    LaunchedEffect(albumImage) {
+        albumImage?.let { imageUrl ->
+
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .allowHardware(false) // VERY IMPORTANT
+                .build()
+
+            val result = loader.execute(request)
+            val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+
+            bitmap?.let {
+                val palette = Palette.from(it).generate()
+
+                val lightColor = palette.lightVibrantSwatch?.rgb
+                    ?: palette.lightMutedSwatch?.rgb
+                    ?: palette.vibrantSwatch?.rgb
+                    ?: palette.dominantSwatch?.rgb
+                    ?: "#F5F5F5".toColorInt()
+
+                val composeColor = Color(lightColor)
+
+                dominantColor = slightlyDarken(composeColor, 0.18f)
+            }
+        }
+    }
+
+    val darkColor = remember(dominantColor) {
+        darkenColor(dominantColor, 0.45f)
+    }
+
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            dominantColor,
+            darkColor
+        )
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 34.dp)
+                .height(420.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(gradientBrush),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(dominantColor.copy(alpha = 0.4f))
+                    .padding(10.dp)
+            ) {
+                AsyncImage(
+                    model = albumImage,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = htmlToText(albumName),
+                    color = colorResource(R.color.off_white),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    fontSize = 16.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Normal,
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = artists,
+                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    lineHeight = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(width = 90.dp, height = 25.dp)
+                        .offset(x = (-18).dp)
+                        .clip(RectangleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.wavex_logo_light),
+                        contentDescription = "Logo Icon",
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .size(width = 90.dp, height = 25.dp)
+                            .graphicsLayer {
+                                scaleX = 1.2f
+                                scaleY = 1.2f
+                            }
+                    )
+                }
+            }
+        }
+    }
+}
+
+fun slightlyDarken(color: Color, factor: Float = 0.2f): Color {
+    return Color(
+        red = (color.red * (1 - factor)).coerceIn(0f, 1f),
+        green = (color.green * (1 - factor)).coerceIn(0f, 1f),
+        blue = (color.blue * (1 - factor)).coerceIn(0f, 1f),
+        alpha = 1f
+    )
+}
+
+fun darkenColor(color: Color, factor: Float = 0.35f): Color {
+    return Color(
+        red = (color.red * (1 - factor)).coerceIn(0f, 1f),
+        green = (color.green * (1 - factor)).coerceIn(0f, 1f),
+        blue = (color.blue * (1 - factor)).coerceIn(0f, 1f),
+        alpha = 1f
+    )
 }
 
 @Composable

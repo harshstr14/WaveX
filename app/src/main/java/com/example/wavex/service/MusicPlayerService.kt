@@ -104,6 +104,7 @@ class  MusicPlayerService : LifecycleService() {
     private val history: MutableList<SongItem> = mutableListOf()
     private val queue: MutableList<SongItem> = mutableListOf()
     private var playlist: MutableList<SongItem> = mutableListOf()
+    private var currentQueuedSong: SongItem? = null
     private var currentIndex = -1
 
     private val _currentSong = MutableStateFlow<SongItem?>(null)
@@ -141,6 +142,10 @@ class  MusicPlayerService : LifecycleService() {
 
     private val shuffleOrder: MutableList<Int> = mutableListOf()
     private var shufflePointer = 0
+    private var isQueueOnlyMode = false
+    private var queuePointer = 0
+    private var queueShuffleOrder: MutableList<Int> = mutableListOf()
+    private var queueShufflePointer = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -214,6 +219,16 @@ class  MusicPlayerService : LifecycleService() {
                     }
                 }
                 else if (state == Player.STATE_ENDED) {
+                    if (!isQueueOnlyMode) {
+                        currentQueuedSong?.let { queuedSong ->
+                            queue.removeAll { it.id == queuedSong.id }
+                            _queue.value = queue.toList()
+                            currentQueuedSong = null
+
+                            updateUpNext()
+                        }
+                    }
+
                     next()
                 }
             }
@@ -361,6 +376,7 @@ class  MusicPlayerService : LifecycleService() {
         shufflePointer = 0
         playlist.clear()
         history.clear()
+        clearQueue()
 
         val safeSongs = songs?.distinctBy { it.id } ?: emptyList()
         playlist.addAll(safeSongs)
@@ -460,7 +476,6 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun next() {
-        if (playlist.isEmpty()) return
         val current = _currentSong.value
 
         if (player.repeatMode == Player.REPEAT_MODE_ONE) {
@@ -468,21 +483,78 @@ class  MusicPlayerService : LifecycleService() {
             return
         }
 
-        if (queue.isNotEmpty()) {
-            current?.let { history.add(it) }
-            val nextSong = queue.removeAt(0)
-            _queue.value = queue.toList()
-            val idx = playlist.indexOfFirst { it.id == nextSong.id }
-            if (idx >= 0) {
-                currentIndex = idx
-                _currentIndexFlow.value = idx
+        if (!isQueueOnlyMode) {
+            currentQueuedSong?.let { queuedSong ->
+                queue.removeAll { it.id == queuedSong.id }
+                _queue.value = queue.toList()
+                currentQueuedSong = null
+
+                updateUpNext()
             }
-            _currentSong.value = nextSong
-            prepareAndPlay(nextSong)
+        }
+
+        addToHistory(current)
+
+        if (queue.isNotEmpty()) {
+            if (isQueueOnlyMode) {
+                if (isShuffle.value) {
+                    if (queueShuffleOrder.isEmpty()) {
+                        regenerateQueueShuffle()
+                    }
+
+                    if (_currentSong.value != null) {
+                        queueShufflePointer++
+                    }
+
+                    if (queueShufflePointer >= queueShuffleOrder.size) {
+                        if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                            regenerateQueueShuffle()
+                        } else {
+                            return
+                        }
+                    }
+
+                    val nextIndex = queueShuffleOrder[queueShufflePointer]
+                    val nextSong = queue[nextIndex]
+
+                    _currentSong.value = nextSong
+                    prepareAndPlay(nextSong)
+                } else {
+                    if (_currentSong.value != null) {
+                        queuePointer++
+                    }
+
+                    if (queuePointer >= queue.size) {
+                        if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                            queuePointer = 0
+                        } else {
+                            return
+                        }
+                    }
+                }
+
+                val nextSong = queue[queuePointer]
+
+                _currentSong.value = nextSong
+                prepareAndPlay(nextSong)
+            } else {
+                val nextSong = queue.first()
+                currentQueuedSong = nextSong
+
+                val idx = playlist.indexOfFirst { it.id == nextSong.id }
+                if (idx >= 0) {
+                    currentIndex = idx
+                    _currentIndexFlow.value = idx
+                }
+
+                _currentSong.value = nextSong
+                prepareAndPlay(nextSong)
+            }
+
             return
         }
 
-        if (current != null) history.add(current)
+        if (playlist.isEmpty()) return
 
         if (isShuffle.value) {
             if (shuffleOrder.isEmpty()) {
@@ -506,7 +578,6 @@ class  MusicPlayerService : LifecycleService() {
 
             if (nextIndex in playlist.indices) {
                 playIndex(nextIndex)
-
             } else {
                 if (player.repeatMode == Player.REPEAT_MODE_ALL) {
                     playIndex(0)
@@ -519,8 +590,6 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun previous() {
-        if (playlist.isEmpty()) return
-
         if (::player.isInitialized && player.currentPosition > 5000) {
             player.seekTo(0)
             return
@@ -531,6 +600,51 @@ class  MusicPlayerService : LifecycleService() {
             player.play()
             return
         }
+
+        if (isQueueOnlyMode && queue.isNotEmpty()) {
+            if (isShuffle.value) {
+                if (queueShuffleOrder.isEmpty()) {
+                    regenerateQueueShuffle()
+                }
+
+                queueShufflePointer--
+
+                if (queueShufflePointer < 0) {
+                    if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                        queueShufflePointer = queueShuffleOrder.lastIndex
+                    } else {
+                        player.seekTo(0)
+                        return
+                    }
+                }
+
+                val prevIndex = queueShuffleOrder[queueShufflePointer]
+                val prevSong = queue[prevIndex]
+
+                _currentSong.value = prevSong
+                prepareAndPlay(prevSong)
+            } else {
+                queuePointer--
+
+                if (queuePointer < 0) {
+                    if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                        queuePointer = queue.lastIndex
+                    } else {
+                        player.seekTo(0)
+                        return
+                    }
+                }
+
+                val prevSong = queue[queuePointer]
+
+                _currentSong.value = prevSong
+                prepareAndPlay(prevSong)
+            }
+
+            return
+        }
+
+        if (playlist.isEmpty()) return
 
         if (history.isNotEmpty()) {
             val previousSong = history.removeAt(history.lastIndex)
@@ -580,7 +694,37 @@ class  MusicPlayerService : LifecycleService() {
         _isShuffle.value = newState
 
         if (newState) {
-            regenerateShuffleKeepingCurrent()
+            if (isQueueOnlyMode) {
+                regenerateQueueShuffle()
+
+                val current = _currentSong.value
+                val index = queue.indexOfFirst { it.id == current?.id }
+                if (index != -1) {
+                    queueShufflePointer =
+                        queueShuffleOrder.indexOf(index)
+                }
+
+            } else {
+                regenerateShuffleKeepingCurrent()
+            }
+        } else {
+            if (isQueueOnlyMode) {
+                val current = _currentSong.value
+                val index = queue.indexOfFirst { it.id == current?.id }
+                if (index != -1) {
+                    queuePointer = index
+                }
+
+                queueShuffleOrder.clear()
+            } else {
+                val current = _currentSong.value
+                val index = playlist.indexOfFirst { it.id == current?.id }
+                if (index != -1) {
+                    currentIndex = index
+                }
+
+                shuffleOrder.clear()
+            }
         }
 
         updateUpNext()
@@ -604,6 +748,30 @@ class  MusicPlayerService : LifecycleService() {
         shufflePointer = 0
     }
 
+    private fun regenerateQueueShuffle() {
+        if (queue.isEmpty()) return
+
+        val current = _currentSong.value
+        val currentIndexInQueue = queue.indexOfFirst { it.id == current?.id }
+
+        queueShuffleOrder.clear()
+
+        if (currentIndexInQueue == -1) {
+            queueShuffleOrder.addAll(queue.indices.shuffled())
+            queueShufflePointer = 0
+            return
+        }
+
+        val shuffled = queue.indices
+            .filter { it != currentIndexInQueue }
+            .shuffled()
+
+        queueShuffleOrder.add(currentIndexInQueue)
+        queueShuffleOrder.addAll(shuffled)
+
+        queueShufflePointer = 0
+    }
+
     fun repeatToggle() {
         val newMode = when (player.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
@@ -619,8 +787,6 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun updateUpNext() {
-        val current = _currentSong.value ?: return
-
         val seen = mutableSetOf<String>()
 
         val combined = buildList {
@@ -632,7 +798,6 @@ class  MusicPlayerService : LifecycleService() {
                 playlist.forEach { if (seen.add(it.id)) add(it) }
                 queue.forEach { if (seen.add(it.id)) add(it) }
             }
-
         }
 
         _upNextFlow.value = combined
@@ -660,11 +825,15 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun addToQueue(song: SongItem) {
-        if (playlist.any { it.id == song.id }) return
+        if (queue.any { it.id == song.id }) return
 
-        if (!queue.any { it.id == song.id }) {
-            queue.add(song)
-            _queue.value = queue.toList()
+        queue.add(song)
+        _queue.value = queue.toList()
+
+        if (playlist.isEmpty() && _currentSong.value == null) {
+            queuePointer = 0
+            isQueueOnlyMode = true
+            next()
         }
 
         updateUpNext()
@@ -695,6 +864,13 @@ class  MusicPlayerService : LifecycleService() {
         _queue.value = emptyList()
 
         updateUpNext()
+    }
+
+    private fun addToHistory(song: SongItem?) {
+        song?.let { song ->
+            history.removeAll { it.id == song.id }
+            history.add(song)
+        }
     }
 
 //    fun insertNext(song: SongItem) {
