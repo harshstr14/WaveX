@@ -123,6 +123,9 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
+import com.example.wavex.albumScreen.ShareBottomSheet
+import com.example.wavex.albumScreen.ShareItem
+import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
@@ -184,6 +187,12 @@ fun Playlist_Activity(
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    val imageToLoad = if (playlistImageUrl.isNullOrBlank()) {
+        playlists.images.getOrNull(2)?.url
+    } else {
+        playlistImageUrl
+    }
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
@@ -263,9 +272,10 @@ fun Playlist_Activity(
 
     val isTitleVisible = !isLoading && !playlists.isError
     var showSongSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSongSheet) 22f else 0f,
+        targetValue = if (showSongSheet || showShareSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -347,7 +357,7 @@ fun Playlist_Activity(
                                         interactionSource = shareInteraction,
                                         indication = null
                                     ) {
-
+                                        showShareSheet = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -385,7 +395,7 @@ fun Playlist_Activity(
                                                     val playlistData = mapOf(
                                                         "playlistId" to playlistId,
                                                         "playlistName" to playlists.name,
-                                                        "playlistImageUrl" to playlistImageUrl,
+                                                        "playlistImageUrl" to imageToLoad,
                                                         "isFavourite" to true
                                                     )
 
@@ -553,7 +563,7 @@ fun Playlist_Activity(
                                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                                 ) {
                                     AsyncImage(
-                                        model = playlistImageUrl ?: R.drawable.default_image,
+                                        model = imageToLoad,
                                         contentDescription = "Playlist Image",
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
@@ -982,6 +992,19 @@ fun Playlist_Activity(
                             }
                         }
 
+                        if (showShareSheet) {
+                            ShareBottomSheet(
+                                item = ShareItem(
+                                    title = htmlToText(playlists.name),
+                                    subtitle = playlists.artists.joinToString(", ") {htmlToText(it.name)},
+                                    image = imageToLoad,
+                                    id = playlists.id,
+                                    type = ShareType.PLAYLIST
+                                ),
+                                onDismiss = { showShareSheet = false }
+                            )
+                        }
+
                         if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
@@ -1077,10 +1100,13 @@ fun SongOptionsBottomSheet(
     isFavourite: Boolean,
     onToggleFavourite: (SongItem) -> Unit
 ) {
+    val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showArtistsDialog by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
+
     val interactionSource = remember { MutableInteractionSource() }
     val artistsGridState = rememberLazyGridState()
 
@@ -1107,18 +1133,77 @@ fun SongOptionsBottomSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
-        BottomSheetContent(
-            song,
-            onPlayNow,
-            isFavourite,
-            onToggleFavourite,
-            onAddToPlaylistClick = {
-                showPlaylistDialog = true
-            },
-            onShowArtistsClick = {
-                showArtistsDialog = true
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            BottomSheetContent(
+                song,
+                onPlayNow,
+                isFavourite,
+                onToggleFavourite,
+                onAddToPlaylistClick = {
+                    showPlaylistDialog = true
+                },
+                onShowArtistsClick = {
+                    showArtistsDialog = true
+                },
+                onShowShareSheet =  {
+                    showShareSheet = true
+                },
+                onShowSnackBar = { message ->
+                    scope.launch {
+                        snackBarHostState.showSnackbar(message)
+                    }
+                }
+            )
+
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
+            ) { data ->
+                Snackbar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    containerColor = Color(0xFF2C2C2C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("Song") -> R.drawable.song_icon
+                                    data.visuals.message.contains("queue") -> R.drawable.queue_icon
+                                    else -> R.drawable.alert_icon
+                                }
+                            ),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.off_white)
+                        )
+                    }
+                }
             }
-        )
+        }
     }
 
     if (showArtistsDialog) {
@@ -1211,6 +1296,19 @@ fun SongOptionsBottomSheet(
         }
     }
 
+    if (showShareSheet) {
+        ShareBottomSheet(
+            item = ShareItem(
+                title = htmlToText(song.name),
+                subtitle = song.artist.joinToString(", ") { htmlToText(it.name) },
+                image = song.image.getOrNull(2)?.url,
+                id = song.id,
+                type = ShareType.SONG
+            ),
+            onDismiss = { showShareSheet = false }
+        )
+    }
+
     if (showPlaylistDialog) {
         Dialog(onDismissRequest = { showPlaylistDialog = false }) {
             Surface(
@@ -1294,7 +1392,9 @@ private fun BottomSheetContent(
     isFavourite: Boolean,
     onToggleFavourite: (SongItem) -> Unit,
     onAddToPlaylistClick: () -> Unit,
-    onShowArtistsClick: () -> Unit
+    onShowArtistsClick: () -> Unit,
+    onShowShareSheet: () -> Unit,
+    onShowSnackBar: (String) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -1482,16 +1582,16 @@ private fun BottomSheetContent(
             when {
                 isInQueue -> {
                     musicService?.removeFromQueue(song.id)
-                    Toast.makeText(context, "Removed from queue", Toast.LENGTH_SHORT).show()
+                    onShowSnackBar("Removed from queue")
                 }
 
                 isInPlaylist -> {
-                    Toast.makeText(context, "Song already in playlist", Toast.LENGTH_SHORT).show()
+                    onShowSnackBar("Song already in playlist")
                 }
 
                 else -> {
                     musicService?.addToQueue(song)
-                    Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                    onShowSnackBar("Added to queue")
                 }
             }
         }
@@ -1514,7 +1614,7 @@ private fun BottomSheetContent(
         }
 
         SheetOptionItem(R.drawable.share_icon, "Share") {
-
+            onShowShareSheet()
         }
 
         Spacer(modifier = Modifier.height(20.dp))

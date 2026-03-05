@@ -10,15 +10,15 @@
     <string name="title_activity_all_songs">AllSongsActivity</string>
     <string name="title_activity_all_albums_screen">AllAlbumsScreen</string>
     <string name="title_activity_album">AlbumActivity</string>
-    <string name="title_activity_playlist_activtiy">PlaylistActivtiy</string>
+    <string name="title_activity_playlist_activity">PlaylistActivity</string>
     <string name="title_activity_profile">ProfileActivity</string>
     <string name="title_activity_your_profile">YourProfileActivity</string>
     <string name="title_activity_favourite_songs">FavouriteSongsActivity</string>
-    <string name="title_activity_artists_activtiy">ArtistsActivtiy</string>
+    <string name="title_activity_artists_activity">ArtistsActivity</string>
     <string name="title_activity_albums">AlbumsActivity</string>
     <string name="title_activity_setting">SettingActivity</string>
     <string name="title_activity_playlists">PlaylistsActivity</string>
     <string name="title_activity_playlist">PlaylistActivity</string>
-    <string name="title_activity_liked_songs_activtiy">LikedSongsActivtiy</string>
+    <string name="title_activity_liked_songs_activity">LikedSongsActivity</string>
     <string name="title_activity_player_screen">PlayerActivityScreen</string>
 </resources>

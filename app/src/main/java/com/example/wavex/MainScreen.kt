@@ -88,6 +88,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
 import com.example.wavex.homeScreen.PlayerManager
@@ -167,8 +168,13 @@ suspend fun requestWithFallback(endpoint: String): String =
     }
 
 class MainScreen : ComponentActivity() {
+    private var deepLinkType: String? = null
+    private var deepLinkId: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        handleDeepLink(intent)
 
         apiUrl1 = BuildConfig.API_BASE_URL1
         apiUrl2 = BuildConfig.API_BASE_URL2
@@ -186,16 +192,59 @@ class MainScreen : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                Main_Screen()
+                Main_Screen(
+                    deepLinkType = deepLinkType,
+                    deepLinkId = deepLinkId
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+
+        val segments = uri.pathSegments
+        if (segments.size >= 2) {
+            deepLinkType = segments[0]
+            deepLinkId = segments[1]
+        }
+
+        Log.d("DeepLink", "Type: $deepLinkType  Id: $deepLinkId")
     }
 }
 
 @Composable
-fun Main_Screen() {
+fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(deepLinkType, deepLinkId) {
+        if (deepLinkType == null || deepLinkId == null) return@LaunchedEffect
+
+        when (deepLinkType) {
+            "song" -> {
+
+            }
+
+            "album" -> {
+                val intent = Intent(context, AlbumActivity::class.java).apply {
+                    putExtra("album_id", deepLinkId)
+                    putExtra("album_imageUrl", "")
+                }
+                context.startActivity(intent)
+            }
+
+            "playlist" -> {
+
+            }
+        }
+    }
 
     var showSheet by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
@@ -203,8 +252,6 @@ fun Main_Screen() {
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
-
-    val context = LocalContext.current
 
     val musicService = ServiceLocator.musicService
 
@@ -827,6 +874,6 @@ private fun BottomNavBar(navController: NavController) {
 @Composable
 fun Main_ScreenPreview() {
     WaveXTheme {
-        Main_Screen()
+        Main_Screen(null, null)
     }
 }

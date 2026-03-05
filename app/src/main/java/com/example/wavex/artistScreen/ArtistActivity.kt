@@ -1,9 +1,11 @@
 package com.example.wavex.artistScreen
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -48,10 +50,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -60,6 +64,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -73,18 +78,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -94,10 +104,14 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.util.Log
+import androidx.palette.graphics.Palette
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -106,6 +120,11 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
+import com.example.wavex.albumScreen.ShareItem
+import com.example.wavex.albumScreen.ShareType
+import com.example.wavex.albumScreen.darkenColor
+import com.example.wavex.albumScreen.generateShareLink
+import com.example.wavex.albumScreen.slightlyDarken
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
@@ -144,7 +163,6 @@ class ArtistActivity : ComponentActivity() {
 
         val artistId = intent.getStringExtra("artist_id")
         val artistImageUrl = intent.getStringExtra("artist_imageUrl")
-        Log.d("Image", artistImageUrl ?: "Image URL is null")
 
         setContent {
             WaveXTheme {
@@ -170,6 +188,12 @@ private fun Artist_Activity(
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
+
+    val imageToLoad = if (artistImageUrl.isNullOrBlank()) {
+        artists.imageUrl
+    } else {
+        artistImageUrl
+    }
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
@@ -260,9 +284,10 @@ private fun Artist_Activity(
     val isTitleVisible = !isLoading && !artists.isError
 
     var showSongSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSongSheet) 22f else 0f,
+        targetValue = if (showSongSheet || showShareSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -358,8 +383,7 @@ private fun Artist_Activity(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
-                                    model = artistImageUrl.takeUnless { it.isNullOrBlank() }
-                                        ?: R.drawable.default_artist,
+                                    model = imageToLoad,
                                     contentDescription = "Artist Image",
                                     contentScale = ContentScale.Crop,
                                     modifier =  Modifier.padding(start = 8.dp)
@@ -419,7 +443,7 @@ private fun Artist_Activity(
                                         interactionSource = shareInteraction,
                                         indication = null
                                     ) {
-
+                                        showShareSheet = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -457,7 +481,7 @@ private fun Artist_Activity(
                                                     val artistData = mapOf(
                                                         "artistId" to artistId,
                                                         "artistName" to artists.name,
-                                                        "artistImageUrl" to artistImageUrl,
+                                                        "artistImageUrl" to imageToLoad,
                                                         "isFavourite" to true
                                                     )
 
@@ -623,8 +647,7 @@ private fun Artist_Activity(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
-                                        model = artistImageUrl.takeUnless { it.isNullOrBlank() }
-                                            ?: R.drawable.default_artist,
+                                        model = imageToLoad,
                                         contentDescription = "Artist Image",
                                         contentScale = ContentScale.Crop,
                                         modifier =  Modifier
@@ -1096,6 +1119,20 @@ private fun Artist_Activity(
                             }
                         }
 
+                        if (showShareSheet) {
+                            ShareBottomSheetArtists(
+                                item = ShareItem(
+                                    title = htmlToText(artists.name),
+                                    subtitle = "Artists",
+                                    image = imageToLoad,
+                                    id = artists.id,
+                                    type = ShareType.ARTIST
+                                ),
+                                isVerified = artists.isVerified,
+                                onDismiss = { showShareSheet = false }
+                            )
+                        }
+
                         if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
@@ -1179,6 +1216,472 @@ private fun Artist_Activity(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShareBottomSheetArtists(
+    item: ShareItem,
+    isVerified: Boolean,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+    val snackBarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        sheetState.expand()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colorResource(R.color.off_white),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = null
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            ShareContent(
+                item = item,
+                isVerified = isVerified,
+                context = context,
+                onShowSnackBar = { message ->
+                    scope.launch {
+                        snackBarHostState.showSnackbar(message)
+                    }
+                }
+            )
+
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
+            ) { data ->
+                Snackbar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    containerColor = Color(0xFF2C2C2C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                                    data.visuals.message.contains("Link") -> R.drawable.link_icon
+                                    else -> R.drawable.alert_icon
+                                }
+                            ),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.off_white)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ShareContent(
+    item: ShareItem,
+    isVerified: Boolean,
+    context: Context,
+    onShowSnackBar: (String) -> Unit
+) {
+    var dominantColor by remember { mutableStateOf(Color(0xFFD32F2F)) }
+
+    val (copyLinkInteraction, copyLinkScale) = pressScale()
+    val (whatsAppInteraction, whatsAppScale) = pressScale()
+    val (messageInteraction, messageScale) = pressScale()
+    val (moreInteraction, moreScale) = pressScale()
+
+    val clipboardManager = LocalClipboardManager.current
+
+    LaunchedEffect(item.image) {
+        item.image?.let { imageUrl ->
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .allowHardware(false)
+                .build()
+
+            val result = loader.execute(request)
+            val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+
+            bitmap?.let {
+                val palette = Palette.from(it).generate()
+
+                val lightColor = palette.lightVibrantSwatch?.rgb
+                    ?: palette.lightMutedSwatch?.rgb
+                    ?: palette.vibrantSwatch?.rgb
+                    ?: palette.dominantSwatch?.rgb
+                    ?: "#F5F5F5".toColorInt()
+
+                val composeColor = Color(lightColor)
+
+                dominantColor = slightlyDarken(composeColor, 0.18f)
+            }
+        }
+    }
+
+    val darkColor = remember(dominantColor) {
+        darkenColor(dominantColor, 0.45f)
+    }
+
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            dominantColor,
+            darkColor
+        )
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 34.dp)
+                .height(420.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(gradientBrush),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
+                    .padding(10.dp)
+            ) {
+                AsyncImage(
+                    model = item.image,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .size(185.dp)
+                        .clip(CircleShape)
+                        .align(alignment = Alignment.CenterHorizontally),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = htmlToText(item.title),
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.off_white),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    if (isVerified) {
+                        Icon(
+                            painter = painterResource(R.drawable.verified_icon),
+                            contentDescription = "Verified Icon",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = item.subtitle,
+                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    lineHeight = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(width = 90.dp, height = 20.dp)
+                        .offset(x = (-18).dp)
+                        .clip(RectangleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.wavex_logo_light),
+                        contentDescription = "Logo Icon",
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .size(width = 90.dp, height = 20.dp)
+                            .graphicsLayer {
+                                scaleX = 1.4f
+                                scaleY = 1.4f
+                            }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = copyLinkInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            clipboardManager.setText(AnnotatedString(link))
+
+                            onShowSnackBar("Link copied")
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.link_icon),
+                        contentDescription = "Link Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(24.dp)
+                            .graphicsLayer {
+                                scaleX = copyLinkScale
+                                scaleY = copyLinkScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Copy link",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(15.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = whatsAppInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                this.type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, link)
+                                setPackage("com.whatsapp")
+                            }
+
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                onShowSnackBar("WhatsApp not installed")
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.whatsapp_icon),
+                        contentDescription = "WhatsApp Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(32.dp)
+                            .graphicsLayer {
+                                scaleX = whatsAppScale
+                                scaleY = whatsAppScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "WhatsApp",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(15.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = messageInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = "smsto:".toUri()
+                                putExtra("sms_body", "Listen to this album on WaveX 🎵\n$link")
+                            }
+
+                            context.startActivity(intent)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.message_icon),
+                        contentDescription = "Message Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(24.dp)
+                            .graphicsLayer {
+                                scaleX = messageScale
+                                scaleY = messageScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Text\nMessage",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    textAlign = TextAlign.Center,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(20.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = moreInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                this.type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, link)
+                            }
+
+                            context.startActivity(
+                                Intent.createChooser(shareIntent, "Share via")
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.three_dots_icon),
+                        contentDescription = "More Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(22.dp)
+                            .rotate(90f)
+                            .graphicsLayer {
+                                scaleX = moreScale
+                                scaleY = moreScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "More",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 

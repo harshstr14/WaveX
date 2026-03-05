@@ -33,14 +33,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -75,6 +73,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -83,9 +82,11 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -98,6 +99,8 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
@@ -130,7 +133,21 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
-import androidx.core.graphics.toColorInt
+
+data class ShareItem(
+    val title: String,
+    val subtitle: String,
+    val image: String?,
+    val id: String,
+    val type: ShareType
+)
+
+enum class ShareType {
+    SONG,
+    ALBUM,
+    PLAYLIST,
+    ARTIST
+}
 
 class AlbumActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1012,10 +1029,13 @@ private fun Album_Activity(
 
                         if (showShareSheet) {
                             ShareBottomSheet(
-                                albumName = albums.albumName,
-                                albumImage = imageToLoad,
-                                artists = albums.primaryArtists.joinToString(", ") { htmlToText(it.name) },
-                                albumId = albumId ?: "",
+                                item = ShareItem(
+                                    title = htmlToText(albums.albumName),
+                                    subtitle = albums.primaryArtists.joinToString(", ") { htmlToText(it.name) },
+                                    image = imageToLoad,
+                                    id = albums.albumId,
+                                    type = ShareType.ALBUM
+                                ),
                                 onDismiss = { showShareSheet = false }
                             )
                         }
@@ -1080,16 +1100,15 @@ private fun Album_Activity(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareBottomSheet(
-    albumName: String,
-    albumImage: String?,
-    artists: String,
-    albumId: String,
+    item: ShareItem,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
+    val snackBarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         sheetState.expand()
@@ -1102,33 +1121,90 @@ fun ShareBottomSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
-        ShareContent(
-            albumName,
-            albumImage,
-            artists,
-            albumId,
-            context
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ShareContent(
+                item = item,
+                context = context,
+                onShowSnackBar = { message ->
+                    scope.launch {
+                        snackBarHostState.showSnackbar(message)
+                    }
+                }
+            )
+
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
+            ) { data ->
+                Snackbar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    containerColor = Color(0xFF2C2C2C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                                    data.visuals.message.contains("Link") -> R.drawable.link_icon
+                                    else -> R.drawable.alert_icon
+                                }
+                            ),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.off_white)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 fun ShareContent(
-    albumName: String,
-    albumImage: String?,
-    artists: String,
-    albumId: String,
-    context: Context
+    item: ShareItem,
+    context: Context,
+    onShowSnackBar: (String) -> Unit
 ) {
     var dominantColor by remember { mutableStateOf(Color(0xFFD32F2F)) }
 
-    LaunchedEffect(albumImage) {
-        albumImage?.let { imageUrl ->
+    val (copyLinkInteraction, copyLinkScale) = pressScale()
+    val (whatsAppInteraction, whatsAppScale) = pressScale()
+    val (messageInteraction, messageScale) = pressScale()
+    val (moreInteraction, moreScale) = pressScale()
 
+    val clipboardManager = LocalClipboardManager.current
+
+    LaunchedEffect(item.image) {
+        item.image?.let { imageUrl ->
             val loader = ImageLoader(context)
             val request = ImageRequest.Builder(context)
                 .data(imageUrl)
-                .allowHardware(false) // VERY IMPORTANT
+                .allowHardware(false)
                 .build()
 
             val result = loader.execute(request)
@@ -1193,11 +1269,11 @@ fun ShareContent(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(dominantColor.copy(alpha = 0.4f))
+                    .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                     .padding(10.dp)
             ) {
                 AsyncImage(
-                    model = albumImage,
+                    model = item.image,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1209,7 +1285,7 @@ fun ShareContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = htmlToText(albumName),
+                    text = htmlToText(item.title),
                     color = colorResource(R.color.off_white),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     fontSize = 16.sp,
@@ -1222,7 +1298,7 @@ fun ShareContent(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = artists,
+                    text = item.subtitle,
                     color = colorResource(R.color.off_white).copy(alpha = 0.7f),
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                     fontSize = 12.sp,
@@ -1236,7 +1312,7 @@ fun ShareContent(
 
                 Box(
                     modifier = Modifier
-                        .size(width = 90.dp, height = 25.dp)
+                        .size(width = 90.dp, height = 20.dp)
                         .offset(x = (-18).dp)
                         .clip(RectangleShape)
                 ) {
@@ -1245,15 +1321,233 @@ fun ShareContent(
                         contentDescription = "Logo Icon",
                         tint = Color.Unspecified,
                         modifier = Modifier
-                            .size(width = 90.dp, height = 25.dp)
+                            .size(width = 90.dp, height = 20.dp)
                             .graphicsLayer {
-                                scaleX = 1.2f
-                                scaleY = 1.2f
+                                scaleX = 1.4f
+                                scaleY = 1.4f
                             }
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = copyLinkInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            clipboardManager.setText(AnnotatedString(link))
+
+                            onShowSnackBar("Link copied")
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.link_icon),
+                        contentDescription = "Link Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(24.dp)
+                            .graphicsLayer {
+                                scaleX = copyLinkScale
+                                scaleY = copyLinkScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Copy link",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(15.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = whatsAppInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                this.type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, link)
+                                setPackage("com.whatsapp")
+                            }
+
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                onShowSnackBar("WhatsApp not installed")
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.whatsapp_icon),
+                        contentDescription = "WhatsApp Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(32.dp)
+                            .graphicsLayer {
+                                scaleX = whatsAppScale
+                                scaleY = whatsAppScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "WhatsApp",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(15.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = messageInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = "smsto:".toUri()
+                                putExtra("sms_body", "Listen to this album on WaveX 🎵\n$link")
+                            }
+
+                            context.startActivity(intent)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.message_icon),
+                        contentDescription = "Message Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(24.dp)
+                            .graphicsLayer {
+                                scaleX = messageScale
+                                scaleY = messageScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Text\nMessage",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    textAlign = TextAlign.Center,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(20.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = moreInteraction,
+                            indication = null
+                        ) {
+                            val link = generateShareLink(item)
+
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                this.type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, link)
+                            }
+
+                            context.startActivity(
+                                Intent.createChooser(shareIntent, "Share via")
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.three_dots_icon),
+                        contentDescription = "More Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier.size(22.dp)
+                            .rotate(90f)
+                            .graphicsLayer {
+                                scaleX = moreScale
+                                scaleY = moreScale
+                            }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "More",
+                    fontSize = 12.sp, lineHeight = 14.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+fun generateShareLink(item: ShareItem): String {
+    return when (item.type) {
+        ShareType.SONG -> "https://wavex.app/song/${item.id}"
+        ShareType.ALBUM -> "https://wavex.app/album/${item.id}"
+        ShareType.PLAYLIST -> "https://wavex.app/playlist/${item.id}"
+        ShareType.ARTIST -> "https://wavex.app/artist/${item.id}"
     }
 }
 

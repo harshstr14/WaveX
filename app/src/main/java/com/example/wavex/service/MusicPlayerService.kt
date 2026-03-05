@@ -497,7 +497,7 @@ class  MusicPlayerService : LifecycleService() {
 
         if (queue.isNotEmpty()) {
             if (isQueueOnlyMode) {
-                if (isShuffle.value) {
+                val nextSong = if (isShuffle.value) {
                     if (queueShuffleOrder.isEmpty()) {
                         regenerateQueueShuffle()
                     }
@@ -514,11 +514,7 @@ class  MusicPlayerService : LifecycleService() {
                         }
                     }
 
-                    val nextIndex = queueShuffleOrder[queueShufflePointer]
-                    val nextSong = queue[nextIndex]
-
-                    _currentSong.value = nextSong
-                    prepareAndPlay(nextSong)
+                    queue[queueShuffleOrder[queueShufflePointer]]
                 } else {
                     if (_currentSong.value != null) {
                         queuePointer++
@@ -531,12 +527,14 @@ class  MusicPlayerService : LifecycleService() {
                             return
                         }
                     }
-                }
 
-                val nextSong = queue[queuePointer]
+                    queue[queuePointer]
+                }
 
                 _currentSong.value = nextSong
                 prepareAndPlay(nextSong)
+
+                return
             } else {
                 val nextSong = queue.first()
                 currentQueuedSong = nextSong

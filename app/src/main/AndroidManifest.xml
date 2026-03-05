@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -35,7 +34,7 @@
         <activity
             android:name=".libraryScreen.likedSongsScreen.LikedSongsActivity"
             android:exported="false"
-            android:label="@string/title_activity_liked_songs_activtiy"
+            android:label="@string/title_activity_liked_songs_activity"
             android:theme="@style/Theme.WaveX" />
         <activity
             android:name=".libraryScreen.playlistScreen.PlaylistActivity"
@@ -64,7 +63,7 @@
         <activity
             android:name=".profileScreen.artistsScreen.ArtistsActivity"
             android:exported="false"
-            android:label="@string/title_activity_artists_activtiy"
+            android:label="@string/title_activity_artists_activity"
             android:theme="@style/Theme.WaveX" />
         <activity
             android:name=".profileScreen.favouriteSongsScreen.FavouriteSongsActivity"
@@ -84,7 +83,7 @@
         <activity
             android:name=".playlistScreen.PlaylistActivity"
             android:exported="false"
-            android:label="@string/title_activity_playlist_activtiy"
+            android:label="@string/title_activity_playlist_activity"
             android:theme="@style/Theme.WaveX" />
 
         <service
@@ -114,9 +113,22 @@
             android:theme="@style/Theme.WaveX" />
         <activity
             android:name=".MainScreen"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/title_activity_main_screen"
-            android:theme="@style/Theme.WaveX" />
+            android:theme="@style/Theme.WaveX">
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data
+                    android:scheme="https"
+                    android:host="wavex.app"
+                    android:pathPrefix="/" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".VerifyEmail"
             android:exported="false"

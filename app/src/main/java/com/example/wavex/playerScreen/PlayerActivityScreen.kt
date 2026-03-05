@@ -119,6 +119,9 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.albumScreen.ShareBottomSheet
+import com.example.wavex.albumScreen.ShareItem
+import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
@@ -189,8 +192,8 @@ private fun Player_Activity_Screen() {
     val context = LocalContext.current
     val activity = context as? Activity
 
-    var showSheet by remember { mutableStateOf(false) }
     var showSongSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
@@ -207,7 +210,7 @@ private fun Player_Activity_Screen() {
     }
 
     val animatedBlur by animateFloatAsState(
-        targetValue = if (showSongSheet || showSheet) 22f else 0f,
+        targetValue = if (showSongSheet || showShareSheet) 22f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -404,7 +407,7 @@ private fun Player_Activity_Screen() {
                                         interactionSource = shareInteraction,
                                         indication = null
                                     ) {
-
+                                        showShareSheet = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -801,6 +804,19 @@ private fun Player_Activity_Screen() {
 
                         Spacer(modifier = Modifier.width(24.dp))
                     }
+                }
+
+                if (showShareSheet) {
+                    ShareBottomSheet(
+                        item = ShareItem(
+                            title = htmlToText(currentSong?.name ?: ""),
+                            subtitle = currentSong?.artist?.joinToString(", ") { htmlToText(it.name) } ?: "",
+                            image = currentSong?.image?.getOrNull(2)?.url,
+                            id = currentSong?.id ?: "",
+                            type = ShareType.SONG
+                        ),
+                        onDismiss = { showShareSheet = false }
+                    )
                 }
 
                 if (showSongSheet && selectedSong != null) {
