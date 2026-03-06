@@ -73,6 +73,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.R
+import com.example.wavex.downloadSong.downloadedSongScreen.DownloadedSongActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity
@@ -272,7 +273,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 .wrapContentHeight()
             ) {
                 val (profileImageRef, yourProfileRowRef, userNameTextRef, favouriteSongsRowRef, artistsRowRef,
-                    albumsRowRef, settingsRowRef, playlistsRowRef, profileEditIconRef
+                    albumsRowRef, settingsRowRef, playlistsRowRef, profileEditIconRef, downloadedSongsRowRwf
                 ) = createRefs()
 
                 AsyncImage(
@@ -636,8 +637,60 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                 }
 
                 Row(
-                    modifier = Modifier.constrainAs(settingsRowRef){
+                    modifier = Modifier.constrainAs(downloadedSongsRowRwf){
                         top.linkTo(playlistsRowRef.bottom, margin = 30.dp)
+                    }.fillMaxWidth().padding(start = 25.dp, end = 25.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, DownloadedSongActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            context.startActivity(intent)
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.headset_icon),
+                        contentDescription = "Headset Icon",
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier.size(22.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = "Downloaded Songs",
+                        fontSize = 16.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Icon(
+                        painter = painterResource(R.drawable.right_arrow_icon),
+                        contentDescription = "Arrow Icon",
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier.size(22.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.constrainAs(settingsRowRef){
+                        top.linkTo(downloadedSongsRowRwf.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(start = 25.dp, end = 25.dp, bottom = 30.dp)
                         .clickable(
                             interactionSource = interactionSource,

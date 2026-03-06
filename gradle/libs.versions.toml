@@ -23,6 +23,7 @@ playServicesAuth = "21.5.0"
 firebaseFirestore = "26.1.0"
 lottieCompose = "6.7.1"
 navigationCompose = "2.9.7"
+roomRuntime = "2.8.4"
 ui = "1.10.2"
 animation = "1.10.2"
 coilCompose = "2.7.0"
@@ -37,8 +38,12 @@ datastorePreferences = "1.2.0"
 gson = "2.13.2"
 cloudinaryAndroid = "3.1.2"
 ucrop = "2.2.8"
+ksp = "2.0.21-1.0.27"
 
 [libraries]
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 pratikfagadiya-animatedsmoothbottomnavigation-jetpackcompose = { module = "com.github.PratikFagadiya:AnimatedSmoothBottomNavigation-JetpackCompose", version.ref = "animatedsmoothbottomnavigationJetpackcomposeVersion" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
 cloudinary-android = { module = "com.cloudinary:cloudinary-android", version.ref = "cloudinaryAndroid" }
@@ -87,3 +92,4 @@ kotlin-parcelize = { id = "kotlin-parcelize" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

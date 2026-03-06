@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.ksp)
 }
 
 val localProps = gradleLocalProperties(rootDir,providers)
@@ -64,6 +65,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     implementation(libs.pratikfagadiya.animatedsmoothbottomnavigation.jetpackcompose)
     implementation(libs.ucrop)
     implementation(libs.cloudinary.android)

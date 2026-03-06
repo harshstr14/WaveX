@@ -27,6 +27,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
         <activity
+            android:name=".downloadSong.downloadedSongScreen.DownloadedSongActivity"
+            android:exported="false"
+            android:label="@string/title_activity_downloaded_song"
+            android:theme="@style/Theme.WaveX" />
+        <activity
             android:name=".playerScreen.PlayerActivityScreen"
             android:exported="false"
             android:label="@string/title_activity_player_screen"
@@ -116,17 +121,16 @@
             android:exported="true"
             android:label="@string/title_activity_main_screen"
             android:theme="@style/Theme.WaveX">
-
             <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
+                <action android:name="android.intent.action.VIEW" />
 
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:scheme="https"
                     android:host="wavex.app"
-                    android:pathPrefix="/" />
+                    android:pathPrefix="/"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         <activity
