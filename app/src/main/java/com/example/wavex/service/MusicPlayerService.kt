@@ -372,8 +372,13 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
+        _isShuffle.value = false
+        _repeatMode.value = Player.REPEAT_MODE_OFF
+
         shuffleOrder.clear()
+        queueShuffleOrder.clear()
         shufflePointer = 0
+        queueShufflePointer = 0
         playlist.clear()
         history.clear()
         clearQueue()
@@ -387,6 +392,7 @@ class  MusicPlayerService : LifecycleService() {
         }
 
         updateUpNext()
+        updateNotification()
     }
 
     fun play(song: SongItem) {
@@ -478,7 +484,7 @@ class  MusicPlayerService : LifecycleService() {
     fun next() {
         val current = _currentSong.value
 
-        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
+        if (_repeatMode.value == Player.REPEAT_MODE_ONE) {
             playIndex(currentIndex)
             return
         }
@@ -507,7 +513,7 @@ class  MusicPlayerService : LifecycleService() {
                     }
 
                     if (queueShufflePointer >= queueShuffleOrder.size) {
-                        if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                        if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                             regenerateQueueShuffle()
                         } else {
                             return
@@ -521,7 +527,7 @@ class  MusicPlayerService : LifecycleService() {
                     }
 
                     if (queuePointer >= queue.size) {
-                        if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                        if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                             queuePointer = 0
                         } else {
                             return
@@ -562,7 +568,7 @@ class  MusicPlayerService : LifecycleService() {
             shufflePointer++
 
             if (shufflePointer >= shuffleOrder.size) {
-                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                     shufflePointer = 0
                 } else {
                     updateUpNext()
@@ -577,7 +583,7 @@ class  MusicPlayerService : LifecycleService() {
             if (nextIndex in playlist.indices) {
                 playIndex(nextIndex)
             } else {
-                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                     playIndex(0)
                 } else {
                     updateUpNext()
@@ -593,7 +599,7 @@ class  MusicPlayerService : LifecycleService() {
             return
         }
 
-        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
+        if (_repeatMode.value == Player.REPEAT_MODE_ONE) {
             player.seekTo(0)
             player.play()
             return
@@ -608,7 +614,7 @@ class  MusicPlayerService : LifecycleService() {
                 queueShufflePointer--
 
                 if (queueShufflePointer < 0) {
-                    if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                         queueShufflePointer = queueShuffleOrder.lastIndex
                     } else {
                         player.seekTo(0)
@@ -616,7 +622,14 @@ class  MusicPlayerService : LifecycleService() {
                     }
                 }
 
-                val prevIndex = queueShuffleOrder[queueShufflePointer]
+                if (queueShufflePointer !in queueShuffleOrder.indices) {
+                    queueShufflePointer = queueShuffleOrder.lastIndex
+                }
+
+                val prevIndex = queueShuffleOrder.getOrNull(queueShufflePointer) ?: return
+
+                if (prevIndex !in queue.indices) return
+
                 val prevSong = queue[prevIndex]
 
                 _currentSong.value = prevSong
@@ -625,7 +638,7 @@ class  MusicPlayerService : LifecycleService() {
                 queuePointer--
 
                 if (queuePointer < 0) {
-                    if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                    if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                         queuePointer = queue.lastIndex
                     } else {
                         player.seekTo(0)
@@ -633,7 +646,11 @@ class  MusicPlayerService : LifecycleService() {
                     }
                 }
 
-                val prevSong = queue[queuePointer]
+                if (queuePointer !in queue.indices) {
+                    queuePointer = queue.lastIndex
+                }
+
+                val prevSong = queue.getOrNull(queuePointer) ?: return
 
                 _currentSong.value = prevSong
                 prepareAndPlay(prevSong)
@@ -648,9 +665,11 @@ class  MusicPlayerService : LifecycleService() {
             val previousSong = history.removeAt(history.lastIndex)
 
             val index = playlist.indexOfFirst { it.id == previousSong.id }
-            if (index != -1) {
+
+            if (index in playlist.indices) {
                 playIndex(index)
             }
+
             return
         }
 
@@ -662,7 +681,7 @@ class  MusicPlayerService : LifecycleService() {
             shufflePointer--
 
             if (shufflePointer < 0) {
-                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                     shufflePointer = shuffleOrder.lastIndex
                 } else {
                     player.seekTo(0)
@@ -670,15 +689,22 @@ class  MusicPlayerService : LifecycleService() {
                 }
             }
 
-            playIndex(shuffleOrder[shufflePointer])
+            if (shufflePointer !in shuffleOrder.indices) {
+                shufflePointer = shuffleOrder.lastIndex
+            }
+
+            val index = shuffleOrder.getOrNull(shufflePointer) ?: return
+
+            if (index in playlist.indices) {
+                playIndex(index)
+            }
         } else {
             val prevIndex = currentIndex - 1
 
             if (prevIndex >= 0) {
                 playIndex(prevIndex)
-
             } else {
-                if (player.repeatMode == Player.REPEAT_MODE_ALL) {
+                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
                     playIndex(playlist.lastIndex)
                 } else {
                     player.seekTo(0)
@@ -698,10 +724,8 @@ class  MusicPlayerService : LifecycleService() {
                 val current = _currentSong.value
                 val index = queue.indexOfFirst { it.id == current?.id }
                 if (index != -1) {
-                    queueShufflePointer =
-                        queueShuffleOrder.indexOf(index)
+                    queueShufflePointer = queueShuffleOrder.indexOf(index)
                 }
-
             } else {
                 regenerateShuffleKeepingCurrent()
             }
@@ -771,14 +795,13 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun repeatToggle() {
-        val newMode = when (player.repeatMode) {
+        val newMode = when (_repeatMode.value) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
             else -> Player.REPEAT_MODE_OFF
         }
 
-        player.repeatMode = newMode
         _repeatMode.value = newMode
 
         updateNotification()
@@ -1130,7 +1153,7 @@ class  MusicPlayerService : LifecycleService() {
             NotificationCompat.Action(R.drawable.disableshuffle, "disableShuffle", shufflePending)
         }
 
-        val repeatAction = when (player.repeatMode) {
+        val repeatAction = when (_repeatMode.value) {
             Player.REPEAT_MODE_OFF ->
                 NotificationCompat.Action(
                     R.drawable.disablerepeat,

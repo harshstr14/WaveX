@@ -1,6 +1,7 @@
 package com.example.wavex.albumScreen
 
 import android.app.Activity
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
@@ -82,11 +83,11 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -1197,7 +1198,8 @@ fun ShareContent(
     val (messageInteraction, messageScale) = pressScale()
     val (moreInteraction, moreScale) = pressScale()
 
-    val clipboardManager = LocalClipboardManager.current
+    val clipboardManager = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(item.image) {
         item.image?.let { imageUrl ->
@@ -1350,9 +1352,14 @@ fun ShareContent(
                             interactionSource = copyLinkInteraction,
                             indication = null
                         ) {
-                            val link = generateShareLink(item)
+                            scope.launch {
+                                val link = generateShareLink(item)
 
-                            clipboardManager.setText(AnnotatedString(link))
+                                val clipData = ClipData.newPlainText("link", link)
+                                val clipEntry = ClipEntry(clipData)
+
+                                clipboardManager.setClipEntry(clipEntry)
+                            }
 
                             onShowSnackBar("Link copied")
                         },
