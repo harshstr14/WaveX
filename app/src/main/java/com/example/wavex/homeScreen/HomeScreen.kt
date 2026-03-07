@@ -7,6 +7,7 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.text.Html
+import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -94,6 +95,8 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
+import com.example.wavex.downloadSong.data.DatabaseProvider
+import com.example.wavex.downloadSong.repository.DownloadRepository
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
 import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
@@ -108,14 +111,29 @@ import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 
 object PlayerManager {
     var currentPlaylist: List<SongItem> = emptyList()
     var currentIndex: Int = 0
+}
+
+object AppContainer {
+    lateinit var downloadRepository: DownloadRepository
+
+    fun init(context: Context) {
+        val db = DatabaseProvider.getDatabase(context)
+        downloadRepository = DownloadRepository(db.downloadDao())
+    }
 }
 
 val Context.musicDataStore by preferencesDataStore("waveX_datastore")
@@ -1054,6 +1072,41 @@ fun formatDuration(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format(Locale.US,"%02d : %02d", minutes, remainingSeconds)
+}
+
+suspend fun downloadSong(
+    url: String,
+    fileName: String,
+    context: Context
+): String? = withContext(Dispatchers.IO) {
+    try {
+        Log.d("DOWNLOAD_TEST", "Starting download: $url")
+
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connect()
+
+        val inputStream = connection.inputStream
+
+        val file = File(context.filesDir, "$fileName.mp3")
+        val outputStream = FileOutputStream(file)
+
+        val buffer = ByteArray(4096)
+        var bytesRead: Int
+
+        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            outputStream.write(buffer, 0, bytesRead)
+        }
+
+        outputStream.close()
+        inputStream.close()
+
+        Log.d("DOWNLOAD_TEST", "File saved at: ${file.absolutePath}")
+
+        file.absolutePath
+    } catch (e: Exception) {
+        Log.e("DOWNLOAD_TEST", "Download error", e)
+        null
+    }
 }
 
 @Composable

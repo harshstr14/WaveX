@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -56,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,9 +92,14 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
+import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
+import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.HomeScreen
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.libraryScreen.LibraryScreen
@@ -106,10 +113,12 @@ import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import kotlin.getValue
 
 val okHttpClient by lazy {
     OkHttpClient.Builder()
@@ -190,9 +199,14 @@ class MainScreen : ComponentActivity() {
             )
         )
 
+        val downloadViewModel: DownloadViewModel by viewModels {
+            DownloadViewModelFactory(AppContainer.downloadRepository)
+        }
+
         setContent {
             WaveXTheme {
                 Main_Screen(
+                    downloadViewModel,
                     deepLinkType = deepLinkType,
                     deepLinkId = deepLinkId
                 )
@@ -219,10 +233,19 @@ class MainScreen : ComponentActivity() {
 }
 
 @Composable
-fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
+fun Main_Screen(
+    downloadViewModel: DownloadViewModel,
+    deepLinkType: String?,
+    deepLinkId: String?
+) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val downloadedIds by downloadViewModel
+        .downloadedSongIds
+        .collectAsState(initial = emptySet())
 
     LaunchedEffect(deepLinkType, deepLinkId) {
         if (deepLinkType == null || deepLinkId == null) return@LaunchedEffect
@@ -261,11 +284,12 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
         ?: remember { mutableIntStateOf(-1) }
 
+    val quality = musicService?.qualityIndex
+
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             Column {
-
                 val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
                     ?: remember { mutableStateOf(false) }
 
@@ -326,10 +350,10 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
         },
         contentWindowInsets = WindowInsets(0),
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(hostState = snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
+                        .padding(horizontal = 18.dp, vertical = 12.dp).shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(10.dp),
                             ambientColor = Color(0xFF2C2C2C),
@@ -347,6 +371,9 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
                                     data.visuals.message.contains("Playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("name") -> R.drawable.user_icon
                                     data.visuals.message.contains("Phone") -> R.drawable.phone_icon
+                                    data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("failed") -> R.drawable.alert_icon
                                     else -> {
                                         R.drawable.alert_icon
                                     }
@@ -419,13 +446,17 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
                 HomeScreen(showSheet = showSheet)  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
-                DiscoverScreen(navController, showSheet = showSheet)
+                DiscoverScreen(downloadViewModel = downloadViewModel, quality = quality,
+                    navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
+                )
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen(navController, showSheet = showSheet)
+                SearchScreen(downloadViewModel = downloadViewModel, quality = quality,
+                    navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
+                )
             }
             composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController, snackBarHostState = snackBarHostState, showSheet = showSheet)
+                LibraryScreen(navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet)
             }
         }
     }
@@ -433,6 +464,7 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
     if (showSheet && selectedSong != null) {
         val song = selectedSong!!
         val isFavourite = likedSongs.contains(song.id)
+        val isDownloaded = downloadedIds.contains(song.id)
 
         SongOptionsBottomSheet(
             song = song,
@@ -453,8 +485,40 @@ fun Main_Screen(deepLinkType: String?, deepLinkId: String?) {
                 showSheet = false
             },
             isFavourite = isFavourite,
+            isDownloaded = isDownloaded,
             onToggleFavourite = {
                 likedViewModel.toggleLike(song)
+            },
+            onToggleDownload = { song ->
+                if (isDownloaded) {
+                    downloadViewModel.deleteSong(song.id)
+                } else {
+                    scope.launch {
+                        val path = downloadSong(
+                            song.downloadUrl[quality ?: 4].url,
+                            song.name,
+                            context
+                        )
+
+                        if (path != null) {
+                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                            downloadViewModel.insertSong(
+                                DownloadedSong(
+                                    id = song.id,
+                                    name = song.name,
+                                    artist = song.artist,
+                                    album = song.album,
+                                    image = song.image,
+                                    duration = song.duration,
+                                    playCount = song.playCount,
+                                    downloadUrl = song.downloadUrl,
+                                    localPath = path
+                                )
+                            )
+                        }
+                    }
+                }
             }
         )
     }
@@ -874,6 +938,6 @@ private fun BottomNavBar(navController: NavController) {
 @Composable
 fun Main_ScreenPreview() {
     WaveXTheme {
-        Main_Screen(null, null)
+
     }
 }

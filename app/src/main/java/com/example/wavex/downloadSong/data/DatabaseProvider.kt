@@ -9,12 +9,13 @@ object DatabaseProvider {
     fun getDatabase(context: Context): AppDatabase {
 
         if (instance == null) {
-
             instance = Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "wavex_database"
-            ).build()
+            )
+                .fallbackToDestructiveMigration(true)
+                .build()
         }
 
         return instance!!

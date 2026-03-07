@@ -18,5 +18,5 @@ interface DownloadDao {
     suspend fun deleteSong(id: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM downloaded_songs WHERE id = :id)")
-    suspend fun isDownloaded(id: String): Boolean
+    fun isDownloaded(id: String): Flow<Boolean>
 }

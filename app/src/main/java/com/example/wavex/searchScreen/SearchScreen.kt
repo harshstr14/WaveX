@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -56,6 +57,8 @@ import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -106,7 +109,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -116,10 +118,13 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
+import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
@@ -143,7 +148,13 @@ import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
 @Composable
-fun SearchScreen(navController: NavController, showSheet: Boolean) {
+fun SearchScreen(
+    downloadViewModel: DownloadViewModel,
+    quality: Int?,
+    navController: NavController,
+    snackBarHostState: SnackbarHostState,
+    showSheet: Boolean
+) {
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -161,6 +172,10 @@ fun SearchScreen(navController: NavController, showSheet: Boolean) {
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsStateWithLifecycle()
+
+    val downloadedIds by downloadViewModel
+        .downloadedSongIds
+        .collectAsState(initial = emptySet())
 
     val animatedBlur by animateFloatAsState(
         targetValue = if (showSongSheet || showSheet) 22f else 0f,
@@ -248,13 +263,17 @@ fun SearchScreen(navController: NavController, showSheet: Boolean) {
             end.linkTo(parent.end)
             bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
-            },debouncedQuery,
+            },
+            searchText = debouncedQuery,
+            downloadedIds = downloadedIds,
             onSongMoreClick = { song, songs, index ->
                 selectedSong = song
                 currentSongs = songs
                 selectedIndex = index
                 showSongSheet = true
-            }
+            },
+            downloadViewModel = downloadViewModel,
+            snackBarHostState = snackBarHostState
         )
 
         LaunchedEffect(Unit) {
@@ -268,13 +287,14 @@ fun SearchScreen(navController: NavController, showSheet: Boolean) {
     }
 
     if (showSongSheet && selectedSong != null) {
-
         val song = selectedSong!!
         val isFavourite = likedSongs.contains(song.id)
+        val isDownloaded = downloadedIds.contains(song.id)
 
         SongOptionsBottomSheet(
             song = song,
             isFavourite = isFavourite,
+            isDownloaded = isDownloaded,
             onDismiss = {
                 showSongSheet = false
                 selectedSong = null
@@ -298,6 +318,37 @@ fun SearchScreen(navController: NavController, showSheet: Boolean) {
             },
             onToggleFavourite = {
                 likedViewModel.toggleLike(song)
+            },
+            onToggleDownload = { song ->
+                if (isDownloaded) {
+                    downloadViewModel.deleteSong(song.id)
+                } else {
+                    scope.launch {
+                        val path = downloadSong(
+                            song.downloadUrl[quality ?: 4].url,
+                            song.name,
+                            context
+                        )
+
+                        if (path != null) {
+                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                            downloadViewModel.insertSong(
+                                DownloadedSong(
+                                    id = song.id,
+                                    name = song.name,
+                                    artist = song.artist,
+                                    album = song.album,
+                                    image = song.image,
+                                    duration = song.duration,
+                                    playCount = song.playCount,
+                                    downloadUrl = song.downloadUrl,
+                                    localPath = path
+                                )
+                            )
+                        }
+                    }
+                }
             }
         )
     }
@@ -383,8 +434,11 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
 
 @SuppressLint("FrequentlyChangingValue")
 @Composable
-private fun SearchTabs(modifier: Modifier, searchText: String,
-                       onSongMoreClick: (song: SongItem, songs: List<SongItem>, index: Int) -> Unit
+private fun SearchTabs(
+    modifier: Modifier, searchText: String, downloadedIds: Set<String>,
+    onSongMoreClick: (song: SongItem, songs: List<SongItem>, index: Int) -> Unit,
+    downloadViewModel: DownloadViewModel,
+    snackBarHostState: SnackbarHostState
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -489,10 +543,17 @@ private fun SearchTabs(modifier: Modifier, searchText: String,
                 }
 
                 "Songs" -> {
-                    SearchSongs(searchText, "results", modifier = Modifier, listState = songsListState,
+                    SearchSongs(
+                        query = searchText,
+                        root = "results",
+                        modifier = Modifier,
+                        downloadedIds = downloadedIds,
+                        listState = songsListState,
                         onMoreClick = { song, songs, index ->
                             onSongMoreClick(song, songs, index)
-                        }
+                        },
+                        downloadViewModel = downloadViewModel,
+                        snackBarHostState = snackBarHostState
                     )
                 }
 
@@ -657,9 +718,12 @@ private fun SearchSongs(
     query: String,
     root: String,
     modifier: Modifier,
+    downloadedIds: Set<String>,
     viewModel: SearchSongsViewModel = viewModel(),
     listState: LazyListState,
-    onMoreClick: (SongItem, List<SongItem>, Int) -> Unit
+    onMoreClick: (SongItem, List<SongItem>, Int) -> Unit,
+    downloadViewModel: DownloadViewModel,
+    snackBarHostState: SnackbarHostState
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -673,6 +737,8 @@ private fun SearchSongs(
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
+
+    val quality = musicService?.qualityIndex
 
     LaunchedEffect(query) {
         when {
@@ -722,6 +788,9 @@ private fun SearchSongs(
                     items = uniqueSongs,
                     key = { _, song -> song.id }
                 ) { index, song ->
+
+                    val isDownloaded = downloadedIds.contains(song.id)
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -850,12 +919,63 @@ private fun SearchSongs(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                IconButton(onClick = { }) {
+                                IconButton(onClick = {
+                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            message = "Downloading started",
+                                            duration = SnackbarDuration.Short
+                                        )
+
+                                        val url = song.downloadUrl[quality ?: 4].url
+
+                                        Log.d("DOWNLOAD_TEST", "URL = $url")
+
+                                        val path = downloadSong(
+                                            url,
+                                            song.name,
+                                            context
+                                        )
+
+                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
+
+                                        if (path != null) {
+                                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                            downloadViewModel.insertSong(
+                                                DownloadedSong(
+                                                    id = song.id,
+                                                    name = song.name,
+                                                    artist = song.artist,
+                                                    album = song.album,
+                                                    image = song.image,
+                                                    duration = song.duration,
+                                                    playCount = song.playCount,
+                                                    downloadUrl = song.downloadUrl,
+                                                    localPath = path
+                                                )
+                                            )
+
+                                            snackBarHostState.showSnackbar(
+                                                message = "Song downloaded successfully",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        } else {
+                                            snackBarHostState.showSnackbar(
+                                                message = "Download failed",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    }
+                                }) {
                                     Icon(
-                                        modifier = Modifier.size(22.dp),
-                                        painter = painterResource(R.drawable.download_icon),
+                                        modifier = Modifier.size(24.dp),
+                                        painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)
+                                            else painterResource(R.drawable.download_icon),
                                         contentDescription = "Download",
-                                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                        tint = if (isDownloaded) colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                            else colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                     )
                                 }
 
@@ -1152,6 +1272,5 @@ private fun LoadingEffect() {
 @Preview(showSystemUi = true)
 @Composable
 private fun SearchScreenPreview() {
-    val navController = rememberNavController()
-    SearchScreen(navController, false)
+
 }

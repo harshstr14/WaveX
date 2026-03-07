@@ -9,10 +9,12 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -116,10 +118,15 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
+import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
@@ -134,6 +141,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
+import kotlin.getValue
 
 data class ShareItem(
     val title: String,
@@ -167,9 +175,13 @@ class AlbumActivity : ComponentActivity() {
         val albumId = intent.getStringExtra("album_id")
         val albumImageUrl = intent.getStringExtra("album_imageUrl")
 
+        val downloadViewModel: DownloadViewModel by viewModels {
+            DownloadViewModelFactory(AppContainer.downloadRepository)
+        }
+
         setContent {
             WaveXTheme {
-                Album_Activity(albumId, albumImageUrl)
+                Album_Activity(downloadViewModel, albumId, albumImageUrl)
             }
         }
     }
@@ -178,6 +190,7 @@ class AlbumActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Album_Activity(
+    downloadViewModel: DownloadViewModel,
     albumId: String?, albumImageUrl: String?,
     viewModel: AlbumViewModel = viewModel()
 ) {
@@ -185,6 +198,10 @@ private fun Album_Activity(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val downloadedIds by downloadViewModel
+        .downloadedSongIds
+        .collectAsState(initial = emptySet())
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -303,6 +320,8 @@ private fun Album_Activity(
 
     val duration by musicService?.duration?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
+
+    val quality = musicService?.qualityIndex
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -477,7 +496,7 @@ private fun Album_Activity(
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -498,6 +517,9 @@ private fun Album_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                            data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -840,6 +862,9 @@ private fun Album_Activity(
                                     items = uniqueSongs,
                                     key = { _, song -> song.id }
                                 ) { index, song ->
+
+                                    val isDownloaded = downloadedIds.contains(song.id)
+
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
@@ -971,12 +996,63 @@ private fun Album_Activity(
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                IconButton(onClick = { }) {
+                                                IconButton(onClick = {
+                                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+
+                                                    scope.launch {
+                                                        snackBarHostState.showSnackbar(
+                                                            message = "Downloading started",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+
+                                                        val url = song.downloadUrl[quality ?: 4].url
+
+                                                        Log.d("DOWNLOAD_TEST", "URL = $url")
+
+                                                        val path = downloadSong(
+                                                            url,
+                                                            song.name,
+                                                            context
+                                                        )
+
+                                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
+
+                                                        if (path != null) {
+                                                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                                            downloadViewModel.insertSong(
+                                                                DownloadedSong(
+                                                                    id = song.id,
+                                                                    name = song.name,
+                                                                    artist = song.artist,
+                                                                    album = song.album,
+                                                                    image = song.image,
+                                                                    duration = song.duration,
+                                                                    playCount = song.playCount,
+                                                                    downloadUrl = song.downloadUrl,
+                                                                    localPath = path
+                                                                )
+                                                            )
+
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Song downloaded successfully",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        } else {
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Download failed",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
+                                                    }
+                                                }) {
                                                     Icon(
-                                                        modifier = Modifier.size(22.dp),
-                                                        painter = painterResource(R.drawable.download_icon),
+                                                        modifier = Modifier.size(24.dp),
+                                                        painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)
+                                                            else painterResource(R.drawable.download_icon),
                                                         contentDescription = "Download",
-                                                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                        tint = if (isDownloaded) colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                            else colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                                     )
                                                 }
 
@@ -1002,6 +1078,7 @@ private fun Album_Activity(
                         if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
+                            val isDownloaded = downloadedIds.contains(song.id)
 
                             SongOptionsBottomSheet(
                                 song = song,
@@ -1022,8 +1099,40 @@ private fun Album_Activity(
                                     showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
+                                isDownloaded = isDownloaded,
                                 onToggleFavourite = {
                                     likedViewModel.toggleLike(song)
+                                },
+                                onToggleDownload = { song ->
+                                    if (isDownloaded) {
+                                        downloadViewModel.deleteSong(song.id)
+                                    } else {
+                                        scope.launch {
+                                            val path = downloadSong(
+                                                song.downloadUrl[quality ?: 4].url,
+                                                song.name,
+                                                context
+                                            )
+
+                                            if (path != null) {
+                                                Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                                downloadViewModel.insertSong(
+                                                    DownloadedSong(
+                                                        id = song.id,
+                                                        name = song.name,
+                                                        artist = song.artist,
+                                                        album = song.album,
+                                                        image = song.image,
+                                                        duration = song.duration,
+                                                        playCount = song.playCount,
+                                                        downloadUrl = song.downloadUrl,
+                                                        localPath = path
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -1677,6 +1786,6 @@ private fun pressScale(
 @Composable
 private fun Album_ActivityPreview() {
     WaveXTheme {
-        Album_Activity("1245648", "")
+
     }
 }

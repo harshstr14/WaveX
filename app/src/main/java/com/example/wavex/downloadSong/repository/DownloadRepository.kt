@@ -2,6 +2,7 @@ package com.example.wavex.downloadSong.repository
 
 import com.example.wavex.downloadSong.data.DownloadDao
 import com.example.wavex.downloadSong.data.DownloadedSong
+import kotlinx.coroutines.flow.Flow
 
 class DownloadRepository(
     private val dao: DownloadDao
@@ -16,7 +17,7 @@ class DownloadRepository(
         dao.deleteSong(id)
     }
 
-    suspend fun isDownloaded(id: String): Boolean {
+    fun isDownloaded(id: String): Flow<Boolean> {
         return dao.isDownloaded(id)
     }
 }

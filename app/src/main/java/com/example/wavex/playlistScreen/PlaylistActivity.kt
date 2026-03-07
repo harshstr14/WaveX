@@ -7,11 +7,13 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -127,10 +129,15 @@ import com.example.wavex.albumScreen.ShareBottomSheet
 import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.ArtistActivity
+import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
+import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
@@ -145,6 +152,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.getValue
 
 class PlaylistActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -163,9 +171,13 @@ class PlaylistActivity : ComponentActivity() {
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
 
+        val downloadViewModel: DownloadViewModel by viewModels {
+            DownloadViewModelFactory(AppContainer.downloadRepository)
+        }
+
         setContent {
             WaveXTheme {
-                Playlist_Activity(playlistId, playlistImageUrl)
+                Playlist_Activity(downloadViewModel, playlistId, playlistImageUrl)
             }
         }
     }
@@ -174,6 +186,7 @@ class PlaylistActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Playlist_Activity(
+    downloadViewModel: DownloadViewModel,
     playlistId: String?, playlistImageUrl: String?,
     viewModel: PlaylistViewModel = viewModel()
 )  {
@@ -181,6 +194,10 @@ fun Playlist_Activity(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val downloadedIds by downloadViewModel
+        .downloadedSongIds
+        .collectAsState(initial = emptySet())
 
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -299,6 +316,8 @@ fun Playlist_Activity(
 
     val duration by musicService?.duration?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
+
+    val quality = musicService?.qualityIndex
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -466,7 +485,7 @@ fun Playlist_Activity(
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -487,6 +506,9 @@ fun Playlist_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                            data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -833,6 +855,9 @@ fun Playlist_Activity(
                                     items = uniqueSongs,
                                     key = { _, song -> song.id }
                                 ) { index, song ->
+
+                                    val isDownloaded = downloadedIds.contains(song.id)
+
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
@@ -964,12 +989,63 @@ fun Playlist_Activity(
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                IconButton(onClick = { }) {
+                                                IconButton(onClick = {
+                                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+
+                                                    scope.launch {
+                                                        snackBarHostState.showSnackbar(
+                                                            message = "Downloading started",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+
+                                                        val url = song.downloadUrl[quality ?: 4].url
+
+                                                        Log.d("DOWNLOAD_TEST", "URL = $url")
+
+                                                        val path = downloadSong(
+                                                            url,
+                                                            song.name,
+                                                            context
+                                                        )
+
+                                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
+
+                                                        if (path != null) {
+                                                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                                            downloadViewModel.insertSong(
+                                                                DownloadedSong(
+                                                                    id = song.id,
+                                                                    name = song.name,
+                                                                    artist = song.artist,
+                                                                    album = song.album,
+                                                                    image = song.image,
+                                                                    duration = song.duration,
+                                                                    playCount = song.playCount,
+                                                                    downloadUrl = song.downloadUrl,
+                                                                    localPath = path
+                                                                )
+                                                            )
+
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Song downloaded successfully",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        } else {
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Download failed",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
+                                                    }
+                                                }) {
                                                     Icon(
-                                                        modifier = Modifier.size(22.dp),
-                                                        painter = painterResource(R.drawable.download_icon),
+                                                        modifier = Modifier.size(24.dp),
+                                                        painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)
+                                                            else painterResource(R.drawable.download_icon),
                                                         contentDescription = "Download",
-                                                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                        tint = if (isDownloaded) colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                            else colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                                     )
                                                 }
 
@@ -1008,6 +1084,7 @@ fun Playlist_Activity(
                         if (showSongSheet && selectedSong != null) {
                             val song = selectedSong!!
                             val isFavourite = likedSongs.contains(song.id)
+                            val isDownloaded = downloadedIds.contains(song.id)
 
                             SongOptionsBottomSheet(
                                 song = song,
@@ -1028,8 +1105,40 @@ fun Playlist_Activity(
                                     showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
+                                isDownloaded = isDownloaded,
                                 onToggleFavourite = {
                                     likedViewModel.toggleLike(song)
+                                },
+                                onToggleDownload = { song ->
+                                    if (isDownloaded) {
+                                        downloadViewModel.deleteSong(song.id)
+                                    } else {
+                                        scope.launch {
+                                            val path = downloadSong(
+                                                song.downloadUrl[quality ?: 4].url,
+                                                song.name,
+                                                context
+                                            )
+
+                                            if (path != null) {
+                                                Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                                downloadViewModel.insertSong(
+                                                    DownloadedSong(
+                                                        id = song.id,
+                                                        name = song.name,
+                                                        artist = song.artist,
+                                                        album = song.album,
+                                                        image = song.image,
+                                                        duration = song.duration,
+                                                        playCount = song.playCount,
+                                                        downloadUrl = song.downloadUrl,
+                                                        localPath = path
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -1098,7 +1207,9 @@ fun SongOptionsBottomSheet(
     onDismiss: () -> Unit,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
-    onToggleFavourite: (SongItem) -> Unit
+    isDownloaded: Boolean,
+    onToggleFavourite: (SongItem) -> Unit,
+    onToggleDownload: (SongItem) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -1140,6 +1251,7 @@ fun SongOptionsBottomSheet(
                 song,
                 onPlayNow,
                 isFavourite,
+                isDownloaded,
                 onToggleFavourite,
                 onAddToPlaylistClick = {
                     showPlaylistDialog = true
@@ -1152,9 +1264,13 @@ fun SongOptionsBottomSheet(
                 },
                 onShowSnackBar = { message ->
                     scope.launch {
-                        snackBarHostState.showSnackbar(message)
+                        snackBarHostState.showSnackbar(
+                            message = message,
+                            duration = SnackbarDuration.Short
+                        )
                     }
-                }
+                },
+                onToggleDownload
             )
 
             SnackbarHost(
@@ -1176,12 +1292,14 @@ fun SongOptionsBottomSheet(
                 ) {
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-
                         Icon(
                             painter = painterResource(
                                 when {
                                     data.visuals.message.contains("Song") -> R.drawable.song_icon
+                                    data.visuals.message.contains("playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("queue") -> R.drawable.queue_icon
+                                    data.visuals.message.contains("downloads") -> R.drawable.download_icon
+                                    data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
                                     else -> R.drawable.alert_icon
                                 }
                             ),
@@ -1372,7 +1490,12 @@ fun SongOptionsBottomSheet(
                                             playlistId = playlist.playlistId,
                                             song = song
                                         ) { success, message ->
-                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar(
+                                                    message = message,
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
                                         }
                                     }
                                     .padding(vertical = 8.dp)
@@ -1390,11 +1513,13 @@ private fun BottomSheetContent(
     song: SongItem,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
+    isDownloaded: Boolean,
     onToggleFavourite: (SongItem) -> Unit,
     onAddToPlaylistClick: () -> Unit,
     onShowArtistsClick: () -> Unit,
     onShowShareSheet: () -> Unit,
-    onShowSnackBar: (String) -> Unit
+    onShowSnackBar: (String) -> Unit,
+    onToggleDownload: (SongItem) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -1596,8 +1721,17 @@ private fun BottomSheetContent(
             }
         }
 
-        SheetOptionItem(R.drawable.download_icon, "Download") {
+        SheetOptionItem(
+            icon = if (isDownloaded) R.drawable.downloaded_icon else R.drawable.download_icon,
+            text = if (isDownloaded) "Remove From Download" else "Download")
+        {
+            onToggleDownload(song)
 
+            if (isDownloaded) {
+                onShowSnackBar("Removed from downloads")
+            } else {
+                onShowSnackBar("Downloading started")
+            }
         }
 
         SheetOptionItem(R.drawable.mic_icon, "View Artist") {
@@ -1781,6 +1915,6 @@ private fun pressScale(
 @Composable
 private fun PlaylistActivityPreview() {
     WaveXTheme {
-        Playlist_Activity("playlistId", "playlistImageUrl")
+
     }
 }

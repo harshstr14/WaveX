@@ -113,8 +113,9 @@ enum class SheetType {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(navController: NavController, snackBarHostState: SnackbarHostState, showSheet: Boolean,
-                  viewModel: PlaylistViewModel = viewModel()
+fun LibraryScreen(
+    navController: NavController, snackBarHostState: SnackbarHostState,
+    showSheet: Boolean, viewModel: PlaylistViewModel = viewModel()
 ) {
     val apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
     val importViewModel: ImportPlaylistViewModel = viewModel()

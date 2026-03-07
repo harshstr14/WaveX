@@ -147,25 +147,30 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
     )
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
-    var isScrollingDown by remember { mutableStateOf(false) }
+
+    var startAnimation by remember { mutableStateOf(false) }
 
     val shadowAlpha by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 0.8f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowAlpha"
-    )
-
-    val shadowBlur by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 50f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowBlur"
+        targetValue = if (startAnimation) 0.8f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
     )
 
     val shadowScale by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0.8f else 1f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowScale"
+        targetValue = if (startAnimation) 1f else 0.6f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowScale"
     )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (startAnimation) 60f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
+    )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+    }
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
@@ -308,14 +313,10 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                                     asFrameworkPaint().apply {
                                         isAntiAlias = true
 
-                                        maskFilter = if (shadowBlur > 0f) {
-                                            android.graphics.BlurMaskFilter(
-                                                safeBlur,
-                                                android.graphics.BlurMaskFilter.Blur.NORMAL
-                                            )
-                                        } else {
-                                            null
-                                        }
+                                        maskFilter = android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
                                     }
                                 }
 
@@ -652,17 +653,17 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.headset_icon),
-                        contentDescription = "Headset Icon",
+                        painter = painterResource(R.drawable.downloaded_icon),
+                        contentDescription = "Downloaded Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
                     Text(
                         text = "Downloaded Songs",
@@ -707,14 +708,14 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         painter = painterResource(R.drawable.setting_icon),
                         contentDescription = "Setting Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
                     Text(
                         text = "Settings",
