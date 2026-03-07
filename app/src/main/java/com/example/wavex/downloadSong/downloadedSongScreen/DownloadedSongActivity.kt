@@ -245,7 +245,7 @@ fun Downloaded_Song_Activity(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -469,57 +469,69 @@ fun Downloaded_Song_Activity(
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            IconButton(onClick = {
-                                                Log.d("DOWNLOAD_TEST", "Download button clicked")
-
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar(
-                                                        message = "Downloading started",
-                                                        duration = SnackbarDuration.Short
-                                                    )
-
-                                                    val url = song.downloadUrl[quality ?: 4].url
-
-                                                    Log.d("DOWNLOAD_TEST", "URL = $url")
-
-                                                    val path = downloadSong(
-                                                        url,
-                                                        song.name,
-                                                        context
-                                                    )
-
-                                                    Log.d("DOWNLOAD_TEST", "Download finished path = $path")
-
-                                                    if (path != null) {
-
-                                                        Log.d("DOWNLOAD_TEST", "Saving to database")
-
-                                                        viewModel.insertSong(
-                                                            DownloadedSong(
-                                                                id = song.id,
-                                                                name = song.name,
-                                                                artist = song.artist,
-                                                                album = song.album,
-                                                                image = song.image,
-                                                                duration = song.duration,
-                                                                playCount = song.playCount,
-                                                                downloadUrl = song.downloadUrl,
-                                                                localPath = path
+                                            IconButton(
+                                                onClick = {
+                                                    if (isDownloaded) {
+                                                        scope.launch {
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Song already downloaded",
+                                                                duration = SnackbarDuration.Short
                                                             )
+                                                        }
+                                                        return@IconButton
+                                                    }
+
+                                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+
+                                                    scope.launch {
+                                                        snackBarHostState.showSnackbar(
+                                                            message = "Downloading started",
+                                                            duration = SnackbarDuration.Short
                                                         )
 
-                                                        snackBarHostState.showSnackbar(
-                                                            message = "Song downloaded successfully",
-                                                            duration = SnackbarDuration.Short
+                                                        val url = song.downloadUrl[quality ?: 4].url
+
+                                                        Log.d("DOWNLOAD_TEST", "URL = $url")
+
+                                                        val path = downloadSong(
+                                                            url,
+                                                            song.name,
+                                                            context
                                                         )
-                                                    } else {
-                                                        snackBarHostState.showSnackbar(
-                                                            message = "Download failed",
-                                                            duration = SnackbarDuration.Short
-                                                        )
+
+                                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
+
+                                                        if (path != null) {
+
+                                                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                                            viewModel.insertSong(
+                                                                DownloadedSong(
+                                                                    id = song.id,
+                                                                    name = song.name,
+                                                                    artist = song.artist,
+                                                                    album = song.album,
+                                                                    image = song.image,
+                                                                    duration = song.duration,
+                                                                    playCount = song.playCount,
+                                                                    downloadUrl = song.downloadUrl,
+                                                                    localPath = path
+                                                                )
+                                                            )
+
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Song downloaded successfully",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        } else {
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Download failed",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
                                                     }
                                                 }
-                                            }) {
+                                            ) {
                                                 Icon(
                                                     modifier = Modifier.size(24.dp),
                                                     painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)

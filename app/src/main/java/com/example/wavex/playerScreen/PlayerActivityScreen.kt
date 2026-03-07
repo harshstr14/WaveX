@@ -17,6 +17,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -305,35 +306,59 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
     val amplitudes by playlistViewModel.amplitudes.collectAsState()
 
     val shadowColorButton by animateColorAsState(
-        targetValue = if (isPlaying) Color(0xFF34A853) else Color(0xFF797979),
-        animationSpec = tween(durationMillis = 200),
-        label = "shadowColorAnimation"
+        targetValue = if (isPlaying)
+            colorResource(R.color.theme_color)
+        else
+            colorResource(R.color.secondary_text_color),
+        animationSpec = tween(500),
+        label = "shadowColor"
     )
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
-    var isScrollingDown by remember { mutableStateOf(false) }
-
-    val shadowAlpha by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 0.8f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowAlpha"
+    val shadowScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.2f else 0.9f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowScale"
     )
 
     val shadowBlur by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 50f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowBlur"
+        targetValue = if (isPlaying) 55f else 35f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
     )
 
-    val shadowScale by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0.8f else 1f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowScale"
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.8f else 0.5f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
     )
 
     var isDragging by remember { mutableStateOf(false) }
     var wasPlayingBeforeDrag by remember { mutableStateOf(false) }
+
+    val blurAnim = remember { Animatable(0f) }
+    val alphaAnim = remember { Animatable(0f) }
+
+    val imageUrl = currentSong?.image?.getOrNull(2)?.url
+
+    LaunchedEffect(imageUrl) {
+        blurAnim.snapTo(0f)
+        alphaAnim.snapTo(0f)
+
+        blurAnim.animateTo(
+            targetValue = 60f,
+            animationSpec = tween(700, easing = FastOutSlowInEasing)
+        )
+
+        alphaAnim.animateTo(
+            targetValue = 0.8f,
+            animationSpec = tween(700, easing = FastOutSlowInEasing)
+        )
+    }
+
+    val shadowBlurImage = blurAnim.value
+    val shadowAlphaImage = alphaAnim.value
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -551,23 +576,19 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             }
                             .size(310.dp)
                             .drawBehind {
-                                val safeBlur = (shadowBlur * 1.2f).coerceAtLeast(0.1f)
+                                val safeBlur = (shadowBlurImage * 1.2f).coerceAtLeast(0.1f)
                                 val cornerRadius = 20.dp.toPx()
 
                                 drawIntoCanvas { canvas ->
                                     val paint = Paint().apply {
-                                        color = shadowColor.copy(alpha = shadowAlpha)
+                                        color = shadowColor.copy(alpha = shadowAlphaImage)
                                         asFrameworkPaint().apply {
                                             isAntiAlias = true
 
-                                            maskFilter = if (shadowBlur > 0f) {
-                                                android.graphics.BlurMaskFilter(
-                                                    safeBlur,
-                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                )
-                                            } else {
-                                                null
-                                            }
+                                            maskFilter = android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
                                         }
                                     }
 
@@ -724,7 +745,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 .align(Alignment.CenterVertically)
                                 .size(68.dp)
                                 .drawBehind {
-                                    val glowRadius = (size.minDimension / 2.5f) * shadowScale
+                                    val glowRadius = (size.minDimension / 2.8f) * shadowScale
                                     val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
                                     drawIntoCanvas { canvas ->
@@ -1129,56 +1150,68 @@ fun UpNextSheetContent(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = {
-                                Log.d("DOWNLOAD_TEST", "Download button clicked")
-
-                                scope.launch {
-                                    snackBarHostState.showSnackbar(
-                                        message = "Downloading started",
-                                        duration = SnackbarDuration.Short
-                                    )
-
-                                    val url = song.downloadUrl[quality ?: 4].url
-
-                                    Log.d("DOWNLOAD_TEST", "URL = $url")
-
-                                    val path = downloadSong(
-                                        url,
-                                        song.name,
-                                        context
-                                    )
-
-                                    Log.d("DOWNLOAD_TEST", "Download finished path = $path")
-
-                                    if (path != null) {
-                                        Log.d("DOWNLOAD_TEST", "Saving to database")
-
-                                        downloadViewModel.insertSong(
-                                            DownloadedSong(
-                                                id = song.id,
-                                                name = song.name,
-                                                artist = song.artist,
-                                                album = song.album,
-                                                image = song.image,
-                                                duration = song.duration,
-                                                playCount = song.playCount,
-                                                downloadUrl = song.downloadUrl,
-                                                localPath = path
+                            IconButton(
+                                onClick = {
+                                    if (isDownloaded) {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar(
+                                                message = "Song already downloaded",
+                                                duration = SnackbarDuration.Short
                                             )
+                                        }
+                                        return@IconButton
+                                    }
+
+                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            message = "Downloading started",
+                                            duration = SnackbarDuration.Short
                                         )
 
-                                        snackBarHostState.showSnackbar(
-                                            message = "Song downloaded successfully",
-                                            duration = SnackbarDuration.Short
+                                        val url = song.downloadUrl[quality ?: 4].url
+
+                                        Log.d("DOWNLOAD_TEST", "URL = $url")
+
+                                        val path = downloadSong(
+                                            url,
+                                            song.name,
+                                            context
                                         )
-                                    } else {
-                                        snackBarHostState.showSnackbar(
-                                            message = "Download failed",
-                                            duration = SnackbarDuration.Short
-                                        )
+
+                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
+
+                                        if (path != null) {
+                                            Log.d("DOWNLOAD_TEST", "Saving to database")
+
+                                            downloadViewModel.insertSong(
+                                                DownloadedSong(
+                                                    id = song.id,
+                                                    name = song.name,
+                                                    artist = song.artist,
+                                                    album = song.album,
+                                                    image = song.image,
+                                                    duration = song.duration,
+                                                    playCount = song.playCount,
+                                                    downloadUrl = song.downloadUrl,
+                                                    localPath = path
+                                                )
+                                            )
+
+                                            snackBarHostState.showSnackbar(
+                                                message = "Song downloaded successfully",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        } else {
+                                            snackBarHostState.showSnackbar(
+                                                message = "Download failed",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
                                     }
                                 }
-                            }) {
+                            ) {
                                 Icon(
                                     modifier = Modifier.size(24.dp),
                                     painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)
