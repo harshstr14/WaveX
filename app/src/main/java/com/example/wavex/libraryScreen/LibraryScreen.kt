@@ -755,9 +755,10 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun AddPlaylistBottomSheet(apiUrl: String,
-                                   viewModel: ImportPlaylistViewModel,
-                                   onClose: () -> Unit
+private fun AddPlaylistBottomSheet(
+    apiUrl: String,
+    viewModel: ImportPlaylistViewModel,
+    onClose: () -> Unit
 ) {
     var url by remember { mutableStateOf("") }
     var urlError by remember { mutableStateOf(false) }

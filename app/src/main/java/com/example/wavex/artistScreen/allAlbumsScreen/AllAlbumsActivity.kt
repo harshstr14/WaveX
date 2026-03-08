@@ -167,6 +167,9 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
     val duration by musicService?.duration?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
 
+    val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false)}
+
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
@@ -232,7 +235,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -425,6 +428,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                     progress = if (duration > 0)
                                         progress.toFloat() / duration.toFloat()
                                     else 0f,
+                                    isBuffering = isBuffering,
                                     onPlayPause = {
                                         musicService?.togglePlayPause()
                                     },

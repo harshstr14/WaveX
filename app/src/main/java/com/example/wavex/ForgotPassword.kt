@@ -96,7 +96,7 @@ fun ForgotPasswordScreen() {
     Scaffold (
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -142,9 +142,13 @@ fun ForgotPasswordScreen() {
         val context = LocalContext.current
         var email by remember { mutableStateOf("") }
         val activity = remember(context) { context as? Activity }
+        var emailError by remember { mutableStateOf(false) }
 
         ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorResource(R.color.background_color))) {
-            val (backIcon,titleText,descriptionText,emailLabel,emailInputContainer,sendLinkButton) = createRefs()
+            val (
+                backIcon, titleText, descriptionText, emailLabel,
+                emailInputContainer, sendLinkButton, errorState
+            ) = createRefs()
 
             Box(modifier = Modifier.constrainAs(backIcon) {
                 top.linkTo(parent.top, margin = 25.dp)
@@ -187,12 +191,22 @@ fun ForgotPasswordScreen() {
                 color = colorResource(R.color.primary_text_color)
             )
 
-            Box(modifier = Modifier.constrainAs(emailInputContainer) {
+            Box(
+                modifier = Modifier.constrainAs(emailInputContainer) {
                 top.linkTo(emailLabel.bottom, margin = 10.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                shape = RoundedCornerShape(12.dp)),
+            }.padding(horizontal = 25.dp)
+                .height(52.dp).fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = if (emailError) Color.Red else Color.Transparent,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .background(
+                    colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(12.dp)
+                ),
                 contentAlignment = Alignment.Center
             ) {
                 ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -222,7 +236,13 @@ fun ForgotPasswordScreen() {
                     CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
                         BasicTextField(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = {
+                                email = it
+
+                                if (it.isNotBlank()) {
+                                    emailError = false
+                                }
+                            },
                             modifier = Modifier
                                 .constrainAs(inputField) {
                                     top.linkTo(parent.top)
@@ -245,6 +265,19 @@ fun ForgotPasswordScreen() {
                 }
             }
 
+            if (emailError) {
+                Text(
+                    modifier = Modifier.constrainAs(errorState) {
+                        top.linkTo(emailInputContainer.bottom)
+                        start.linkTo(parent.start)
+                    }.padding(start = 28.dp, top = 4.dp),
+                    text = "Please enter email",
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal
+                )
+            }
+
             Button(modifier = Modifier.constrainAs(sendLinkButton) {
                 top.linkTo(emailInputContainer.bottom, margin = 35.dp)
             }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
@@ -256,15 +289,7 @@ fun ForgotPasswordScreen() {
                 onClick = {
                     keyboardController?.hide()
 
-                    if (email.isBlank()) {
-                        scope.launch {
-                            snackBarHostState.showSnackbar(
-                                message = "Please enter email",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-                        return@Button
-                    }
+                    emailError = email.isBlank()
 
                     if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                         scope.launch {
@@ -276,7 +301,8 @@ fun ForgotPasswordScreen() {
                         return@Button
                     }
 
-                    auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
+                    if (!emailError) {
+                        auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
                             if (task.isSuccessful) {
                                 Log.d("RecoveryPassword", "Password reset email sent")
                                 scope.launch {
@@ -294,6 +320,7 @@ fun ForgotPasswordScreen() {
                                     )
                                 }
                             }
+                        }
                     }
                 }, colors = ButtonDefaults.buttonColors(
                     containerColor = colorResource(R.color.theme_color),

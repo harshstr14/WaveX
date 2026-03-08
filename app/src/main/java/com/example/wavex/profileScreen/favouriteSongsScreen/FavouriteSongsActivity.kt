@@ -268,7 +268,7 @@ fun Favourite_Songs_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                            data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("Downloading") -> R.drawable.download_icon
                             data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {

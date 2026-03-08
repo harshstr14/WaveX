@@ -68,6 +68,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -90,6 +91,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.downloadSong.data.DownloadedSong
@@ -302,6 +306,9 @@ fun Main_Screen(
                 val duration by musicService?.duration?.collectAsState(initial = 0)
                     ?: remember { mutableIntStateOf(0) }
 
+                val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
+                    ?: remember { mutableStateOf(false)}
+
                 currentSong?.let { song ->
                     MiniPlayer(
                         song = song,
@@ -309,6 +316,7 @@ fun Main_Screen(
                         progress = if (duration > 0)
                             progress.toFloat() / duration.toFloat()
                         else 0f,
+                        isBuffering = isBuffering,
                         onPlayPause = {
                             musicService?.togglePlayPause()
                         },
@@ -371,7 +379,7 @@ fun Main_Screen(
                                     data.visuals.message.contains("Playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("name") -> R.drawable.user_icon
                                     data.visuals.message.contains("Phone") -> R.drawable.phone_icon
-                                    data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("Downloading") -> R.drawable.download_icon
                                     data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                     data.visuals.message.contains("failed") -> R.drawable.alert_icon
                                     else -> {
@@ -528,6 +536,7 @@ fun Main_Screen(
 fun MiniPlayer(
     song: SongItem,
     isPlaying: Boolean,
+    isBuffering: Boolean,
     progress: Float,
     onPlayPause: () -> Unit,
     onClick: () -> Unit,
@@ -546,30 +555,32 @@ fun MiniPlayer(
         label = "ShareScale"
     )
 
-    var isScrollingDown by remember { mutableStateOf(false) }
-
-    val shadowAlpha by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 0.8f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowAlpha"
-    )
-
-    val shadowBlur by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 50f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowBlur"
+    val shadowColorButton by animateColorAsState(
+        targetValue = if (isPlaying) Color(0xFF34A853) else Color(0xFF797979),
+        animationSpec = tween(500),
+        label = "shadowColor"
     )
 
     val shadowScale by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0.8f else 1f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowScale"
+        targetValue = if (isPlaying) 1.2f else 1.2f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowScale"
     )
 
-    val shadowColor by animateColorAsState(
-        targetValue = if (isPlaying) Color(0xFF34A853) else Color(0xFF797979),
-        animationSpec = tween(durationMillis = 200),
-        label = "shadowColorAnimation"
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (isPlaying) 55f else 55f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
+    )
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.8f else 0.8f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
+    )
+
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.loading_animation)
     )
 
     Box(
@@ -588,33 +599,6 @@ fun MiniPlayer(
             },
         contentAlignment = Alignment.Center
     ) {
-//        AsyncImage(
-//            model = song.image.getOrNull(2)?.url,
-//            contentDescription = null,
-//            contentScale = ContentScale.Crop,
-//            modifier = Modifier.fillMaxSize()
-//        )
-//
-//        Box(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .background(
-//                    Brush.horizontalGradient(
-//                        colors = listOf(
-//                            colorResource(R.color.primary_text_color).copy(alpha = 0.65f),  // left strong
-//                            colorResource(R.color.primary_text_color).copy(alpha = 0.45f),  // middle
-//                            colorResource(R.color.primary_text_color).copy(alpha = 0.80f)   // right darker
-//                        )
-//                    )
-//                )
-//        )
-//
-//        Box(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .background(colorResource(R.color.primary_text_color).copy(alpha = 0.65f))
-//        )
-
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.Center,
@@ -679,12 +663,12 @@ fun MiniPlayer(
                     .align(Alignment.CenterVertically)
                     .size(46.dp)
                     .drawBehind {
-                        val glowRadius = (size.minDimension / 2.5f) * shadowScale
+                        val glowRadius = (size.minDimension / 3f) * shadowScale
                         val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
                         drawIntoCanvas { canvas ->
                             val paint = Paint().apply {
-                                color = shadowColor.copy(alpha = shadowAlpha)
+                                color = shadowColorButton.copy(alpha = shadowAlpha)
                                 asFrameworkPaint().apply {
                                     isAntiAlias = true
 
@@ -724,21 +708,40 @@ fun MiniPlayer(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        painter = painterResource(
-                            if (isPlaying) R.drawable.notificationpausebutton
-                            else R.drawable.notificationplaybutton
-                        ),
-                        contentDescription = "Play Icon",
-                        tint = colorResource(R.color.background_color),
-                        modifier = Modifier
-                            .padding(start = if (isPlaying) 0.dp else 1.dp)
-                            .size(18.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                    )
+                    if (isBuffering) {
+                        Box(
+                            modifier = Modifier
+                                .size(25.dp)
+                                .clip(RectangleShape)
+                        ) {
+                            LottieAnimation(
+                                composition = composition,
+                                modifier = Modifier
+                                    .size(25.dp)
+                                    .graphicsLayer {
+                                        scaleX = 2f
+                                        scaleY = 2f
+                                    }
+                            )
+                        }
+                    } else {
+                        Icon(
+                            painter = painterResource(
+                                if (isPlaying) R.drawable.notificationpausebutton
+                                else R.drawable.notificationplaybutton
+                            ),
+                            contentDescription = "Play Icon",
+                            tint = colorResource(R.color.background_color),
+                            modifier = Modifier
+                                .padding(start = if (isPlaying) 0.dp else 1.dp)
+                                .size(18.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        )
+
+                    }
                 }
             }
 

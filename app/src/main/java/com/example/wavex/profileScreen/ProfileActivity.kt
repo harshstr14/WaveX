@@ -130,21 +130,19 @@ private fun Profile_Activity() {
 @Composable
 private fun ProfileScreen(imageUrl: String?, name: String) {
     val snackBarHostState = remember { SnackbarHostState() }
-    val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (userInteraction, userScale) = pressScale()
+    val (songInteraction, songScale) = pressScale()
+    val (artistsInteraction, artistsScale) = pressScale()
+    val (albumsInteraction, albumsScale) = pressScale()
+    val (playlistsInteraction, playlistsScale) = pressScale()
+    val (downloadedInteraction, downloadedScale) = pressScale()
+    val (settingInteraction, settingScale) = pressScale()
+    val (backInteraction, backScale) = pressScale()
+    val (editInteraction, editScale) = pressScale()
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
@@ -187,7 +185,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -200,8 +198,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -224,7 +222,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
             )
         },
         snackbarHost = {
-            SnackbarHost(snackBarHostState) { data ->
+            SnackbarHost(hostState = snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
@@ -341,7 +339,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                             color = colorResource(R.color.background_color),
                             shape = RoundedCornerShape(20.dp)
                         ).clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = editInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, YourProfileActivity::class.java).apply {
@@ -356,8 +354,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.background_color),
                         modifier = Modifier.size(18.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = editScale
+                                scaleY = editScale
                             }
                     )
                 }
@@ -382,7 +380,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(userNameTextRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = userInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, YourProfileActivity::class.java).apply {
@@ -398,8 +396,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(20.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = userScale
+                                scaleY = userScale
                             }
                     )
 
@@ -419,12 +417,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "User Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = userScale
+                                scaleY = userScale
                             }
                     )
                 }
@@ -434,7 +432,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(yourProfileRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = songInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, FavouriteSongsActivity::class.java).apply {
@@ -450,8 +448,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = songScale
+                                scaleY = songScale
                             }
                     )
 
@@ -471,12 +469,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = songScale
+                                scaleY = songScale
                             }
                     )
                 }
@@ -486,7 +484,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(favouriteSongsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = artistsInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, ArtistsActivity::class.java).apply {
@@ -502,8 +500,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = artistsScale
+                                scaleY = artistsScale
                             }
                     )
 
@@ -523,12 +521,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = artistsScale
+                                scaleY = artistsScale
                             }
                     )
                 }
@@ -538,7 +536,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(artistsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = albumsInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, AlbumsActivity::class.java).apply {
@@ -554,8 +552,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = albumsScale
+                                scaleY = albumsScale
                             }
                     )
 
@@ -575,12 +573,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = albumsScale
+                                scaleY = albumsScale
                             }
                     )
                 }
@@ -590,7 +588,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(albumsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(horizontal = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = playlistsInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, PlaylistsActivity::class.java).apply {
@@ -606,8 +604,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(22.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = playlistsScale
+                                scaleY = playlistsScale
                             }
                     )
 
@@ -627,12 +625,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = playlistsScale
+                                scaleY = playlistsScale
                             }
                     )
                 }
@@ -642,7 +640,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(playlistsRowRef.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(start = 25.dp, end = 25.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = downloadedInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, DownloadedSongActivity::class.java).apply {
@@ -658,8 +656,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = downloadedScale
+                                scaleY = downloadedScale
                             }
                     )
 
@@ -679,12 +677,12 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = downloadedScale
+                                scaleY = downloadedScale
                             }
                     )
                 }
@@ -694,7 +692,7 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         top.linkTo(downloadedSongsRowRwf.bottom, margin = 30.dp)
                     }.fillMaxWidth().padding(start = 25.dp, end = 25.dp, bottom = 30.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = settingInteraction,
                             indication = null
                         ) {
                             val intent = Intent(context, SettingActivity::class.java).apply {
@@ -710,8 +708,8 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = settingScale
+                                scaleY = settingScale
                             }
                     )
 
@@ -731,18 +729,37 @@ private fun ProfileScreen(imageUrl: String?, name: String) {
 
                     Icon(
                         painter = painterResource(R.drawable.right_arrow_icon),
-                        contentDescription = "Arrow Icon",
+                        contentDescription = "Right Arrow Icon",
                         tint = colorResource(R.color.theme_color),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = settingScale
+                                scaleY = settingScale
                             }
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

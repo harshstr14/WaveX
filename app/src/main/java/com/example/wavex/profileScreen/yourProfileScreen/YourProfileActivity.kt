@@ -231,7 +231,7 @@ private fun YourProfileScreen(
     val isUploading by viewModel.isUploading.collectAsState()
 
     val rotation by animateFloatAsState(
-        targetValue = if (expanded) 270f else 90f,
+        targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "ArrowRotation"
     )
@@ -389,7 +389,7 @@ private fun YourProfileScreen(
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -816,12 +816,12 @@ private fun YourProfileScreen(
                                 ),
                                 trailingIcon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.right_arrow_icon),
+                                        painter = painterResource(R.drawable.arrow_down_icon),
                                         contentDescription = null,
                                         tint = colorResource(R.color.theme_color),
                                         modifier = Modifier
                                             .rotate(rotation)
-                                            .size(22.dp)
+                                            .size(24.dp)
                                     )
                                 },
                                 colors = ExposedDropdownMenuDefaults.textFieldColors(
@@ -989,10 +989,11 @@ private fun YourProfileScreen(
     }
 }
 
-private fun uploadToCloudinary(imageUri: Uri,
-                               database: DatabaseReference,
-                               profileViewModel: ProfileViewModel,
-                               onShowMessage: (String) -> Unit
+private fun uploadToCloudinary(
+    imageUri: Uri,
+    database: DatabaseReference,
+    profileViewModel: ProfileViewModel,
+    onShowMessage: (String) -> Unit
 ) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 

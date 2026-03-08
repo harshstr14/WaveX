@@ -118,7 +118,6 @@ class SettingActivity : ComponentActivity() {
 fun Setting_Activity() {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -127,16 +126,14 @@ fun Setting_Activity() {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
 
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (backInteraction, backScale) = pressScale()
+    val (updateInteraction, updateScale) = pressScale()
+    val (qualityInteraction, qualityScale) = pressScale()
+    val (resetInteraction, resetScale) = pressScale()
+    val (deleteInteraction, deleteScale) = pressScale()
+    val (logoutInteraction, logoutScale) = pressScale()
+    val (githubInteraction, githubScale) = pressScale()
+    val (androidInteraction, androidScale) = pressScale()
 
     var expanded by remember { mutableStateOf(false) }
     var selectedQuality by remember { mutableStateOf("High") }
@@ -178,7 +175,7 @@ fun Setting_Activity() {
                                 shape = RoundedCornerShape(20.dp)
                             )
                             .clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -192,8 +189,8 @@ fun Setting_Activity() {
                             modifier = Modifier
                                 .size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -217,7 +214,7 @@ fun Setting_Activity() {
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -237,7 +234,7 @@ fun Setting_Activity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(painter = painterResource(when {
-                            data.visuals.message.contains("Reset") -> R.drawable.filled_delete_icon
+                            data.visuals.message.contains("Reset") -> R.drawable.delete_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -295,7 +292,7 @@ fun Setting_Activity() {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, top = 15.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = updateInteraction,
                             indication = null
                         ) {
 
@@ -307,10 +304,10 @@ fun Setting_Activity() {
                         contentDescription = "Update Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = updateScale
+                                scaleY = updateScale
                             }
                     )
 
@@ -350,14 +347,14 @@ fun Setting_Activity() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.airpods_icon),
-                        contentDescription = "AirPods Icon",
+                        painter = painterResource(R.drawable.music_icon),
+                        contentDescription = "Music Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = qualityScale
+                                scaleY = qualityScale
                             }
                     )
 
@@ -398,7 +395,7 @@ fun Setting_Activity() {
                     ) {
                         Box(
                             modifier = Modifier.clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = qualityInteraction,
                                 indication = null
                             ) {
                                 expanded = true
@@ -465,7 +462,7 @@ fun Setting_Activity() {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, top = 18.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = resetInteraction,
                             indication = null
                         ) {
                             showResetDialog = true
@@ -473,14 +470,14 @@ fun Setting_Activity() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.filled_delete_icon),
+                        painter = painterResource(R.drawable.delete_icon),
                         contentDescription = "Delete Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = resetScale
+                                scaleY = resetScale
                             }
                     )
 
@@ -518,7 +515,7 @@ fun Setting_Activity() {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, top = 18.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = deleteInteraction,
                             indication = null
                         ) {
                             showDeleteDialog = true
@@ -530,10 +527,10 @@ fun Setting_Activity() {
                         contentDescription = "User Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = deleteScale
+                                scaleY = deleteScale
                             }
                     )
 
@@ -571,7 +568,7 @@ fun Setting_Activity() {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, top = 18.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = logoutInteraction,
                             indication = null
                         ) {
                             showLogOutDialog = true
@@ -583,10 +580,10 @@ fun Setting_Activity() {
                         contentDescription = "LogOut Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = logoutScale
+                                scaleY = logoutScale
                             }
                     )
 
@@ -624,7 +621,7 @@ fun Setting_Activity() {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, top = 18.dp)
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = githubInteraction,
                             indication = null
                         ) {
                             val intent = Intent(
@@ -640,10 +637,10 @@ fun Setting_Activity() {
                         contentDescription = "GitHub Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
+                                scaleX = githubScale
+                                scaleY = githubScale
                             }
                     )
 
@@ -730,7 +727,7 @@ fun Setting_Activity() {
                         title = "Reset waveX App",
                         message = "Are you sure you want to clear all app data? This will reset the app completely.",
                         confirmText = "Reset",
-                        icon = R.drawable.filled_delete_icon,
+                        icon = R.drawable.delete_icon,
                         onConfirm = {
                             clearAppCache (
                                 context,
@@ -767,13 +764,13 @@ fun Setting_Activity() {
             ) {
                 Icon(
                     painter = painterResource(R.drawable.android_icon),
-                    contentDescription = "GitHub Icon",
+                    contentDescription = "Android Icon",
                     tint = colorResource(R.color.theme_color),
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
+                            scaleX = androidScale
+                            scaleY = androidScale
                         }
                 )
 
@@ -999,6 +996,25 @@ fun ConfirmActionDialog(
             }
         }
     }
+}
+
+@Composable
+private fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Preview(showBackground = true)

@@ -122,6 +122,9 @@ class  MusicPlayerService : LifecycleService() {
     private val _buffer = MutableStateFlow(0)
     val buffer: StateFlow<Int> = _buffer.asStateFlow()
 
+    private val _isBuffering = MutableStateFlow(false)
+    val isBuffering: StateFlow<Boolean> = _isBuffering.asStateFlow()
+
     private val _isShuffle = MutableStateFlow(false)
     val isShuffle: StateFlow<Boolean> = _isShuffle.asStateFlow()
 
@@ -205,31 +208,49 @@ class  MusicPlayerService : LifecycleService() {
 
         player.addListener(object : Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY && currentIndex in playlist.indices) {
-                    val song = playlist[currentIndex]
-                    val duration = player.duration.coerceAtLeast(song.duration.toLong()) // Use actual player duration if available
-
-                    _duration.value = duration.toInt()
-                    _buffer.value = player.bufferedPosition.toInt()
-
-                    val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
-                    updateMetadata(song, bitmap)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        updateNotification()
+                when(state) {
+                    Player.STATE_BUFFERING -> {
+                        _isBuffering.value = true
                     }
-                }
-                else if (state == Player.STATE_ENDED) {
-                    if (!isQueueOnlyMode) {
-                        currentQueuedSong?.let { queuedSong ->
-                            queue.removeAll { it.id == queuedSong.id }
-                            _queue.value = queue.toList()
-                            currentQueuedSong = null
 
-                            updateUpNext()
+                    Player.STATE_READY -> {
+                        _isBuffering.value = false
+
+                        if (currentIndex in playlist.indices) {
+                            val song = playlist[currentIndex]
+                            val duration = player.duration.coerceAtLeast(song.duration.toLong())
+
+                            _duration.value = duration.toInt()
+                            _buffer.value = player.bufferedPosition.toInt()
+
+                            val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
+                            updateMetadata(song, bitmap)
+
+                            CoroutineScope(Dispatchers.Main).launch {
+                                updateNotification()
+                            }
                         }
                     }
 
-                    next()
+                    Player.STATE_ENDED -> {
+                        _isBuffering.value = false
+
+                        if (!isQueueOnlyMode) {
+                            currentQueuedSong?.let { queuedSong ->
+                                queue.removeAll { it.id == queuedSong.id }
+                                _queue.value = queue.toList()
+                                currentQueuedSong = null
+
+                                updateUpNext()
+                            }
+                        }
+
+                        next()
+                    }
+
+                    else -> {
+                        _isBuffering.value = false
+                    }
                 }
             }
 
@@ -244,6 +265,7 @@ class  MusicPlayerService : LifecycleService() {
 
             override fun onIsLoadingChanged(isLoading: Boolean) {
                 super.onIsLoadingChanged(isLoading)
+                _isBuffering.value = isLoading
                 _buffer.value = player.bufferedPosition.toInt()
             }
 

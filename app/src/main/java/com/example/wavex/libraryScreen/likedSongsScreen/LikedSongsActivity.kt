@@ -238,6 +238,9 @@ fun Liked_Songs_Activity(
     val duration by musicService?.duration?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
 
+    val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false)}
+
     val quality = musicService?.qualityIndex
 
     Scaffold(
@@ -305,7 +308,7 @@ fun Liked_Songs_Activity(
                                     painter = painterResource(R.drawable.share_icon),
                                     contentDescription = "Share Icon",
                                     tint = colorResource(R.color.primary_text_color),
-                                    modifier = Modifier.padding(end = 2.dp).size(18.dp)
+                                    modifier = Modifier.padding(top = 1.dp, end = 2.dp).size(18.dp)
                                         .graphicsLayer {
                                             scaleX = shareScale
                                             scaleY = shareScale
@@ -323,7 +326,7 @@ fun Liked_Songs_Activity(
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
@@ -344,7 +347,7 @@ fun Liked_Songs_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                            data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("Downloading") -> R.drawable.download_icon
                             data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
@@ -966,6 +969,7 @@ fun Liked_Songs_Activity(
                                     progress = if (duration > 0)
                                         progress.toFloat() / duration.toFloat()
                                     else 0f,
+                                    isBuffering = isBuffering,
                                     onPlayPause = {
                                         musicService?.togglePlayPause()
                                     },

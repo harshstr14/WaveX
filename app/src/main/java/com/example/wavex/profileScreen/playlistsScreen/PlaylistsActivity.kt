@@ -179,7 +179,7 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
         },
         snackbarHost = {
             SnackbarHost(
-                snackBarHostState,
+                hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 25.dp)
