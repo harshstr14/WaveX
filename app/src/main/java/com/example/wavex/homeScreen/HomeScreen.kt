@@ -48,6 +48,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -115,6 +116,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -133,6 +135,37 @@ object AppContainer {
     fun init(context: Context) {
         val db = DatabaseProvider.getDatabase(context)
         downloadRepository = DownloadRepository(db.downloadDao())
+    }
+}
+
+object ParallelDownloader {
+    private val semaphore = kotlinx.coroutines.sync.Semaphore(5)
+
+    val downloadingSongs = mutableStateMapOf<String, Boolean>()
+
+    fun isDownloading(songId: String): Boolean {
+        return downloadingSongs[songId] == true
+    }
+
+    suspend fun download(
+        songId: String,
+        url: String,
+        fileName: String,
+        context: Context
+    ): String? {
+        if (downloadingSongs[songId] == true) {
+            return null
+        }
+
+        downloadingSongs[songId] = true
+
+        return try {
+            semaphore.withPermit {
+                downloadSong(url, fileName, context)
+            }
+        } finally {
+            downloadingSongs.remove(songId)
+        }
     }
 }
 
@@ -1085,20 +1118,25 @@ suspend fun downloadSong(
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connect()
 
-        val inputStream = connection.inputStream
-
         val file = File(context.filesDir, "$fileName.mp3")
-        val outputStream = FileOutputStream(file)
 
-        val buffer = ByteArray(4096)
-        var bytesRead: Int
-
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-            outputStream.write(buffer, 0, bytesRead)
+        if (file.exists()) {
+            Log.d("DOWNLOAD_TEST", "File already exists")
+            return@withContext file.absolutePath
         }
 
-        outputStream.close()
-        inputStream.close()
+        connection.inputStream.buffered().use { inputStream ->
+            FileOutputStream(file).buffered().use { outputStream ->
+
+                val buffer = ByteArray(4096)
+                var bytesRead: Int
+
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+
+            }
+        }
 
         Log.d("DOWNLOAD_TEST", "File saved at: ${file.absolutePath}")
 

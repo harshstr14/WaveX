@@ -131,6 +131,7 @@ import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.AppContainer
+import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
@@ -505,8 +506,10 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 painter = painterResource(
                                     when {
                                         data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                                        data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                                        data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                        data.visuals.message.contains("downloads") ||
+                                                data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                                        data.visuals.message.contains("Downloading") ||
+                                                data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                         data.visuals.message.contains("failed") -> R.drawable.alert_icon
                                         else -> {
                                             R.drawable.alert_icon
@@ -913,17 +916,16 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                         onToggleDownload = { song ->
                             if (isDownloaded) {
                                 downloadViewModel.deleteSong(song.id)
-                            } else {
+                            } else if (!ParallelDownloader.isDownloading(song.id)) {
                                 scope.launch {
-                                    val path = downloadSong(
-                                        song.downloadUrl[quality ?: 4].url,
-                                        song.name,
-                                        context
+                                    val path = ParallelDownloader.download(
+                                        songId = song.id,
+                                        url = song.downloadUrl[quality ?: 4].url,
+                                        fileName = song.name,
+                                        context = context
                                     )
 
                                     if (path != null) {
-                                        Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                         downloadViewModel.insertSong(
                                             DownloadedSong(
                                                 id = song.id,
@@ -1181,6 +1183,16 @@ fun UpNextSheetContent(
                                             return@IconButton
                                         }
 
+                                        if (ParallelDownloader.isDownloading(song.id)) {
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar(
+                                                    message = "Song is already downloading",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                            return@IconButton
+                                        }
+
                                         Log.d("DOWNLOAD_TEST", "Download button clicked")
 
                                         scope.launch {
@@ -1191,19 +1203,14 @@ fun UpNextSheetContent(
 
                                             val url = song.downloadUrl[quality ?: 4].url
 
-                                            Log.d("DOWNLOAD_TEST", "URL = $url")
-
-                                            val path = downloadSong(
-                                                url,
-                                                song.name,
-                                                context
+                                            val path = ParallelDownloader.download(
+                                                songId = song.id,
+                                                url = url,
+                                                fileName = song.name,
+                                                context = context
                                             )
 
-                                            Log.d("DOWNLOAD_TEST", "Download finished path = $path")
-
                                             if (path != null) {
-                                                Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                                 downloadViewModel.insertSong(
                                                     DownloadedSong(
                                                         id = song.id,
@@ -1217,16 +1224,9 @@ fun UpNextSheetContent(
                                                         localPath = path
                                                     )
                                                 )
-
-                                                snackBarHostState.showSnackbar(
-                                                    message = "Song downloaded successfully",
-                                                    duration = SnackbarDuration.Short
-                                                )
+                                                snackBarHostState.showSnackbar("Song downloaded successfully")
                                             } else {
-                                                snackBarHostState.showSnackbar(
-                                                    message = "Download failed",
-                                                    duration = SnackbarDuration.Short
-                                                )
+                                                snackBarHostState.showSnackbar("Download failed")
                                             }
                                         }
                                     }
@@ -1283,8 +1283,10 @@ fun UpNextSheetContent(
                                 data.visuals.message.contains("Song") -> R.drawable.song_icon
                                 data.visuals.message.contains("playlist") -> R.drawable.playlist_icon
                                 data.visuals.message.contains("queue") -> R.drawable.queue_icon
-                                data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
-                                data.visuals.message.contains("Downloading") -> R.drawable.download_icon
+                                data.visuals.message.contains("downloads") ||
+                                        data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                                data.visuals.message.contains("Downloading") ||
+                                        data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                 else -> R.drawable.alert_icon
                             }
                         ),

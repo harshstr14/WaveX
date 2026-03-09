@@ -8,7 +8,6 @@ import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -134,10 +133,10 @@ import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.AppContainer
+import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
-import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
@@ -152,7 +151,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 import java.util.Locale
-import kotlin.getValue
 
 class PlaylistActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -509,8 +507,10 @@ fun Playlist_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                            data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("downloads") ||
+                                    data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                            data.visuals.message.contains("Downloading") ||
+                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
                                 R.drawable.alert_icon
@@ -1013,6 +1013,13 @@ fun Playlist_Activity(
                                                         Log.d("DOWNLOAD_TEST", "Download button clicked")
 
                                                         scope.launch {
+                                                            if (ParallelDownloader.isDownloading(song.id)) {
+                                                                snackBarHostState.showSnackbar(
+                                                                    message = "Song is already downloading"
+                                                                )
+                                                                return@launch
+                                                            }
+
                                                             snackBarHostState.showSnackbar(
                                                                 message = "Downloading started",
                                                                 duration = SnackbarDuration.Short
@@ -1020,19 +1027,14 @@ fun Playlist_Activity(
 
                                                             val url = song.downloadUrl[quality ?: 4].url
 
-                                                            Log.d("DOWNLOAD_TEST", "URL = $url")
-
-                                                            val path = downloadSong(
-                                                                url,
-                                                                song.name,
-                                                                context
+                                                            val path = ParallelDownloader.download(
+                                                                songId = song.id,
+                                                                url = url,
+                                                                fileName = song.name,
+                                                                context = context
                                                             )
 
-                                                            Log.d("DOWNLOAD_TEST", "Download finished path = $path")
-
                                                             if (path != null) {
-                                                                Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                                                 downloadViewModel.insertSong(
                                                                     DownloadedSong(
                                                                         id = song.id,
@@ -1046,16 +1048,9 @@ fun Playlist_Activity(
                                                                         localPath = path
                                                                     )
                                                                 )
-
-                                                                snackBarHostState.showSnackbar(
-                                                                    message = "Song downloaded successfully",
-                                                                    duration = SnackbarDuration.Short
-                                                                )
+                                                                snackBarHostState.showSnackbar("Song downloaded successfully")
                                                             } else {
-                                                                snackBarHostState.showSnackbar(
-                                                                    message = "Download failed",
-                                                                    duration = SnackbarDuration.Short
-                                                                )
+                                                                snackBarHostState.showSnackbar("Download failed")
                                                             }
                                                         }
                                                     }
@@ -1133,17 +1128,16 @@ fun Playlist_Activity(
                                 onToggleDownload = { song ->
                                     if (isDownloaded) {
                                         downloadViewModel.deleteSong(song.id)
-                                    } else {
+                                    } else if (!ParallelDownloader.isDownloading(song.id)) {
                                         scope.launch {
-                                            val path = downloadSong(
+                                            val path = ParallelDownloader.download(
+                                                song.id,
                                                 song.downloadUrl[quality ?: 4].url,
                                                 song.name,
                                                 context
                                             )
 
                                             if (path != null) {
-                                                Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                                 downloadViewModel.insertSong(
                                                     DownloadedSong(
                                                         id = song.id,
@@ -1320,8 +1314,10 @@ fun SongOptionsBottomSheet(
                                     data.visuals.message.contains("Song") -> R.drawable.song_icon
                                     data.visuals.message.contains("playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("queue") -> R.drawable.queue_icon
-                                    data.visuals.message.contains("downloads") -> R.drawable.download_icon
-                                    data.visuals.message.contains("Downloading") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("downloads") ||
+                                            data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                                    data.visuals.message.contains("Downloading") ||
+                                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                     else -> R.drawable.alert_icon
                                 }
                             ),
@@ -1573,6 +1569,8 @@ private fun BottomSheetContent(
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
+    val downloading = ParallelDownloader.downloadingSongs[song.id] == true
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1744,9 +1742,22 @@ private fun BottomSheetContent(
         }
 
         SheetOptionItem(
-            icon = if (isDownloaded) R.drawable.downloaded_icon else R.drawable.download_icon,
-            text = if (isDownloaded) "Remove From Download" else "Download")
-        {
+            icon = when {
+                isDownloaded -> R.drawable.downloaded_icon
+                downloading -> R.drawable.download_icon
+                else -> R.drawable.download_icon
+            },
+            text = when {
+                isDownloaded -> "Remove From Download"
+                downloading -> "Download in Progress"
+                else -> "Download"
+            }
+        ) {
+            if (downloading) {
+                onShowSnackBar("Song is already downloading")
+                return@SheetOptionItem
+            }
+
             onToggleDownload(song)
 
             if (isDownloaded) {

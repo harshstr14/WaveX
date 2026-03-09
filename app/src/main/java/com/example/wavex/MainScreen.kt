@@ -101,9 +101,9 @@ import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.HomeScreen
+import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
-import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.libraryScreen.LibraryScreen
@@ -122,7 +122,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
-import kotlin.getValue
 
 val okHttpClient by lazy {
     OkHttpClient.Builder()
@@ -361,7 +360,7 @@ fun Main_Screen(
             SnackbarHost(hostState = snackBarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp).shadow(
+                        .padding(horizontal = 18.dp, vertical = 8.dp).shadow(
                             elevation = 12.dp,
                             shape = RoundedCornerShape(10.dp),
                             ambientColor = Color(0xFF2C2C2C),
@@ -379,8 +378,10 @@ fun Main_Screen(
                                     data.visuals.message.contains("Playlist") -> R.drawable.playlist_icon
                                     data.visuals.message.contains("name") -> R.drawable.user_icon
                                     data.visuals.message.contains("Phone") -> R.drawable.phone_icon
-                                    data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("downloads") ||
+                                            data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                                    data.visuals.message.contains("Downloading") ||
+                                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                     data.visuals.message.contains("failed") -> R.drawable.alert_icon
                                     else -> {
                                         R.drawable.alert_icon
@@ -500,17 +501,16 @@ fun Main_Screen(
             onToggleDownload = { song ->
                 if (isDownloaded) {
                     downloadViewModel.deleteSong(song.id)
-                } else {
+                } else if (!ParallelDownloader.isDownloading(song.id)) {
                     scope.launch {
-                        val path = downloadSong(
-                            song.downloadUrl[quality ?: 4].url,
-                            song.name,
-                            context
+                        val path = ParallelDownloader.download(
+                            songId = song.id,
+                            url = song.downloadUrl[quality ?: 4].url,
+                            fileName = song.name,
+                            context = context
                         )
 
                         if (path != null) {
-                            Log.d("DOWNLOAD_TEST", "Saving to database")
-
                             downloadViewModel.insertSong(
                                 DownloadedSong(
                                     id = song.id,

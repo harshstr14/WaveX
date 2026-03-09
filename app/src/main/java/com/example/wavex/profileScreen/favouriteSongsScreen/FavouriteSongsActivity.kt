@@ -96,10 +96,10 @@ import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.AppContainer
+import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
-import com.example.wavex.homeScreen.downloadSong
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
@@ -108,7 +108,6 @@ import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
-import kotlin.getValue
 
 class FavouriteSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -268,8 +267,10 @@ fun Favourite_Songs_Activity(
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                            data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("downloads") ||
+                                    data.visuals.message.contains("downloading") -> R.drawable.download_icon
+                            data.visuals.message.contains("Downloading") ||
+                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
                                 R.drawable.alert_icon
@@ -496,6 +497,16 @@ fun Favourite_Songs_Activity(
                                                         return@IconButton
                                                     }
 
+                                                    if (ParallelDownloader.isDownloading(song.id)) {
+                                                        scope.launch {
+                                                            snackBarHostState.showSnackbar(
+                                                                message = "Song is already downloading",
+                                                                duration = SnackbarDuration.Short
+                                                            )
+                                                        }
+                                                        return@IconButton
+                                                    }
+
                                                     Log.d("DOWNLOAD_TEST", "Download button clicked")
 
                                                     scope.launch {
@@ -506,19 +517,14 @@ fun Favourite_Songs_Activity(
 
                                                         val url = song.downloadUrl[quality ?: 4].url
 
-                                                        Log.d("DOWNLOAD_TEST", "URL = $url")
-
-                                                        val path = downloadSong(
-                                                            url,
-                                                            song.name,
-                                                            context
+                                                        val path = ParallelDownloader.download(
+                                                            songId = song.id,
+                                                            url = url,
+                                                            fileName = song.name,
+                                                            context = context
                                                         )
 
-                                                        Log.d("DOWNLOAD_TEST", "Download finished path = $path")
-
                                                         if (path != null) {
-                                                            Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                                             downloadViewModel.insertSong(
                                                                 DownloadedSong(
                                                                     id = song.id,
@@ -532,16 +538,9 @@ fun Favourite_Songs_Activity(
                                                                     localPath = path
                                                                 )
                                                             )
-
-                                                            snackBarHostState.showSnackbar(
-                                                                message = "Song downloaded successfully",
-                                                                duration = SnackbarDuration.Short
-                                                            )
+                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
                                                         } else {
-                                                            snackBarHostState.showSnackbar(
-                                                                message = "Download failed",
-                                                                duration = SnackbarDuration.Short
-                                                            )
+                                                            snackBarHostState.showSnackbar("Download failed")
                                                         }
                                                     }
                                                 }
@@ -605,17 +604,16 @@ fun Favourite_Songs_Activity(
                                 onToggleDownload = { song ->
                                     if (isDownloaded) {
                                         downloadViewModel.deleteSong(song.id)
-                                    } else {
+                                    } else if (!ParallelDownloader.isDownloading(song.id)) {
                                         scope.launch {
-                                            val path = downloadSong(
-                                                song.downloadUrl[quality ?: 4].url,
-                                                song.name,
-                                                context
+                                            val path = ParallelDownloader.download(
+                                                songId = song.id,
+                                                url = song.downloadUrl[quality ?: 4].url,
+                                                fileName = song.name,
+                                                context = context
                                             )
 
                                             if (path != null) {
-                                                Log.d("DOWNLOAD_TEST", "Saving to database")
-
                                                 downloadViewModel.insertSong(
                                                     DownloadedSong(
                                                         id = song.id,
