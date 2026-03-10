@@ -379,9 +379,8 @@ fun Main_Screen(
                                     data.visuals.message.contains("name") -> R.drawable.user_icon
                                     data.visuals.message.contains("Phone") -> R.drawable.phone_icon
                                     data.visuals.message.contains("downloads") ||
-                                            data.visuals.message.contains("downloading") -> R.drawable.download_icon
-                                    data.visuals.message.contains("Downloading") ||
-                                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                            data.visuals.message.contains("Downloading") -> R.drawable.download_icon
+                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                                     data.visuals.message.contains("failed") -> R.drawable.alert_icon
                                     else -> {
                                         R.drawable.alert_icon
@@ -499,31 +498,49 @@ fun Main_Screen(
                 likedViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
-                if (isDownloaded) {
-                    downloadViewModel.deleteSong(song.id)
-                } else if (!ParallelDownloader.isDownloading(song.id)) {
-                    scope.launch {
-                        val path = ParallelDownloader.download(
-                            songId = song.id,
-                            url = song.downloadUrl[quality ?: 4].url,
-                            fileName = song.name,
-                            context = context
-                        )
+                val url = song.downloadUrl[quality ?: 4].url
+                val isDownloading = ParallelDownloader.isDownloading(song.id)
 
-                        if (path != null) {
-                            downloadViewModel.insertSong(
-                                DownloadedSong(
-                                    id = song.id,
-                                    name = song.name,
-                                    artist = song.artist,
-                                    album = song.album,
-                                    image = song.image,
-                                    duration = song.duration,
-                                    playCount = song.playCount,
-                                    downloadUrl = song.downloadUrl,
-                                    localPath = path
-                                )
-                            )
+                when {
+                    isDownloaded -> {
+                        downloadViewModel.deleteSong(song.id)
+                    }
+
+                    isDownloading -> {
+                        scope.launch {
+                            snackBarHostState.showSnackbar("Song is already downloading")
+                        }
+                    }
+
+                    else -> {
+                        scope.launch {
+                            ParallelDownloader.start(
+                                scope,
+                                song.id,
+                                url,
+                                song.name,
+                                context
+                            ) { path ->
+                                if (path != null) {
+                                    downloadViewModel.insertSong(
+                                        DownloadedSong(
+                                            id = song.id,
+                                            name = song.name,
+                                            artist = song.artist,
+                                            album = song.album,
+                                            image = song.image,
+                                            duration = song.duration,
+                                            playCount = song.playCount,
+                                            downloadUrl = song.downloadUrl,
+                                            localPath = path
+                                        )
+                                    )
+
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar("Song downloaded successfully")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -112,7 +112,9 @@ import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -141,31 +143,70 @@ object AppContainer {
 object ParallelDownloader {
     private val semaphore = kotlinx.coroutines.sync.Semaphore(5)
 
-    val downloadingSongs = mutableStateMapOf<String, Boolean>()
+    private val jobs = mutableStateMapOf<String, Job>()
+    private val pausedSongs = mutableStateMapOf<String, Boolean>()
 
     fun isDownloading(songId: String): Boolean {
-        return downloadingSongs[songId] == true
+        return jobs[songId]?.isActive == true
     }
 
-    suspend fun download(
+    fun isPaused(songId: String): Boolean {
+        return pausedSongs[songId] == true
+    }
+
+    fun pause(songId: String) {
+        jobs[songId]?.cancel()
+        pausedSongs[songId] = true
+    }
+
+    fun resume(
+        scope: CoroutineScope,
         songId: String,
         url: String,
         fileName: String,
-        context: Context
-    ): String? {
-        if (downloadingSongs[songId] == true) {
-            return null
-        }
+        context: Context,
+        onFinished: suspend (String?) -> Unit
+    ) {
+        if (isDownloading(songId)) return
 
-        downloadingSongs[songId] = true
+        pausedSongs.remove(songId)
 
-        return try {
-            semaphore.withPermit {
+        val job = scope.launch {
+            val path = semaphore.withPermit {
                 downloadSong(url, fileName, context)
             }
-        } finally {
-            downloadingSongs.remove(songId)
+
+            onFinished(path)
+
+            jobs.remove(songId)
+            pausedSongs.remove(songId)
         }
+
+        jobs[songId] = job
+    }
+
+    fun start(
+        scope: CoroutineScope,
+        songId: String,
+        url: String,
+        fileName: String,
+        context: Context,
+        onFinished: suspend (String?) -> Unit
+    ) {
+        if (isDownloading(songId)) return
+
+        val job = scope.launch {
+            val path = semaphore.withPermit {
+                downloadSong(url, fileName, context)
+            }
+
+            onFinished(path)
+
+            jobs.remove(songId)
+            pausedSongs.remove(songId)
+        }
+
+        jobs[songId] = job
     }
 }
 
@@ -1113,35 +1154,40 @@ suspend fun downloadSong(
     context: Context
 ): String? = withContext(Dispatchers.IO) {
     try {
-        Log.d("DOWNLOAD_TEST", "Starting download: $url")
-
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connect()
-
         val file = File(context.filesDir, "$fileName.mp3")
 
-        if (file.exists()) {
-            Log.d("DOWNLOAD_TEST", "File already exists")
-            return@withContext file.absolutePath
+        val downloadedBytes = if (file.exists()) file.length() else 0
+
+        Log.d("DOWNLOAD_TEST", "Resume from byte: $downloadedBytes")
+
+        val connection = URL(url).openConnection() as HttpURLConnection
+
+        if (downloadedBytes > 0) {
+            connection.setRequestProperty("Range", "bytes=$downloadedBytes-")
         }
 
-        connection.inputStream.buffered().use { inputStream ->
-            FileOutputStream(file).buffered().use { outputStream ->
+        connection.connect()
 
-                val buffer = ByteArray(4096)
-                var bytesRead: Int
+        val inputStream = connection.inputStream.buffered()
 
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                }
+        val outputStream = FileOutputStream(file, true).buffered()
 
-            }
+        val buffer = ByteArray(8192)
+        var bytesRead: Int
+
+        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            outputStream.write(buffer, 0, bytesRead)
         }
+
+        outputStream.close()
+        inputStream.close()
 
         Log.d("DOWNLOAD_TEST", "File saved at: ${file.absolutePath}")
 
         file.absolutePath
+
     } catch (e: Exception) {
+
         Log.e("DOWNLOAD_TEST", "Download error", e)
         null
     }

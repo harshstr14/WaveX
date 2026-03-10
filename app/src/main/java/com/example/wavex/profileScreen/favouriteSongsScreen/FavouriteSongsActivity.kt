@@ -6,7 +6,6 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -48,7 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -268,9 +266,8 @@ fun Favourite_Songs_Activity(
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
                             data.visuals.message.contains("downloads") ||
-                                    data.visuals.message.contains("downloading") -> R.drawable.download_icon
-                            data.visuals.message.contains("Downloading") ||
-                                    data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("Downloading") -> R.drawable.download_icon
+                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
                             else -> {
                                 R.drawable.alert_icon
@@ -353,6 +350,8 @@ fun Favourite_Songs_Activity(
                             ) { index, song ->
 
                                 val isDownloaded = downloadedIds.contains(song.id)
+                                val isDownloading = ParallelDownloader.isDownloading(song.id)
+                                val isPaused = ParallelDownloader.isPaused(song.id)
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -487,72 +486,134 @@ fun Favourite_Songs_Activity(
                                         ) {
                                             IconButton(
                                                 onClick = {
-                                                    if (isDownloaded) {
-                                                        scope.launch {
-                                                            snackBarHostState.showSnackbar(
-                                                                message = "Song already downloaded",
-                                                                duration = SnackbarDuration.Short
-                                                            )
+                                                    val url = song.downloadUrl[quality ?: 4].url
+
+                                                    when {
+                                                        isDownloaded -> {
+                                                            scope.launch {
+                                                                snackBarHostState.showSnackbar("Song already downloaded")
+                                                            }
                                                         }
-                                                        return@IconButton
-                                                    }
 
-                                                    if (ParallelDownloader.isDownloading(song.id)) {
-                                                        scope.launch {
-                                                            snackBarHostState.showSnackbar(
-                                                                message = "Song is already downloading",
-                                                                duration = SnackbarDuration.Short
-                                                            )
+                                                        ParallelDownloader.isDownloading(song.id) -> {
+                                                            ParallelDownloader.pause(song.id)
+
+                                                            scope.launch {
+                                                                snackBarHostState.showSnackbar("Download paused")
+                                                            }
                                                         }
-                                                        return@IconButton
-                                                    }
 
-                                                    Log.d("DOWNLOAD_TEST", "Download button clicked")
+                                                        ParallelDownloader.isPaused(song.id) -> {
+                                                            ParallelDownloader.resume(
+                                                                scope,
+                                                                song.id,
+                                                                url,
+                                                                song.name,
+                                                                context
+                                                            ) { path ->
 
-                                                    scope.launch {
-                                                        snackBarHostState.showSnackbar(
-                                                            message = "Downloading started",
-                                                            duration = SnackbarDuration.Short
-                                                        )
+                                                                if (path != null) {
+                                                                    downloadViewModel.insertSong(
+                                                                        DownloadedSong(
+                                                                            id = song.id,
+                                                                            name = song.name,
+                                                                            artist = song.artist,
+                                                                            album = song.album,
+                                                                            image = song.image,
+                                                                            duration = song.duration,
+                                                                            playCount = song.playCount,
+                                                                            downloadUrl = song.downloadUrl,
+                                                                            localPath = path
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }
 
-                                                        val url = song.downloadUrl[quality ?: 4].url
+                                                            scope.launch {
+                                                                snackBarHostState.showSnackbar("Download resumed")
+                                                            }
+                                                        }
+                                                        else -> {
+                                                            ParallelDownloader.start(
+                                                                scope,
+                                                                song.id,
+                                                                url,
+                                                                song.name,
+                                                                context
+                                                            ) { path ->
+                                                                if (path != null) {
+                                                                    downloadViewModel.insertSong(
+                                                                        DownloadedSong(
+                                                                            id = song.id,
+                                                                            name = song.name,
+                                                                            artist = song.artist,
+                                                                            album = song.album,
+                                                                            image = song.image,
+                                                                            duration = song.duration,
+                                                                            playCount = song.playCount,
+                                                                            downloadUrl = song.downloadUrl,
+                                                                            localPath = path
+                                                                        )
+                                                                    )
 
-                                                        val path = ParallelDownloader.download(
-                                                            songId = song.id,
-                                                            url = url,
-                                                            fileName = song.name,
-                                                            context = context
-                                                        )
+                                                                    scope.launch {
+                                                                        snackBarHostState.showSnackbar("Song downloaded successfully")
+                                                                    }
+                                                                }
+                                                            }
 
-                                                        if (path != null) {
-                                                            downloadViewModel.insertSong(
-                                                                DownloadedSong(
-                                                                    id = song.id,
-                                                                    name = song.name,
-                                                                    artist = song.artist,
-                                                                    album = song.album,
-                                                                    image = song.image,
-                                                                    duration = song.duration,
-                                                                    playCount = song.playCount,
-                                                                    downloadUrl = song.downloadUrl,
-                                                                    localPath = path
-                                                                )
-                                                            )
-                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
-                                                        } else {
-                                                            snackBarHostState.showSnackbar("Download failed")
+                                                            scope.launch {
+                                                                snackBarHostState.showSnackbar("Downloading started")
+                                                            }
                                                         }
                                                     }
                                                 }
                                             ) {
-                                                Icon(
-                                                    modifier = Modifier.size(24.dp),
-                                                    painter = if (isDownloaded) painterResource(R.drawable.downloaded_icon)
-                                                        else painterResource(R.drawable.download_icon),
-                                                    contentDescription = "Download",
-                                                    tint = if (isDownloaded) colorResource(R.color.theme_color).copy(alpha = 0.6f)
-                                                        else colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                val composition by rememberLottieComposition(
+                                                    LottieCompositionSpec.RawRes(R.raw.timer)
                                                 )
+
+                                                val progress by animateLottieCompositionAsState(
+                                                    composition = composition,
+                                                    isPlaying = isDownloading && !isPaused,
+                                                    iterations = LottieConstants.IterateForever
+                                                )
+
+                                                when {
+                                                    isDownloading || isPaused -> {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(50.dp)
+                                                                .clip(RectangleShape)
+                                                        ) {
+                                                            LottieAnimation(
+                                                                composition = composition,
+                                                                progress = { progress },
+                                                                modifier = Modifier
+                                                                    .size(50.dp)
+                                                                    .graphicsLayer {
+                                                                        scaleX = 2.2f
+                                                                        scaleY = 2.2f
+                                                                    }
+                                                            )
+                                                        }
+                                                    }
+
+                                                    else -> {
+                                                        Icon(
+                                                            painter = if (isDownloaded)
+                                                                painterResource(R.drawable.downloaded_icon)
+                                                            else
+                                                                painterResource(R.drawable.download_icon),
+                                                            contentDescription = "Download",
+                                                            modifier = Modifier.size(24.dp),
+                                                            tint = if (isDownloaded)
+                                                                colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                            else
+                                                                colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                        )
+                                                    }
+                                                }
                                             }
 
                                             IconButton(onClick = {
@@ -602,31 +663,49 @@ fun Favourite_Songs_Activity(
                                     likedViewModel.toggleLike(song)
                                 },
                                 onToggleDownload = { song ->
-                                    if (isDownloaded) {
-                                        downloadViewModel.deleteSong(song.id)
-                                    } else if (!ParallelDownloader.isDownloading(song.id)) {
-                                        scope.launch {
-                                            val path = ParallelDownloader.download(
-                                                songId = song.id,
-                                                url = song.downloadUrl[quality ?: 4].url,
-                                                fileName = song.name,
-                                                context = context
-                                            )
+                                    val url = song.downloadUrl[quality ?: 4].url
+                                    val isDownloading = ParallelDownloader.isDownloading(song.id)
 
-                                            if (path != null) {
-                                                downloadViewModel.insertSong(
-                                                    DownloadedSong(
-                                                        id = song.id,
-                                                        name = song.name,
-                                                        artist = song.artist,
-                                                        album = song.album,
-                                                        image = song.image,
-                                                        duration = song.duration,
-                                                        playCount = song.playCount,
-                                                        downloadUrl = song.downloadUrl,
-                                                        localPath = path
-                                                    )
-                                                )
+                                    when {
+                                        isDownloaded -> {
+                                            downloadViewModel.deleteSong(song.id)
+                                        }
+
+                                        isDownloading -> {
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar("Song is already downloading")
+                                            }
+                                        }
+
+                                        else -> {
+                                            scope.launch {
+                                                ParallelDownloader.start(
+                                                    scope,
+                                                    song.id,
+                                                    url,
+                                                    song.name,
+                                                    context
+                                                ) { path ->
+                                                    if (path != null) {
+                                                        downloadViewModel.insertSong(
+                                                            DownloadedSong(
+                                                                id = song.id,
+                                                                name = song.name,
+                                                                artist = song.artist,
+                                                                album = song.album,
+                                                                image = song.image,
+                                                                duration = song.duration,
+                                                                playCount = song.playCount,
+                                                                downloadUrl = song.downloadUrl,
+                                                                localPath = path
+                                                            )
+                                                        )
+
+                                                        scope.launch {
+                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
