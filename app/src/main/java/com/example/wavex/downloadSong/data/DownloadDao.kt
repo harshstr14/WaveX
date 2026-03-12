@@ -17,6 +17,12 @@ interface DownloadDao {
     @Query("DELETE FROM downloaded_songs WHERE id = :id")
     suspend fun deleteSong(id: String)
 
+    @Query("DELETE FROM downloaded_songs")
+    suspend fun deleteAllSongs()
+
+    @Query("SELECT * FROM downloaded_songs WHERE id = :id")
+    suspend fun getSongById(id: String): DownloadedSong?
+
     @Query("SELECT EXISTS(SELECT 1 FROM downloaded_songs WHERE id = :id)")
     fun isDownloaded(id: String): Flow<Boolean>
 }

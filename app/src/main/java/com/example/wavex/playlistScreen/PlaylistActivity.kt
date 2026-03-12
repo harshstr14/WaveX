@@ -864,8 +864,12 @@ fun Playlist_Activity(
                                 ) { index, song ->
 
                                     val isDownloaded = downloadedIds.contains(song.id)
-                                    val isDownloading = ParallelDownloader.isDownloading(song.id)
-                                    val isPaused = ParallelDownloader.isPaused(song.id)
+                                    val isDownloading by remember {
+                                        derivedStateOf { ParallelDownloader.downloadingSongs[song.id] == true }
+                                    }
+                                    val isPaused by remember {
+                                        derivedStateOf { ParallelDownloader.pausedSongs[song.id] == true }
+                                    }
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -1011,10 +1015,6 @@ fun Playlist_Activity(
 
                                                             ParallelDownloader.isDownloading(song.id) -> {
                                                                 ParallelDownloader.pause(song.id)
-
-                                                                scope.launch {
-                                                                    snackBarHostState.showSnackbar("Download paused")
-                                                                }
                                                             }
 
                                                             ParallelDownloader.isPaused(song.id) -> {
@@ -1042,10 +1042,6 @@ fun Playlist_Activity(
                                                                         )
                                                                     }
                                                                 }
-
-                                                                scope.launch {
-                                                                    snackBarHostState.showSnackbar("Download resumed")
-                                                                }
                                                             }
                                                             else -> {
                                                                 ParallelDownloader.start(
@@ -1069,15 +1065,7 @@ fun Playlist_Activity(
                                                                                 localPath = path
                                                                             )
                                                                         )
-
-                                                                        scope.launch {
-                                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
-                                                                        }
                                                                     }
-                                                                }
-
-                                                                scope.launch {
-                                                                    snackBarHostState.showSnackbar("Downloading started")
                                                                 }
                                                             }
                                                         }
@@ -1097,17 +1085,17 @@ fun Playlist_Activity(
                                                         isDownloading || isPaused -> {
                                                             Box(
                                                                 modifier = Modifier
-                                                                    .size(50.dp)
+                                                                    .size(30.dp)
                                                                     .clip(RectangleShape)
                                                             ) {
                                                                 LottieAnimation(
                                                                     composition = composition,
                                                                     progress = { progress },
                                                                     modifier = Modifier
-                                                                        .size(50.dp)
+                                                                        .size(30.dp)
                                                                         .graphicsLayer {
-                                                                            scaleX = 2.2f
-                                                                            scaleY = 2.2f
+                                                                            scaleX = 2f
+                                                                            scaleY = 2f
                                                                         }
                                                                 )
                                                             }

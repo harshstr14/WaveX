@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -60,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -97,6 +99,8 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.downloadSong.data.DatabaseProvider
+import com.example.wavex.downloadSong.downloadedSongScreen.DownloadedSongActivity
+import com.example.wavex.downloadSong.downloadedSongScreen.rememberNetworkState
 import com.example.wavex.downloadSong.repository.DownloadRepository
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
@@ -142,12 +146,12 @@ object AppContainer {
 
 object ParallelDownloader {
     private val semaphore = kotlinx.coroutines.sync.Semaphore(5)
-
-    private val jobs = mutableStateMapOf<String, Job>()
-    private val pausedSongs = mutableStateMapOf<String, Boolean>()
+    private val jobs = mutableMapOf<String, Job>()
+    val downloadingSongs = mutableStateMapOf<String, Boolean>()
+    val pausedSongs = mutableStateMapOf<String, Boolean>()
 
     fun isDownloading(songId: String): Boolean {
-        return jobs[songId]?.isActive == true
+        return downloadingSongs[songId] == true
     }
 
     fun isPaused(songId: String): Boolean {
@@ -156,6 +160,8 @@ object ParallelDownloader {
 
     fun pause(songId: String) {
         jobs[songId]?.cancel()
+
+        downloadingSongs[songId] = false
         pausedSongs[songId] = true
     }
 
@@ -170,6 +176,7 @@ object ParallelDownloader {
         if (isDownloading(songId)) return
 
         pausedSongs.remove(songId)
+        downloadingSongs[songId] = true
 
         val job = scope.launch {
             val path = semaphore.withPermit {
@@ -179,6 +186,7 @@ object ParallelDownloader {
             onFinished(path)
 
             jobs.remove(songId)
+            downloadingSongs.remove(songId)
             pausedSongs.remove(songId)
         }
 
@@ -195,6 +203,8 @@ object ParallelDownloader {
     ) {
         if (isDownloading(songId)) return
 
+        downloadingSongs[songId] = true
+
         val job = scope.launch {
             val path = semaphore.withPermit {
                 downloadSong(url, fileName, context)
@@ -203,6 +213,7 @@ object ParallelDownloader {
             onFinished(path)
 
             jobs.remove(songId)
+            downloadingSongs.remove(songId)
             pausedSongs.remove(songId)
         }
 
@@ -297,6 +308,8 @@ fun HomeScreen (showSheet: Boolean) {
 
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+
+    val isOnline = rememberNetworkState()
 
     val viewModel: ProfileViewModel = viewModel()
 
@@ -489,8 +502,8 @@ fun HomeScreen (showSheet: Boolean) {
             bottom.linkTo(parent.bottom)
             height = Dimension.fillToConstraints
         }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .verticalScroll(scrollState).zIndex(0f))
-        {
+            .verticalScroll(scrollState).zIndex(0f)
+        ) {
             ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
                 val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
                     popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
@@ -599,6 +612,38 @@ fun HomeScreen (showSheet: Boolean) {
                 contentAlignment = Alignment.Center
             ) {
                 LoadingEffect()
+            }
+        }
+
+        if (! isOnline) {
+            Box(
+                modifier = Modifier
+                    .constrainAs(loader) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                    .fillMaxSize()
+                    .background(colorResource(R.color.background_color))
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent()
+                            }
+                        }
+                    }
+                    .zIndex(10f),
+                contentAlignment = Alignment.Center
+            ) {
+                ErrorState(
+                    onClick = {
+                        val intent = Intent(context, DownloadedSongActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                        context.startActivity(intent)
+                    }
+                )
             }
         }
     }
@@ -1194,7 +1239,7 @@ suspend fun downloadSong(
 }
 
 @Composable
-fun LoadingEffect() {
+private fun LoadingEffect() {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
@@ -1204,6 +1249,63 @@ fun LoadingEffect() {
         iterations = LottieConstants.IterateForever,
         modifier = Modifier.fillMaxWidth().size(144.dp)
     )
+}
+
+@Composable
+private fun ErrorState(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 45.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(95.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(95.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+
+        }
+
+        Spacer(modifier = Modifier.height(0.dp))
+
+        Text(
+            text = "No Internet Connection",
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(colorResource(R.color.theme_color))
+                .clickable { onClick() }
+                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Go to Downloads",
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.background_color)
+            )
+        }
+    }
 }
 
 @Composable

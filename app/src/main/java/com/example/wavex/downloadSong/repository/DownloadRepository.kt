@@ -17,6 +17,14 @@ class DownloadRepository(
         dao.deleteSong(id)
     }
 
+    suspend fun deleteAll() {
+        dao.deleteAllSongs()
+    }
+
+    suspend fun getSongById(id: String): DownloadedSong? {
+        return dao.getSongById(id)
+    }
+
     fun isDownloaded(id: String): Flow<Boolean> {
         return dao.isDownloaded(id)
     }

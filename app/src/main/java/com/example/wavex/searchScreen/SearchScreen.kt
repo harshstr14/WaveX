@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -57,7 +56,6 @@ import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -66,6 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -807,8 +806,12 @@ private fun SearchSongs(
                 ) { index, song ->
 
                     val isDownloaded = downloadedIds.contains(song.id)
-                    val isDownloading = ParallelDownloader.isDownloading(song.id)
-                    val isPaused = ParallelDownloader.isPaused(song.id)
+                    val isDownloading by remember {
+                        derivedStateOf { ParallelDownloader.downloadingSongs[song.id] == true }
+                    }
+                    val isPaused by remember {
+                        derivedStateOf { ParallelDownloader.pausedSongs[song.id] == true }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -951,10 +954,6 @@ private fun SearchSongs(
 
                                             ParallelDownloader.isDownloading(song.id) -> {
                                                 ParallelDownloader.pause(song.id)
-
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar("Download paused")
-                                                }
                                             }
 
                                             ParallelDownloader.isPaused(song.id) -> {
@@ -982,10 +981,6 @@ private fun SearchSongs(
                                                         )
                                                     }
                                                 }
-
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar("Download resumed")
-                                                }
                                             }
                                             else -> {
                                                 ParallelDownloader.start(
@@ -1009,15 +1004,7 @@ private fun SearchSongs(
                                                                 localPath = path
                                                             )
                                                         )
-
-                                                        scope.launch {
-                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
-                                                        }
                                                     }
-                                                }
-
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar("Downloading started")
                                                 }
                                             }
                                         }
@@ -1037,17 +1024,17 @@ private fun SearchSongs(
                                         isDownloading || isPaused -> {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(50.dp)
+                                                    .size(30.dp)
                                                     .clip(RectangleShape)
                                             ) {
                                                 LottieAnimation(
                                                     composition = composition,
                                                     progress = { progress },
                                                     modifier = Modifier
-                                                        .size(50.dp)
+                                                        .size(30.dp)
                                                         .graphicsLayer {
-                                                            scaleX = 2.2f
-                                                            scaleY = 2.2f
+                                                            scaleX = 2f
+                                                            scaleY = 2f
                                                         }
                                                 )
                                             }

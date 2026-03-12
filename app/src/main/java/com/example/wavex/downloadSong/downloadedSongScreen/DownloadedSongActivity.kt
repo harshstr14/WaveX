@@ -69,6 +69,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,6 +127,7 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SheetOptionItem
+import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
 import com.example.wavex.service.NetworkMonitor
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -171,7 +173,10 @@ fun Downloaded_Song_Activity(
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val (backInteraction, backScale) = pressScale()
+    val (deleteInteraction, deleteScale) = pressScale()
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
@@ -182,15 +187,6 @@ fun Downloaded_Song_Activity(
     val downloadedIds by viewModel
         .downloadedSongIds
         .collectAsState(initial = emptySet())
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
 
     var showSheet by remember { mutableStateOf(false) }
 
@@ -230,7 +226,7 @@ fun Downloaded_Song_Activity(
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -243,8 +239,8 @@ fun Downloaded_Song_Activity(
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -259,6 +255,49 @@ fun Downloaded_Song_Activity(
                         color = colorResource(R.color.primary_text_color),
                         lineHeight = 22.sp
                     )
+                },
+                actions = {
+                    Row(
+                        modifier = Modifier.padding(end = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(20.dp)
+                                ).clickable(
+                                    interactionSource = deleteInteraction,
+                                    indication = null
+                                ) {
+                                    if (songs.isEmpty()) {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar(
+                                                message = "No downloaded songs to clear",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    } else {
+                                        showDeleteDialog = true
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.delete_icon),
+                                contentDescription = "Delete Icon",
+                                tint = colorResource(R.color.primary_text_color),
+                                modifier = Modifier.size(18.dp)
+                                    .graphicsLayer {
+                                        scaleX = deleteScale
+                                        scaleY = deleteScale
+                                    }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colorResource(R.color.background_color),
@@ -365,8 +404,12 @@ fun Downloaded_Song_Activity(
                             ) { index, song ->
 
                                 val isDownloaded = downloadedIds.contains(song.id)
-                                val isDownloading = ParallelDownloader.isDownloading(song.id)
-                                val isPaused = ParallelDownloader.isPaused(song.id)
+                                val isDownloading by remember {
+                                    derivedStateOf { ParallelDownloader.downloadingSongs[song.id] == true }
+                                }
+                                val isPaused by remember {
+                                    derivedStateOf { ParallelDownloader.pausedSongs[song.id] == true }
+                                }
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -512,10 +555,6 @@ fun Downloaded_Song_Activity(
 
                                                         ParallelDownloader.isDownloading(song.id) -> {
                                                             ParallelDownloader.pause(song.id)
-
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar("Download paused")
-                                                            }
                                                         }
 
                                                         ParallelDownloader.isPaused(song.id) -> {
@@ -543,10 +582,6 @@ fun Downloaded_Song_Activity(
                                                                     )
                                                                 }
                                                             }
-
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar("Download resumed")
-                                                            }
                                                         }
                                                         else -> {
                                                             ParallelDownloader.start(
@@ -570,15 +605,7 @@ fun Downloaded_Song_Activity(
                                                                             localPath = path
                                                                         )
                                                                     )
-
-                                                                    scope.launch {
-                                                                        snackBarHostState.showSnackbar("Song downloaded successfully")
-                                                                    }
                                                                 }
-                                                            }
-
-                                                            scope.launch {
-                                                                snackBarHostState.showSnackbar("Downloading started")
                                                             }
                                                         }
                                                     }
@@ -598,17 +625,17 @@ fun Downloaded_Song_Activity(
                                                     isDownloading || isPaused -> {
                                                         Box(
                                                             modifier = Modifier
-                                                                .size(50.dp)
+                                                                .size(30.dp)
                                                                 .clip(RectangleShape)
                                                         ) {
                                                             LottieAnimation(
                                                                 composition = composition,
                                                                 progress = { progress },
                                                                 modifier = Modifier
-                                                                    .size(50.dp)
+                                                                    .size(30.dp)
                                                                     .graphicsLayer {
-                                                                        scaleX = 2.2f
-                                                                        scaleY = 2.2f
+                                                                        scaleX = 2f
+                                                                        scaleY = 2f
                                                                     }
                                                             )
                                                         }
@@ -729,6 +756,22 @@ fun Downloaded_Song_Activity(
                         }
                     }
                 }
+            }
+
+            if (showDeleteDialog) {
+                ConfirmActionDialog(
+                    title = "Delete All Songs",
+                    message = "Do you want to delete all downloaded songs?",
+                    confirmText = "Delete",
+                    icon = R.drawable.delete_icon,
+                    onConfirm = {
+                        viewModel.deleteAllSongs()
+                        showDeleteDialog = false
+                    },
+                    onDismiss = {
+                        showDeleteDialog = false
+                    }
+                )
             }
         }
     }
@@ -1316,6 +1359,25 @@ private fun formatCount(count: Long): String {
         count >= 1_000 -> String.format(Locale.US,"%.1fK", count / 1_000.0)
         else -> count.toString()
     }.replace(".0", "")
+}
+
+@Composable
+private fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Composable
