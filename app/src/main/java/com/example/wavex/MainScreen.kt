@@ -287,7 +287,7 @@ fun Main_Screen(
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
         ?: remember { mutableIntStateOf(-1) }
 
-    val quality = musicService?.qualityIndex
+    val qualityIndex = musicService?.downloadQualityIndex
 
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
@@ -454,12 +454,12 @@ fun Main_Screen(
                 HomeScreen(showSheet = showSheet)  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
-                DiscoverScreen(downloadViewModel = downloadViewModel, quality = quality,
+                DiscoverScreen(downloadViewModel = downloadViewModel, qualityIndex = qualityIndex,
                     navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
                 )
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen(downloadViewModel = downloadViewModel, quality = quality,
+                SearchScreen(downloadViewModel = downloadViewModel, qualityIndex = qualityIndex,
                     navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
                 )
             }
@@ -498,7 +498,8 @@ fun Main_Screen(
                 likedViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
-                val url = song.downloadUrl[quality ?: 4].url
+                val qualityIndex = musicService?.downloadQualityIndex
+                val url = song.downloadUrl[qualityIndex ?: 4].url
                 val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                 when {

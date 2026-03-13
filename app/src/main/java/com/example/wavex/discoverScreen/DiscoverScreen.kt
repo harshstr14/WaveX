@@ -125,7 +125,7 @@ import kotlin.math.absoluteValue
 @Composable
 fun DiscoverScreen(
     downloadViewModel: DownloadViewModel,
-    quality: Int?,
+    qualityIndex: Int?,
     navController: NavController,
     showSheet: Boolean,
     snackBarHostState: SnackbarHostState
@@ -414,7 +414,7 @@ fun DiscoverScreen(
                 )
             },
             onToggleDownload = { song ->
-                val url = song.downloadUrl[quality ?: 4].url
+                val url = song.downloadUrl[qualityIndex ?: 4].url
                 val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                 when {
@@ -552,8 +552,6 @@ fun ExploreSongs(
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
-
-    val quality = musicService?.qualityIndex
 
     LaunchedEffect(playlistId) {
         viewModel.fetchPlaylistsByID(playlistId, root)
@@ -723,7 +721,8 @@ fun ExploreSongs(
                             ) {
                                 IconButton(
                                     onClick = {
-                                        val url = song.downloadUrl[quality ?: 4].url
+                                        val qualityIndex = musicService?.downloadQualityIndex
+                                        val url = song.downloadUrl[qualityIndex ?: 4].url
 
                                         when {
                                             isDownloaded -> {
@@ -738,13 +737,12 @@ fun ExploreSongs(
 
                                             ParallelDownloader.isPaused(song.id) -> {
                                                 ParallelDownloader.resume(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
-
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
                                                             DownloadedSong(
@@ -764,11 +762,11 @@ fun ExploreSongs(
                                             }
                                             else -> {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(

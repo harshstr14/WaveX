@@ -149,7 +149,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SearchScreen(
     downloadViewModel: DownloadViewModel,
-    quality: Int?,
+    qualityIndex: Int?,
     navController: NavController,
     snackBarHostState: SnackbarHostState,
     showSheet: Boolean
@@ -319,7 +319,7 @@ fun SearchScreen(
                 likedViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
-                val url = song.downloadUrl[quality ?: 4].url
+                val url = song.downloadUrl[qualityIndex ?: 4].url
                 val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                 when {
@@ -943,7 +943,8 @@ private fun SearchSongs(
                             ) {
                                 IconButton(
                                     onClick = {
-                                        val url = song.downloadUrl[quality ?: 4].url
+                                        val qualityIndex = musicService?.downloadQualityIndex
+                                        val url = song.downloadUrl[qualityIndex ?: 4].url
 
                                         when {
                                             isDownloaded -> {
@@ -958,13 +959,12 @@ private fun SearchSongs(
 
                                             ParallelDownloader.isPaused(song.id) -> {
                                                 ParallelDownloader.resume(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
-
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
                                                             DownloadedSong(

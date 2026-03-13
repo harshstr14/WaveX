@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -88,6 +89,15 @@ class  MusicPlayerService : LifecycleService() {
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
     var qualityIndex = 4
+    var downloadQualityIndex = 4
+
+    private val prefsListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+            if (key == "download_quality_index") {
+                downloadQualityIndex = prefs.getInt(key, 4)
+            }
+        }
+
     private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val imageLoader by lazy { ImageLoader(this) }
@@ -155,6 +165,11 @@ class  MusicPlayerService : LifecycleService() {
 
         ServiceLocator.musicService = this
         createNotificationChannel()
+
+        val prefs = getSharedPreferences("player_settings", MODE_PRIVATE)
+        downloadQualityIndex = prefs.getInt("download_quality_index", 4)
+
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
         val userId = FirebaseAuth.getInstance().currentUser?.uid
 
@@ -468,7 +483,14 @@ class  MusicPlayerService : LifecycleService() {
 
         player.stop()
         player.clearMediaItems()
-        val mediaItem = MediaItem.fromUri(song.downloadUrl[qualityIndex].url.toUri())
+
+        val uri = if (!song.localPath.isNullOrEmpty()) {
+            song.localPath!!.toUri()
+        } else {
+            song.downloadUrl[qualityIndex].url.toUri()
+        }
+
+        val mediaItem = MediaItem.fromUri(uri)
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()
@@ -856,9 +878,13 @@ class  MusicPlayerService : LifecycleService() {
         player.stop()
         player.clearMediaItems()
 
-        val mediaItem = MediaItem.fromUri(
+        val uri = if (!currentSong.localPath.isNullOrEmpty()) {
+            currentSong.localPath!!.toUri()
+        } else {
             currentSong.downloadUrl[qualityIndex].url.toUri()
-        )
+        }
+
+        val mediaItem = MediaItem.fromUri(uri)
 
         player.setMediaItem(mediaItem)
         player.prepare()
@@ -1010,6 +1036,8 @@ class  MusicPlayerService : LifecycleService() {
         try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (e: Exception) {}
         serviceScope.cancel()
         ServiceLocator.musicService = null
+        val prefs = getSharedPreferences("player_settings", MODE_PRIVATE)
+        prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         super.onDestroy()
     }
 

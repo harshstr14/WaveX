@@ -102,6 +102,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
@@ -123,11 +124,14 @@ import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.ParallelDownloader
+import com.example.wavex.homeScreen.PlayerManager
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SheetOptionItem
 import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.NetworkMonitor
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -208,8 +212,6 @@ fun Downloaded_Song_Activity(
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
-
-    val quality = musicService?.qualityIndex
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
@@ -455,19 +457,17 @@ fun Downloaded_Song_Activity(
                                                 interactionSource = interactionSource,
                                                 indication = null
                                             ) {
-//                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-//                                                    action = MusicPlayerService.ACTION_PLAY_NEW
-//                                                    putExtra("index", index)
-//                                                }
-//
-//                                                PlayerManager.currentPlaylist = uniqueSongs
-//                                                PlayerManager.currentIndex = index
-//
-//                                                ContextCompat.startForegroundService(context, intent)
-//
-//                                                scope.launch {
-//                                                    RecentlyPlayedManager.add(context, song)
-//                                                }
+                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                    action = MusicPlayerService.ACTION_PLAY_NEW
+                                                    putExtra("index", index)
+                                                }
+
+                                                val playlist = uniqueSongs.map { it.toSongItem() }
+
+                                                PlayerManager.currentPlaylist = playlist
+                                                PlayerManager.currentIndex = index
+
+                                                ContextCompat.startForegroundService(context, intent)
                                             },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -544,7 +544,8 @@ fun Downloaded_Song_Activity(
                                         ) {
                                             IconButton(
                                                 onClick = {
-                                                    val url = song.downloadUrl[quality ?: 4].url
+                                                    val qualityIndex = musicService?.downloadQualityIndex
+                                                    val url = song.downloadUrl[qualityIndex ?: 4].url
 
                                                     when {
                                                         isDownloaded -> {
@@ -559,13 +560,12 @@ fun Downloaded_Song_Activity(
 
                                                         ParallelDownloader.isPaused(song.id) -> {
                                                             ParallelDownloader.resume(
-                                                                scope,
-                                                                song.id,
-                                                                url,
-                                                                song.name,
-                                                                context
+                                                                scope = scope,
+                                                                songId = song.id,
+                                                                url = url,
+                                                                fileName = song.name,
+                                                                context = context
                                                             ) { path ->
-
                                                                 if (path != null) {
                                                                     viewModel.insertSong(
                                                                         DownloadedSong(
@@ -585,11 +585,11 @@ fun Downloaded_Song_Activity(
                                                         }
                                                         else -> {
                                                             ParallelDownloader.start(
-                                                                scope,
-                                                                song.id,
-                                                                url,
-                                                                song.name,
-                                                                context
+                                                                scope = scope,
+                                                                songId = song.id,
+                                                                url = url,
+                                                                fileName = song.name,
+                                                                context = context
                                                             ) { path ->
                                                                 if (path != null) {
                                                                     viewModel.insertSong(
@@ -705,7 +705,8 @@ fun Downloaded_Song_Activity(
 //                                    likedViewModel.toggleLike(song)
                                 },
                                 onToggleDownload = { song ->
-                                    val url = song.downloadUrl[quality ?: 4].url
+                                    val qualityIndex = musicService?.downloadQualityIndex
+                                    val url = song.downloadUrl[qualityIndex ?: 4].url
                                     val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                                     when {
@@ -1359,6 +1360,20 @@ private fun formatCount(count: Long): String {
         count >= 1_000 -> String.format(Locale.US,"%.1fK", count / 1_000.0)
         else -> count.toString()
     }.replace(".0", "")
+}
+
+fun DownloadedSong.toSongItem(): SongItem {
+    return SongItem(
+        id = id,
+        name = name,
+        artist = artist,
+        album = album,
+        image = image,
+        duration = duration,
+        playCount = playCount,
+        downloadUrl = downloadUrl,
+        localPath = localPath
+    )
 }
 
 @Composable

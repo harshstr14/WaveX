@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -86,6 +87,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
+import androidx.core.content.edit
 
 private lateinit var googleSignInManager: GoogleSignInManager
 
@@ -122,21 +124,27 @@ fun Setting_Activity() {
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    val prefs = context.getSharedPreferences("player_settings", Context.MODE_PRIVATE)
+
     var showLogOutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
 
     val (backInteraction, backScale) = pressScale()
     val (updateInteraction, updateScale) = pressScale()
-    val (qualityInteraction, qualityScale) = pressScale()
+    val (streamInteraction, streamScale) = pressScale()
+    val (downloadInteraction, downloadScale) = pressScale()
     val (resetInteraction, resetScale) = pressScale()
     val (deleteInteraction, deleteScale) = pressScale()
     val (logoutInteraction, logoutScale) = pressScale()
     val (githubInteraction, githubScale) = pressScale()
     val (androidInteraction, androidScale) = pressScale()
 
-    var expanded by remember { mutableStateOf(false) }
-    var selectedQuality by remember { mutableStateOf("High") }
+    var streamingExpanded by remember { mutableStateOf(false) }
+    var downloadExpanded by remember { mutableStateOf(false) }
+
+    var selectedStreamingQuality by remember { mutableStateOf("High") }
+    var selectedDownloadQuality by remember { mutableStateOf("High") }
 
     val qualities = listOf("Low", "Normal", "High")
 
@@ -151,12 +159,27 @@ fun Setting_Activity() {
         reference.get().addOnSuccessListener { snapshot ->
             val savedQuality = snapshot.getValue(String::class.java)
             if (savedQuality != null) {
-                selectedQuality = savedQuality
+                selectedStreamingQuality = savedQuality
             }
         }
     }
 
+    LaunchedEffect(Unit) {
+        val savedIndex = prefs.getInt("download_quality_index", 4)
+
+        selectedDownloadQuality = when (savedIndex) {
+            2 -> "Low"
+            3 -> "Normal"
+            4 -> "High"
+            else -> "High"
+        }
+    }
+
     val musicService = ServiceLocator.musicService
+
+    LaunchedEffect(musicService?.downloadQualityIndex) {
+        Log.d("QualityIndex", "${musicService?.downloadQualityIndex}")
+    }
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)),
@@ -353,8 +376,8 @@ fun Setting_Activity() {
                         modifier = Modifier
                             .size(26.dp)
                             .graphicsLayer {
-                                scaleX = qualityScale
-                                scaleY = qualityScale
+                                scaleX = streamScale
+                                scaleY = streamScale
                             }
                     )
 
@@ -395,14 +418,14 @@ fun Setting_Activity() {
                     ) {
                         Box(
                             modifier = Modifier.clickable(
-                                interactionSource = qualityInteraction,
+                                interactionSource = streamInteraction,
                                 indication = null
                             ) {
-                                expanded = true
+                                streamingExpanded = true
                             }
                         ) {
                             Text(
-                                text = selectedQuality,
+                                text = selectedStreamingQuality,
                                 fontSize = 14.sp,
                                 fontFamily = fonts,
                                 fontWeight = FontWeight.SemiBold,
@@ -414,11 +437,11 @@ fun Setting_Activity() {
                             DropdownMenu(
                                 modifier = Modifier.wrapContentWidth(),
                                 containerColor = Color(0xFF3a3a3a),
-                                expanded = expanded,
+                                expanded = streamingExpanded,
                                 tonalElevation = 0.dp,
                                 shadowElevation = 0.dp,
                                 shape = RoundedCornerShape(12.dp),
-                                onDismissRequest = { expanded = false }
+                                onDismissRequest = { streamingExpanded = false }
                             ) {
                                 qualities.forEach { quality ->
                                     DropdownMenuItem(
@@ -429,15 +452,15 @@ fun Setting_Activity() {
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = if (quality == selectedQuality)
+                                                color = if (quality == selectedStreamingQuality)
                                                     colorResource(R.color.theme_color)
                                                 else colorResource(R.color.background_color)
                                             )
                                         },
                                         onClick = {
-                                            selectedQuality = quality
+                                            selectedStreamingQuality = quality
                                             saveStreamingQualityToFirebase(quality)
-                                            expanded = false
+                                            streamingExpanded = false
 
                                             val index = when (quality) {
                                                 "Low" -> 2
@@ -447,6 +470,124 @@ fun Setting_Activity() {
                                             }
 
                                             musicService?.setQuality(index)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(18.dp))
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 25.dp, top = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.music_icon),
+                        contentDescription = "Music Icon",
+                        tint = colorResource(R.color.theme_color),
+                        modifier = Modifier
+                            .size(26.dp)
+                            .graphicsLayer {
+                                scaleX = downloadScale
+                                scaleY = downloadScale
+                            }
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Download Quality",
+                            fontSize = 16.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color),
+                            lineHeight = 18.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Quality of audio files saved for offline\nlistening",
+                            fontSize = 12.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color),
+                            lineHeight = 14.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier.clickable(
+                                interactionSource = downloadInteraction,
+                                indication = null
+                            ) {
+                                downloadExpanded = true
+                            }
+                        ) {
+                            Text(
+                                text = selectedDownloadQuality,
+                                fontSize = 14.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                lineHeight = 16.sp,
+                                color = colorResource(R.color.theme_color)
+                            )
+
+                            DropdownMenu(
+                                modifier = Modifier.wrapContentWidth(),
+                                containerColor = Color(0xFF3a3a3a),
+                                expanded = downloadExpanded,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                shape = RoundedCornerShape(12.dp),
+                                onDismissRequest = { downloadExpanded = false }
+                            ) {
+                                qualities.forEach { quality ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = quality,
+                                                fontSize = 14.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = if (quality == selectedDownloadQuality)
+                                                    colorResource(R.color.theme_color)
+                                                else colorResource(R.color.background_color)
+                                            )
+                                        },
+                                        onClick = {
+                                            selectedDownloadQuality = quality
+                                            downloadExpanded = false
+
+                                            val index = when (quality) {
+                                                "Low" -> 2
+                                                "Normal" -> 3
+                                                "High" -> 4
+                                                else -> 4
+                                            }
+
+                                            prefs.edit {
+                                                    putInt("download_quality_index", index)
+                                                }
                                         }
                                     )
                                 }

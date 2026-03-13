@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -478,7 +477,7 @@ fun HomeScreen (showSheet: Boolean) {
                     }
                 },
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(50.dp)
                     .clip(CircleShape)
                     .clickable(
                         interactionSource = interactionSource,
@@ -615,7 +614,7 @@ fun HomeScreen (showSheet: Boolean) {
             }
         }
 
-        if (! isOnline) {
+        if (!isOnline) {
             Box(
                 modifier = Modifier
                     .constrainAs(loader) {

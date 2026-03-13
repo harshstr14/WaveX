@@ -239,8 +239,6 @@ fun Liked_Songs_Activity(
     val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false)}
 
-    val quality = musicService?.qualityIndex
-
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
         nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -810,7 +808,8 @@ fun Liked_Songs_Activity(
                                         ) {
                                             IconButton(
                                                 onClick = {
-                                                    val url = song.downloadUrl[quality ?: 4].url
+                                                    val qualityIndex = musicService?.downloadQualityIndex
+                                                    val url = song.downloadUrl[qualityIndex ?: 4].url
 
                                                     when {
                                                         isDownloaded -> {
@@ -825,13 +824,12 @@ fun Liked_Songs_Activity(
 
                                                         ParallelDownloader.isPaused(song.id) -> {
                                                             ParallelDownloader.resume(
-                                                                scope,
-                                                                song.id,
-                                                                url,
-                                                                song.name,
-                                                                context
+                                                                scope = scope,
+                                                                songId = song.id,
+                                                                url = url,
+                                                                fileName = song.name,
+                                                                context = context
                                                             ) { path ->
-
                                                                 if (path != null) {
                                                                     downloadViewModel.insertSong(
                                                                         DownloadedSong(
@@ -851,11 +849,11 @@ fun Liked_Songs_Activity(
                                                         }
                                                         else -> {
                                                             ParallelDownloader.start(
-                                                                scope,
-                                                                song.id,
-                                                                url,
-                                                                song.name,
-                                                                context
+                                                                scope = scope,
+                                                                songId = song.id,
+                                                                url = url,
+                                                                fileName = song.name,
+                                                                context = context
                                                             ) { path ->
                                                                 if (path != null) {
                                                                     downloadViewModel.insertSong(
@@ -971,7 +969,8 @@ fun Liked_Songs_Activity(
                                     likedViewModel.toggleLike(song)
                                 },
                                 onToggleDownload = { song ->
-                                    val url = song.downloadUrl[quality ?: 4].url
+                                    val qualityIndex = musicService?.downloadQualityIndex
+                                    val url = song.downloadUrl[qualityIndex ?: 4].url
                                     val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                                     when {

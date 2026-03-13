@@ -257,8 +257,6 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
     val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false)}
 
-    val quality = musicService?.qualityIndex
-
     val progressFraction =
         if (duration > 0L)
             progressMs.toFloat() / duration.toFloat()
@@ -911,7 +909,8 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             likedViewModel.toggleLike(song)
                         },
                         onToggleDownload = { song ->
-                            val url = song.downloadUrl[quality ?: 4].url
+                            val qualityIndex = musicService?.downloadQualityIndex
+                            val url = song.downloadUrl[qualityIndex ?: 4].url
                             val isDownloading = ParallelDownloader.isDownloading(song.id)
 
                             when {
@@ -1194,7 +1193,8 @@ fun UpNextSheetContent(
                             ) {
                                 IconButton(
                                     onClick = {
-                                        val url = song.downloadUrl[quality ?: 4].url
+                                        val qualityIndex = musicService?.downloadQualityIndex
+                                        val url = song.downloadUrl[qualityIndex ?: 4].url
 
                                         when {
                                             isDownloaded -> {
@@ -1209,13 +1209,12 @@ fun UpNextSheetContent(
 
                                             ParallelDownloader.isPaused(song.id) -> {
                                                 ParallelDownloader.resume(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
-
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
                                                             DownloadedSong(
@@ -1235,11 +1234,11 @@ fun UpNextSheetContent(
                                             }
                                             else -> {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
