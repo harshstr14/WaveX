@@ -487,7 +487,7 @@ fun Setting_Activity() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.music_icon),
+                        painter = painterResource(R.drawable.download_icon),
                         contentDescription = "Music Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier

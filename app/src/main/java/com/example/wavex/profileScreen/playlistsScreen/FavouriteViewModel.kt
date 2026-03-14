@@ -45,4 +45,17 @@ class FavouriteViewModel(
                 }
         }
     }
+
+    fun deleteAllPlaylists() {
+        viewModelScope.launch {
+            try {
+                repository.deleteAllPlaylists()
+            } catch (e: Exception) {
+                _playlists.value = _playlists.value.copy(
+                    isError = true,
+                    errorMessage = e.message ?: "Failed to delete playlists"
+                )
+            }
+        }
+    }
 }

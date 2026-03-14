@@ -128,9 +128,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="wavex.app"
-                    android:pathPrefix="/"
-                    android:scheme="https" />
+                    android:scheme="https"
+                    android:host="wavex-edd95.web.app"
+                    android:pathPrefix="/" />
             </intent-filter>
         </activity>
         <activity

@@ -336,11 +336,11 @@ fun SearchScreen(
                     else -> {
                         scope.launch {
                             ParallelDownloader.start(
-                                scope,
-                                song.id,
-                                url,
-                                song.name,
-                                context
+                                scope = scope,
+                                songId = song.id,
+                                url = url,
+                                fileName = song.name,
+                                context = context
                             ) { path ->
                                 if (path != null) {
                                     downloadViewModel.insertSong(
@@ -696,7 +696,7 @@ private fun SearchArtists(
                             val intent = Intent(context, ArtistActivity::class.java).apply {
                                 putExtra("artist_id", artist.id)
                                 putExtra("artist_imageUrl", artist.image)
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                             }
                             context.startActivity(intent)
                         } ,
@@ -753,8 +753,6 @@ private fun SearchSongs(
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
-
-    val quality = musicService?.qualityIndex
 
     LaunchedEffect(query) {
         when {
@@ -984,11 +982,11 @@ private fun SearchSongs(
                                             }
                                             else -> {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
@@ -1144,7 +1142,7 @@ private fun SearchAlbums(
                                 val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
                                     putExtra("album_imageUrl", album.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
@@ -1256,7 +1254,7 @@ private fun SearchPlaylists(
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
                                     putExtra("playlist_imageUrl", playlist.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
@@ -1297,7 +1295,7 @@ private fun EmptyState(text: String) {
     ) {
         Text(
             text = text,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color)
         )
     }
@@ -1317,18 +1315,28 @@ private fun ErrorState(message: String) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(134.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
@@ -1340,11 +1348,25 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 100.dp).size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 100.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Preview(showSystemUi = true)

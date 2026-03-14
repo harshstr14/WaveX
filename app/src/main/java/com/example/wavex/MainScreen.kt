@@ -250,10 +250,17 @@ fun Main_Screen(
         .downloadedSongIds
         .collectAsState(initial = emptySet())
 
+    var handled by remember { mutableStateOf(false) }
+
     LaunchedEffect(deepLinkType, deepLinkId) {
+
+        if (handled) return@LaunchedEffect
         if (deepLinkType == null || deepLinkId == null) return@LaunchedEffect
 
+        handled = true
+
         when (deepLinkType) {
+
             "song" -> {
 
             }

@@ -56,4 +56,17 @@ class FavouriteSongViewModel(
                 }
         }
     }
+
+    fun deleteAllSongs() {
+        viewModelScope.launch {
+            try {
+                repository.deleteAllSongs()
+            } catch (e: Exception) {
+                _songs.value = _songs.value.copy(
+                    isError = true,
+                    errorMessage = e.message ?: "Failed to delete songs"
+                )
+            }
+        }
+    }
 }

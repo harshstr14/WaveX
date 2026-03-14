@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -103,6 +103,7 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -148,26 +149,20 @@ fun Favourite_Songs_Activity(
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val downloadedIds by downloadViewModel
         .downloadedSongIds
         .collectAsState(initial = emptySet())
 
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val (backInteraction, backScale) = pressScale()
+    val (deleteInteraction, deleteScale) = pressScale()
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
 
     val songsList by viewModel.songs.collectAsStateWithLifecycle()
 
@@ -205,7 +200,7 @@ fun Favourite_Songs_Activity(
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -218,8 +213,8 @@ fun Favourite_Songs_Activity(
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -234,6 +229,49 @@ fun Favourite_Songs_Activity(
                         color = colorResource(R.color.primary_text_color),
                         lineHeight = 22.sp
                     )
+                },
+                actions = {
+                    Row(
+                        modifier = Modifier.padding(end = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(20.dp)
+                                ).clickable(
+                                    interactionSource = deleteInteraction,
+                                    indication = null
+                                ) {
+                                    if (songsList.songs.isEmpty()) {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar(
+                                                message = "No favourite songs to remove",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    } else {
+                                        showDeleteDialog = true
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.delete_icon),
+                                contentDescription = "Delete Icon",
+                                tint = colorResource(R.color.primary_text_color),
+                                modifier = Modifier.size(18.dp)
+                                    .graphicsLayer {
+                                        scaleX = deleteScale
+                                        scaleY = deleteScale
+                                    }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colorResource(R.color.background_color),
@@ -268,6 +306,7 @@ fun Favourite_Songs_Activity(
                                     data.visuals.message.contains("Downloading") -> R.drawable.download_icon
                             data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
                             data.visuals.message.contains("failed") -> R.drawable.alert_icon
+                            data.visuals.message.contains("songs") -> R.drawable.song_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -668,11 +707,11 @@ fun Favourite_Songs_Activity(
                                         else -> {
                                             scope.launch {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
@@ -703,6 +742,22 @@ fun Favourite_Songs_Activity(
                     }
                 }
             }
+
+            if (showDeleteDialog) {
+                ConfirmActionDialog(
+                    title = "Delete All Songs",
+                    message = "Do you want to delete all favourite songs?",
+                    confirmText = "Delete",
+                    icon = R.drawable.delete_icon,
+                    onConfirm = {
+                        viewModel.deleteAllSongs()
+                        showDeleteDialog = false
+                    },
+                    onDismiss = {
+                        showDeleteDialog = false
+                    }
+                )
+            }
         }
     }
 }
@@ -713,11 +768,25 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 45.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable
@@ -734,21 +803,50 @@ private fun ErrorState(message: String) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
+}
+
+@Composable
+private fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

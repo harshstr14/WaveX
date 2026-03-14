@@ -431,11 +431,11 @@ fun DiscoverScreen(
                     else -> {
                         scope.launch {
                             ParallelDownloader.start(
-                                scope,
-                                song.id,
-                                url,
-                                song.name,
-                                context
+                                scope = scope,
+                                songId = song.id,
+                                url = url,
+                                fileName = song.name,
+                                context = context
                             ) { path ->
                                 if (path != null) {
                                     downloadViewModel.insertSong(
@@ -565,7 +565,7 @@ fun ExploreSongs(
         }
 
         songs.isEmpty() -> {
-            ErrorState("No results found")
+            ErrorState()
         }
 
         else -> {
@@ -882,7 +882,7 @@ fun ExploreArtists(
         }
 
         artists.isEmpty() -> {
-            ErrorState("No results found")
+            ErrorState()
         }
 
         else -> {
@@ -903,7 +903,7 @@ fun ExploreArtists(
                             val intent = Intent(context, ArtistActivity::class.java).apply {
                                 putExtra("artist_id", artist.id)
                                 putExtra("artist_imageUrl", artist.image)
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                             }
                             context.startActivity(intent)
                         } ,
@@ -965,7 +965,7 @@ fun ExploreAlbums(
         }
 
         albums.isEmpty() -> {
-            ErrorState("No results found")
+            ErrorState()
         }
 
         else -> {
@@ -988,7 +988,7 @@ fun ExploreAlbums(
                                 val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
                                     putExtra("album_imageUrl", album.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
@@ -1064,7 +1064,7 @@ fun ExplorePlaylist(
         }
 
         playlists.isEmpty() -> {
-            ErrorState("No results found")
+            ErrorState()
         }
 
         else -> {
@@ -1087,7 +1087,7 @@ fun ExplorePlaylist(
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
                                     putExtra("playlist_imageUrl", playlist.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
@@ -1126,15 +1126,29 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 100.dp).size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 100.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable
-private fun ErrorState(message: String) {
+private fun ErrorState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1147,18 +1161,28 @@ private fun ErrorState(message: String) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(134.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
-            text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            text = "No results found",
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }

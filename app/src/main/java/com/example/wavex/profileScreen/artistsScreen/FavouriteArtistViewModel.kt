@@ -45,4 +45,17 @@ class FavouriteArtistViewModel(
                 }
         }
     }
+
+    fun deleteAllArtists() {
+        viewModelScope.launch {
+            try {
+                repository.deleteAllArtists()
+            } catch (e: Exception) {
+                _artists.value = _artists.value.copy(
+                    isError = true,
+                    errorMessage = e.message ?: "Failed to delete artists"
+                )
+            }
+        }
+    }
 }

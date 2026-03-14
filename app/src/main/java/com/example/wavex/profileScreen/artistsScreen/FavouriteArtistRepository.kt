@@ -8,6 +8,7 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 class FavouriteArtistRepository {
     val userID = FirebaseAuth.getInstance().currentUser?.uid
@@ -26,7 +27,7 @@ class FavouriteArtistRepository {
                     for (child in snapshot.children) {
                         val artist = child.getValue(FavouriteArtist::class.java)
 
-                        artist?.takeIf { list.add(it) }
+                        artist?.let { list.add(it) }
                     }
 
                     trySend(list)
@@ -43,4 +44,8 @@ class FavouriteArtistRepository {
                 favouriteReference.removeEventListener(listener)
             }
         }
+
+    suspend fun deleteAllArtists() {
+        favouriteReference.removeValue().await()
+    }
 }

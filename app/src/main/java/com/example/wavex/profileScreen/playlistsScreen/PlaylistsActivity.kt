@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,19 +39,23 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +80,9 @@ import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playlistScreen.PlaylistActivity
+import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
 import com.example.wavex.ui.theme.WaveXTheme
+import kotlinx.coroutines.launch
 
 class PlaylistsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -112,16 +117,10 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
     val playlistsGridState = rememberLazyGridState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (backInteraction, backScale) = pressScale()
+    val (deleteInteraction, deleteScale) = pressScale()
 
     val playlistList by viewModel.playlists.collectAsStateWithLifecycle()
 
@@ -141,7 +140,7 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -154,8 +153,8 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -170,6 +169,49 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                         color = colorResource(R.color.primary_text_color),
                         lineHeight = 22.sp
                     )
+                },
+                actions = {
+                    Row(
+                        modifier = Modifier.padding(end = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(20.dp)
+                                ).clickable(
+                                    interactionSource = deleteInteraction,
+                                    indication = null
+                                ) {
+                                    if (playlistList.playlists.isEmpty()) {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar(
+                                                message = "No favourite playlists to remove",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    } else {
+                                        showDeleteDialog = true
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.delete_icon),
+                                contentDescription = "Delete Icon",
+                                tint = colorResource(R.color.primary_text_color),
+                                modifier = Modifier.size(18.dp)
+                                    .graphicsLayer {
+                                        scaleX = deleteScale
+                                        scaleY = deleteScale
+                                    }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colorResource(R.color.background_color),
@@ -200,6 +242,7 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                            data.visuals.message.contains("playlists") -> R.drawable.playlist_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -275,7 +318,7 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                                             val intent = Intent(context, PlaylistActivity::class.java).apply {
                                                 putExtra("playlist_id", playlist.playlistId)
                                                 putExtra("playlist_imageUrl", playlist.playlistImageUrl)
-                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                             }
                                             context.startActivity(intent)
                                         }
@@ -307,6 +350,22 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                     }
                 }
             }
+
+            if (showDeleteDialog) {
+                ConfirmActionDialog(
+                    title = "Delete All Playlists",
+                    message = "Do you want to delete all favourite playlists?",
+                    confirmText = "Delete",
+                    icon = R.drawable.delete_icon,
+                    onConfirm = {
+                        viewModel.deleteAllPlaylists()
+                        showDeleteDialog = false
+                    },
+                    onDismiss = {
+                        showDeleteDialog = false
+                    }
+                )
+            }
         }
     }
 }
@@ -317,11 +376,25 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 45.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable
@@ -338,21 +411,50 @@ private fun ErrorState(message: String) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
+}
+
+@Composable
+private fun pressScale(
+    pressedScale: Float = 1.15f
+): Pair<MutableInteractionSource, Float> {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "PressScale"
+    )
+
+    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

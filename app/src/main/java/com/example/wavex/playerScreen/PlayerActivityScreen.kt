@@ -927,11 +927,11 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 else -> {
                                     scope.launch {
                                         ParallelDownloader.start(
-                                            scope,
-                                            song.id,
-                                            url,
-                                            song.name,
-                                            context
+                                            scope = scope,
+                                            songId = song.id,
+                                            url = url,
+                                            fileName = song.name,
+                                            context = context
                                         ) { path ->
                                             if (path != null) {
                                                 downloadViewModel.insertSong(
@@ -998,8 +998,6 @@ fun UpNextSheetContent(
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
-
-    val quality = musicService?.qualityIndex
 
     Box(
         modifier = Modifier.fillMaxWidth()

@@ -83,6 +83,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -128,6 +129,7 @@ import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.downloadSong.downloadedSongScreen.rememberNetworkState
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
@@ -813,6 +815,7 @@ fun Playlist_Activity(
                                                         val intent = Intent(context, ArtistActivity::class.java).apply {
                                                             putExtra("artist_id", artist.id)
                                                             putExtra("artist_imageUrl", artist.image)
+                                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
                                                     },
@@ -1195,11 +1198,11 @@ fun Playlist_Activity(
                                         else -> {
                                             scope.launch {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
@@ -1298,6 +1301,7 @@ fun SongOptionsBottomSheet(
     onToggleDownload: (SongItem) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
+    val isOnline = rememberNetworkState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var showPlaylistDialog by remember { mutableStateOf(false) }
@@ -1338,6 +1342,7 @@ fun SongOptionsBottomSheet(
                 onPlayNow,
                 isFavourite,
                 isDownloaded,
+                isOnline = isOnline,
                 onToggleFavourite,
                 onAddToPlaylistClick = {
                     showPlaylistDialog = true
@@ -1388,6 +1393,7 @@ fun SongOptionsBottomSheet(
                                             data.visuals.message.contains("downloading") -> R.drawable.download_icon
                                     data.visuals.message.contains("Downloading") ||
                                             data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                    data.visuals.message.contains("internet") -> R.drawable.cellular_network_icon
                                     else -> R.drawable.alert_icon
                                 }
                             ),
@@ -1465,11 +1471,20 @@ fun SongOptionsBottomSheet(
                                     interactionSource = interactionSource,
                                     indication = null
                                 ) {
-                                    val intent = Intent(context, ArtistActivity::class.java).apply {
-                                        putExtra("artist_id", artist.id)
-                                        putExtra("artist_imageUrl", artist.image)
+                                    if (isOnline) {
+                                        val intent = Intent(context, ArtistActivity::class.java).apply {
+                                            putExtra("artist_id", artist.id)
+                                            putExtra("artist_imageUrl", artist.image)
+                                        }
+                                        context.startActivity(intent)
+                                    } else {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar(
+                                                message = "No internet connection",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
                                     }
-                                    context.startActivity(intent)
                                 } ,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -1602,6 +1617,7 @@ private fun BottomSheetContent(
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
     isDownloaded: Boolean,
+    isOnline: Boolean,
     onToggleFavourite: (SongItem) -> Unit,
     onAddToPlaylistClick: () -> Unit,
     onShowArtistsClick: () -> Unit,
@@ -1623,19 +1639,23 @@ private fun BottomSheetContent(
 
     val isInPlaylist = playlist.any { it.id == song.id }
 
-    var isScrollingDown by remember { mutableStateOf(false) }
+    var startAnimation by remember { mutableStateOf(false) }
 
     val shadowAlpha by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 0.8f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowAlpha"
+        targetValue = if (startAnimation) 0.8f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
     )
 
     val shadowBlur by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 50f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowBlur"
+        targetValue = if (startAnimation) 60f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
     )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+    }
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
@@ -1770,26 +1790,43 @@ private fun BottomSheetContent(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        SheetOptionItem(R.drawable.notificationplaybutton, "Play Now") {
+        SheetOptionItem(
+            icon = R.drawable.notificationplaybutton,
+            text = "Play Now"
+        ) {
             onPlayNow()
         }
 
         SheetOptionItem(
             icon = if (isFavourite) R.drawable.heart_filled else R.drawable.heart_outline,
             text = if (isFavourite) "Remove from Favourite" else "Save to Favourite",
-            isAnimated = isFavourite)
-        {
-            onToggleFavourite(song)
+            isAnimated = isFavourite,
+            enabled = isOnline
+        ) {
+            if (isOnline) {
+                onToggleFavourite(song)
+            } else {
+                onShowSnackBar("No internet connection")
+            }
         }
 
         //SheetOptionItem(R.drawable.next_icon, "Play Next")
-        SheetOptionItem(R.drawable.add_playlist_icon, "Add to Playlist") {
-            onAddToPlaylistClick()
+
+        SheetOptionItem(
+            icon = R.drawable.add_playlist_icon,
+            text = "Add to Playlist",
+            enabled = isOnline
+        ) {
+            if (isOnline) {
+                onAddToPlaylistClick()
+            } else {
+                onShowSnackBar("No internet connection")
+            }
         }
 
         SheetOptionItem(
-            R.drawable.queue_icon,
-            when {
+            icon = R.drawable.queue_icon,
+            text = when {
                 isInQueue -> "Remove from queue"
                 else -> "Add to queue"
             }
@@ -1837,20 +1874,34 @@ private fun BottomSheetContent(
             }
         }
 
-        SheetOptionItem(R.drawable.mic_icon, "View Artist") {
+        SheetOptionItem(
+            icon = R.drawable.mic_icon,
+            text = "View Artist"
+        ) {
             onShowArtistsClick()
         }
 
-        SheetOptionItem(R.drawable.album_icon, "Go to Album") {
-            val intent = Intent(context, AlbumActivity::class.java).apply {
-                putExtra("album_id", song.album?.id)
-                putExtra("album_imageUrl", "")
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        SheetOptionItem(
+            icon = R.drawable.album_icon,
+            text = "Go to Album",
+            enabled = isOnline
+        ) {
+            if (isOnline) {
+                val intent = Intent(context, AlbumActivity::class.java).apply {
+                    putExtra("album_id", song.album?.id)
+                    putExtra("album_imageUrl", "")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                context.startActivity(intent)
+            } else {
+                onShowSnackBar("No internet connection")
             }
-            context.startActivity(intent)
         }
 
-        SheetOptionItem(R.drawable.share_icon, "Share") {
+        SheetOptionItem(
+            icon = R.drawable.share_icon,
+            text = "Share"
+        ) {
             onShowShareSheet()
         }
 
@@ -1862,6 +1913,7 @@ private fun BottomSheetContent(
 fun SheetOptionItem(
     icon: Int,
     text: String,
+    enabled: Boolean = true,
     isAnimated: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -1884,6 +1936,7 @@ fun SheetOptionItem(
             ) {
                 onClick()
             }
+            .alpha(if (enabled) 1f else 0.4f)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1927,18 +1980,28 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 
@@ -1988,11 +2051,24 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable

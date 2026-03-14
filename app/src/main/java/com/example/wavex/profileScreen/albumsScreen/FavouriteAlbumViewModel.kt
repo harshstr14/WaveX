@@ -45,4 +45,17 @@ class FavouriteAlbumViewModel(
                 }
         }
     }
+
+    fun deleteAllAlbums() {
+        viewModelScope.launch {
+            try {
+                repository.deleteAllAlbums()
+            } catch (e: Exception) {
+                _albums.value = _albums.value.copy(
+                    isError = true,
+                    errorMessage = e.message ?: "Failed to delete albums"
+                )
+            }
+        }
+    }
 }

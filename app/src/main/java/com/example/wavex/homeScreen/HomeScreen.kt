@@ -484,7 +484,7 @@ fun HomeScreen (showSheet: Boolean) {
                         indication = null
                     ) {
                         val intent = Intent(context, ProfileActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
                     }
@@ -729,7 +729,7 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                         val intent = Intent(context, PlaylistActivity::class.java).apply {
                             putExtra("playlist_id", realItem.id)
                             putExtra("playlist_imageUrl", realItem.image[2].url)
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
                     }
@@ -989,7 +989,7 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                     val intent = Intent(context, ArtistActivity::class.java).apply {
                         putExtra("artist_id", artist.id)
                         putExtra("artist_imageUrl", artist.image)
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
                     context.startActivity(intent)
                 },
@@ -1133,7 +1133,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                         val intent = Intent(context, AlbumActivity::class.java).apply {
                             putExtra("album_id", album.id)
                             putExtra("album_imageUrl", album.image[2].url)
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
                     }
@@ -1243,11 +1243,24 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable
@@ -1265,27 +1278,26 @@ private fun ErrorState(onClick: () -> Unit) {
 
         Box(
             modifier = Modifier
-                .size(95.dp)
+                .size(110.dp)
                 .clip(RectangleShape)
         ) {
             LottieAnimation(
                 composition = composition,
                 iterations = LottieConstants.IterateForever,
                 modifier = Modifier
-                    .size(95.dp)
+                    .size(110.dp)
                     .graphicsLayer {
                         scaleX = 1.2f
                         scaleY = 1.2f
                     }
             )
-
         }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
             text = "No Internet Connection",
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 

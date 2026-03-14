@@ -8,6 +8,7 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 class FavouriteAlbumRepository {
     val userID = FirebaseAuth.getInstance().currentUser?.uid
@@ -43,4 +44,8 @@ class FavouriteAlbumRepository {
                 favouriteReference.removeEventListener(listener)
             }
         }
+
+    suspend fun deleteAllAlbums() {
+        favouriteReference.removeValue().await()
+    }
 }

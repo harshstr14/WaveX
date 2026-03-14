@@ -823,6 +823,7 @@ private fun Album_Activity(
                                                         val intent = Intent(context, ArtistActivity::class.java).apply {
                                                             putExtra("artist_id", artist.id)
                                                             putExtra("artist_imageUrl", artist.image)
+                                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
                                                     },
@@ -1191,11 +1192,11 @@ private fun Album_Activity(
                                         else -> {
                                             scope.launch {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         downloadViewModel.insertSong(
@@ -1748,10 +1749,10 @@ fun ShareContent(
 
 fun generateShareLink(item: ShareItem): String {
     return when (item.type) {
-        ShareType.SONG -> "https://wavex.app/song/${item.id}"
-        ShareType.ALBUM -> "https://wavex.app/album/${item.id}"
-        ShareType.PLAYLIST -> "https://wavex.app/playlist/${item.id}"
-        ShareType.ARTIST -> "https://wavex.app/artist/${item.id}"
+        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.id}"
+        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.id}"
+        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.id}"
+        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.id}"
     }
 }
 
@@ -1791,25 +1792,35 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Box(
-            modifier = Modifier.offset(y = (-8).dp)
+            modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
                 .background(colorResource(R.color.theme_color))
                 .clickable { onRetry() }
@@ -1843,11 +1854,25 @@ private fun LoadingEffect() {
         LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
     )
 
-    LottieAnimation(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 45.dp).size(144.dp)
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 45.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
 }
 
 @Composable

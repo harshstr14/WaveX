@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -129,7 +128,6 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.playlistScreen.SheetOptionItem
 import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.NetworkMonitor
@@ -185,7 +183,7 @@ fun Downloaded_Song_Activity(
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
-    var selectedSong by remember { mutableStateOf<DownloadedSong?>(null) }
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
     val downloadedIds by viewModel
@@ -204,6 +202,8 @@ fun Downloaded_Song_Activity(
     )
 
     val songs by viewModel.downloadedSongs.collectAsState(initial = emptyList())
+    val uniqueSongs = songs.distinctBy { it.id }
+    val songLists = uniqueSongs.map { it.toSongItem() }
 
     val musicService = ServiceLocator.musicService
 
@@ -377,9 +377,7 @@ fun Downloaded_Song_Activity(
         ) {
             when {
                 songs.isEmpty() -> {
-                    ErrorState(
-                        message = "No Downloaded Songs"
-                    )
+                    ErrorState()
                 }
 
                 else -> {
@@ -398,10 +396,8 @@ fun Downloaded_Song_Activity(
                             contentPadding = PaddingValues(top = 8.dp, bottom = 25.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            val uniqueSongs = songs.distinctBy { it.id }
-
                             itemsIndexed(
-                                items = uniqueSongs,
+                                items = songLists,
                                 key = { _, song -> song.id }
                             ) { index, song ->
 
@@ -462,9 +458,7 @@ fun Downloaded_Song_Activity(
                                                     putExtra("index", index)
                                                 }
 
-                                                val playlist = uniqueSongs.map { it.toSongItem() }
-
-                                                PlayerManager.currentPlaylist = playlist
+                                                PlayerManager.currentPlaylist = songLists
                                                 PlayerManager.currentIndex = index
 
                                                 ContextCompat.startForegroundService(context, intent)
@@ -688,21 +682,21 @@ fun Downloaded_Song_Activity(
                                     selectedSong = null
                                 },
                                 onPlayNow = {
-//                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
-//                                        action = MusicPlayerService.ACTION_PLAY_NEW
-//                                        putExtra("index", selectedIndex)
-//                                    }
-//
-//                                    PlayerManager.currentPlaylist = songs
-//                                    PlayerManager.currentIndex = selectedIndex
-//
-//                                    ContextCompat.startForegroundService(context, intent)
-//                                    showSheet = false
+                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        action = MusicPlayerService.ACTION_PLAY_NEW
+                                        putExtra("index", selectedIndex)
+                                    }
+
+                                    PlayerManager.currentPlaylist = songLists
+                                    PlayerManager.currentIndex = selectedIndex
+
+                                    ContextCompat.startForegroundService(context, intent)
+                                    showSheet = false
                                 },
                                 isFavourite = isFavourite,
                                 isDownloaded = isDownloaded,
                                 onToggleFavourite = {
-//                                    likedViewModel.toggleLike(song)
+
                                 },
                                 onToggleDownload = { song ->
                                     val qualityIndex = musicService?.downloadQualityIndex
@@ -723,11 +717,11 @@ fun Downloaded_Song_Activity(
                                         else -> {
                                             scope.launch {
                                                 ParallelDownloader.start(
-                                                    scope,
-                                                    song.id,
-                                                    url,
-                                                    song.name,
-                                                    context
+                                                    scope = scope,
+                                                    songId = song.id,
+                                                    url = url,
+                                                    fileName = song.name,
+                                                    context = context
                                                 ) { path ->
                                                     if (path != null) {
                                                         viewModel.insertSong(
@@ -781,13 +775,13 @@ fun Downloaded_Song_Activity(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongOptionsBottomSheet(
-    song: DownloadedSong,
+    song: SongItem,
     onDismiss: () -> Unit,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
     isDownloaded: Boolean,
-    onToggleFavourite: (DownloadedSong) -> Unit,
-    onToggleDownload: (DownloadedSong) -> Unit
+    onToggleFavourite: (SongItem) -> Unit,
+    onToggleDownload: (SongItem) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -824,12 +818,12 @@ fun SongOptionsBottomSheet(
             modifier = Modifier.fillMaxWidth()
         ) {
             BottomSheetContent(
-                song,
-                onPlayNow,
-                isFavourite,
-                isDownloaded,
-                isOnline,
-                onToggleFavourite,
+                song = song,
+                onPlayNow = onPlayNow,
+                isFavourite = isFavourite,
+                isDownloaded = isDownloaded,
+                isOnline = isOnline,
+                onToggleFavourite = onToggleFavourite,
                 onAddToPlaylistClick = {
 
                 },
@@ -847,7 +841,7 @@ fun SongOptionsBottomSheet(
                         )
                     }
                 },
-                onToggleDownload
+                onToggleDownload = onToggleDownload
             )
 
             SnackbarHost(
@@ -1018,17 +1012,17 @@ fun SongOptionsBottomSheet(
 
 @Composable
 private fun BottomSheetContent(
-    song: DownloadedSong,
+    song: SongItem,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
     isDownloaded: Boolean,
     isOnline: Boolean,
-    onToggleFavourite: (DownloadedSong) -> Unit,
+    onToggleFavourite: (SongItem) -> Unit,
     onAddToPlaylistClick: () -> Unit,
     onShowArtistsClick: () -> Unit,
     onShowShareSheet: () -> Unit,
     onShowSnackBar: (String) -> Unit,
-    onToggleDownload: (DownloadedSong) -> Unit
+    onToggleDownload: (SongItem) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -1039,19 +1033,28 @@ private fun BottomSheetContent(
 
     val isInQueue = queue.any { it.id == song.id }
 
-    var isScrollingDown by remember { mutableStateOf(false) }
+    val playlist by musicService?.playlistFlow?.collectAsState(initial = emptyList())
+        ?: remember { mutableStateOf(emptyList()) }
+
+    val isInPlaylist = playlist.any { it.id == song.id }
+
+    var startAnimation by remember { mutableStateOf(false) }
 
     val shadowAlpha by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 0.8f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowAlpha"
+        targetValue = if (startAnimation) 0.8f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
     )
 
     val shadowBlur by animateFloatAsState(
-        targetValue = if (isScrollingDown) 0f else 50f,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "ShadowBlur"
+        targetValue = if (startAnimation) 60f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
     )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+    }
 
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
@@ -1184,7 +1187,9 @@ private fun BottomSheetContent(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        SheetOptionItem(R.drawable.notificationplaybutton, "Play Now") {
+        SheetOptionItem(
+            icon = R.drawable.notificationplaybutton,
+            text = "Play Now") {
             onPlayNow()
         }
 
@@ -1202,6 +1207,7 @@ private fun BottomSheetContent(
         }
 
         //SheetOptionItem(R.drawable.next_icon, "Play Next")
+
         SheetOptionItem(
             icon = R.drawable.add_playlist_icon,
             text = "Add to Playlist",
@@ -1215,27 +1221,27 @@ private fun BottomSheetContent(
         }
 
         SheetOptionItem(
-            R.drawable.queue_icon,
-            when {
+            icon = R.drawable.queue_icon,
+            text = when {
                 isInQueue -> "Remove from queue"
                 else -> "Add to queue"
             }
         ) {
-//            when {
-//                isInQueue -> {
-//                    musicService?.removeFromQueue(song.id)
-//                    onShowSnackBar("Removed from queue")
-//                }
-//
-//                isInPlaylist -> {
-//                    onShowSnackBar("Song already in playlist")
-//                }
-//
-//                else -> {
-//                    musicService?.addToQueue(song)
-//                    onShowSnackBar("Added to queue")
-//                }
-//            }
+            when {
+                isInQueue -> {
+                    musicService?.removeFromQueue(song.id)
+                    onShowSnackBar("Removed from queue")
+                }
+
+                isInPlaylist -> {
+                    onShowSnackBar("Song already in playlist")
+                }
+
+                else -> {
+                    musicService?.addToQueue(song)
+                    onShowSnackBar("Added to queue")
+                }
+            }
         }
 
         SheetOptionItem(
@@ -1264,7 +1270,10 @@ private fun BottomSheetContent(
             }
         }
 
-        SheetOptionItem(R.drawable.mic_icon, "View Artist") {
+        SheetOptionItem(
+            icon = R.drawable.mic_icon,
+            text = "View Artist"
+        ) {
             onShowArtistsClick()
         }
 
@@ -1277,6 +1286,7 @@ private fun BottomSheetContent(
                 val intent = Intent(context, AlbumActivity::class.java).apply {
                     putExtra("album_id", song.album?.id)
                     putExtra("album_imageUrl", "")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 context.startActivity(intent)
             } else {
@@ -1353,6 +1363,7 @@ fun rememberNetworkState(): Boolean {
 
     return isOnline
 }
+
 private fun formatCount(count: Long): String {
     return when {
         count >= 1_000_000_000 -> String.format(Locale.US,"%.1fB", count / 1_000_000_000.0)
@@ -1396,7 +1407,7 @@ private fun pressScale(
 }
 
 @Composable
-private fun ErrorState(message: String) {
+private fun ErrorState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1408,18 +1419,28 @@ private fun ErrorState(message: String) {
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
 
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(144.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
 
         Spacer(modifier = Modifier.height(0.dp))
 
         Text(
-            modifier = Modifier.offset(y = (-8).dp),
-            text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            text = "No Downloaded Songs",
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
