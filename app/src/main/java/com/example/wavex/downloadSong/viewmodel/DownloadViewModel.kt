@@ -31,8 +31,8 @@ class DownloadViewModel(
         viewModelScope.launch {
             val song = repository.getSongById(id)
 
-            song?.let {
-                val file = File(it.localPath)
+            song?.localPath?.let { path ->
+                val file = File(path)
 
                 if (file.exists()) {
                     file.delete()
@@ -48,9 +48,12 @@ class DownloadViewModel(
             val songs = downloadedSongs.first()
 
             songs.forEach { song ->
-                val file = File(song.localPath)
-                if (file.exists()) {
-                    file.delete()
+                song.localPath.let { path ->
+                    val file = File(path)
+
+                    if (file.exists()) {
+                        file.delete()
+                    }
                 }
             }
 

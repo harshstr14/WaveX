@@ -1421,13 +1421,13 @@ fun ShareContent(
 
                 val composeColor = Color(lightColor)
 
-                dominantColor = slightlyDarken(composeColor, 0.18f)
+                dominantColor = slightlyDarken(composeColor, 0.35f)
             }
         }
     }
 
     val darkColor = remember(dominantColor) {
-        darkenColor(dominantColor, 0.45f)
+        darkenColor(dominantColor, 0.65f)
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -1461,7 +1461,7 @@ fun ShareContent(
                 .fillMaxWidth()
                 .padding(horizontal = 34.dp)
                 .height(420.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(gradientBrush),
             contentAlignment = Alignment.Center
         ) {
@@ -1490,7 +1490,7 @@ fun ShareContent(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     fontSize = 16.sp,
                     fontFamily = fonts,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontStyle = FontStyle.Normal,
                     lineHeight = 20.sp
                 )
@@ -1503,7 +1503,7 @@ fun ShareContent(
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                     fontSize = 12.sp,
                     fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Normal,
                     fontStyle = FontStyle.Normal,
                     lineHeight = 14.sp
                 )
@@ -1545,7 +1545,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = copyLinkInteraction,
                             indication = null
@@ -1596,7 +1596,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = whatsAppInteraction,
                             indication = null
@@ -1650,7 +1650,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = messageInteraction,
                             indication = null
@@ -1659,7 +1659,7 @@ fun ShareContent(
 
                             val intent = Intent(Intent.ACTION_SENDTO).apply {
                                 data = "smsto:".toUri()
-                                putExtra("sms_body", "Listen to this album on WaveX 🎵\n$link")
+                                putExtra("sms_body", link)
                             }
 
                             context.startActivity(intent)
@@ -1700,7 +1700,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = moreInteraction,
                             indication = null

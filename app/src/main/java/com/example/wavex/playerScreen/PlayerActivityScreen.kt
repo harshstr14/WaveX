@@ -795,6 +795,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                     ) {
                                         LottieAnimation(
                                             composition = composition,
+                                            iterations = LottieConstants.IterateForever,
                                             modifier = Modifier
                                                 .size(35.dp)
                                                 .graphicsLayer {

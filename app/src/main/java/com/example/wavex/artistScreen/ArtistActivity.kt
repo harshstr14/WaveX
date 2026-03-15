@@ -1539,13 +1539,13 @@ fun ShareContent(
 
                 val composeColor = Color(lightColor)
 
-                dominantColor = slightlyDarken(composeColor, 0.18f)
+                dominantColor = slightlyDarken(composeColor, 0.35f)
             }
         }
     }
 
     val darkColor = remember(dominantColor) {
-        darkenColor(dominantColor, 0.45f)
+        darkenColor(dominantColor, 0.65f)
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -1579,7 +1579,7 @@ fun ShareContent(
                 .fillMaxWidth()
                 .padding(horizontal = 34.dp)
                 .height(420.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(gradientBrush),
             contentAlignment = Alignment.Center
         ) {
@@ -1611,7 +1611,7 @@ fun ShareContent(
                         fontSize = 16.sp,
                         lineHeight = 20.sp,
                         fontFamily = fonts,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.off_white),
                         maxLines = 2,
@@ -1638,7 +1638,7 @@ fun ShareContent(
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                     fontSize = 12.sp,
                     fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Normal,
                     fontStyle = FontStyle.Normal,
                     lineHeight = 14.sp
                 )
@@ -1680,7 +1680,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = copyLinkInteraction,
                             indication = null
@@ -1726,7 +1726,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = whatsAppInteraction,
                             indication = null
@@ -1780,7 +1780,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = messageInteraction,
                             indication = null
@@ -1830,7 +1830,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.6f))
+                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = moreInteraction,
                             indication = null

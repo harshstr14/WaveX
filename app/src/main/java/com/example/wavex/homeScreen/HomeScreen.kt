@@ -1212,6 +1212,10 @@ suspend fun downloadSong(
 
         connection.connect()
 
+        if (connection.responseCode !in 200..299) {
+            return@withContext null
+        }
+
         val inputStream = connection.inputStream.buffered()
 
         val outputStream = FileOutputStream(file, true).buffered()

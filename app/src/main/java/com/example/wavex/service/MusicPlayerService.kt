@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class  MusicPlayerService : LifecycleService() {
     companion object {
@@ -484,8 +485,10 @@ class  MusicPlayerService : LifecycleService() {
         player.stop()
         player.clearMediaItems()
 
-        val uri = if (!song.localPath.isNullOrEmpty()) {
-            song.localPath!!.toUri()
+        val localFile = song.localPath?.let { File(it) }
+
+        val uri = if (localFile != null && localFile.exists()) {
+            localFile.toUri()
         } else {
             song.downloadUrl[qualityIndex].url.toUri()
         }

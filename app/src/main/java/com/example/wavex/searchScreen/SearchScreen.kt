@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -852,17 +853,22 @@ private fun SearchSongs(
                             modifier = Modifier.fillMaxWidth()
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
-                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                        action = MusicPlayerService.ACTION_PLAY_NEW
-                                        putExtra("index", index)
-                                    }
-
-                                    PlayerManager.currentPlaylist = uniqueSongs
-                                    PlayerManager.currentIndex = index
-
-                                    ContextCompat.startForegroundService(context, intent)
-
                                     scope.launch {
+                                        val suggestions = viewModel.fetchSuggestionSongs(song.id)
+
+                                        val playlist = (listOf(song) + suggestions)
+                                            .distinctBy { it.id }
+
+                                        PlayerManager.currentPlaylist = playlist
+                                        PlayerManager.currentIndex = 0
+
+                                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                            action = MusicPlayerService.ACTION_PLAY_NEW
+                                            putExtra("index", 0)
+                                        }
+
+                                        ContextCompat.startForegroundService(context, intent)
+
                                         RecentlyPlayedManager.add(context, song)
                                     }
                             },

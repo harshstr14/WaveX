@@ -93,8 +93,10 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.albumScreen.AlbumActivity
+import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.downloadSong.data.DownloadedSong
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
@@ -111,6 +113,7 @@ import com.example.wavex.libraryScreen.pressScale
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
 import com.example.wavex.playerScreen.PlayerActivityScreen
+import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.service.MusicPlayerService
@@ -262,19 +265,38 @@ fun Main_Screen(
         when (deepLinkType) {
 
             "song" -> {
+                val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
 
+                context.startActivity(intent)
             }
 
             "album" -> {
                 val intent = Intent(context, AlbumActivity::class.java).apply {
                     putExtra("album_id", deepLinkId)
                     putExtra("album_imageUrl", "")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 context.startActivity(intent)
             }
 
             "playlist" -> {
+                val intent = Intent(context, PlaylistActivity::class.java).apply {
+                    putExtra("playlist_id", deepLinkId)
+                    putExtra("playlist_imageUrl", "")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                context.startActivity(intent)
+            }
 
+            "artist" -> {
+                val intent = Intent(context, ArtistActivity::class.java).apply {
+                    putExtra("artist_id", deepLinkId)
+                    putExtra("artist_imageUrl", "")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                context.startActivity(intent)
             }
         }
     }
@@ -675,7 +697,7 @@ fun MiniPlayer(
                     fontFamily = fonts,
                     fontWeight = FontWeight.Normal,
                     fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color),
+                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -741,6 +763,7 @@ fun MiniPlayer(
                         ) {
                             LottieAnimation(
                                 composition = composition,
+                                iterations = LottieConstants.IterateForever,
                                 modifier = Modifier
                                     .size(25.dp)
                                     .graphicsLayer {

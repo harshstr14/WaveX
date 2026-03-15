@@ -54,6 +54,14 @@ class SearchSongsViewModel(
         }
     }
 
+    suspend fun fetchSuggestionSongs(songId: String): List<SongItem> {
+        return try {
+            repository.fetchSuggestionSongs(songId)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     fun clearResults() {
         _songs.value = emptyList()
     }
