@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -108,7 +109,8 @@ import kotlinx.coroutines.launch
 
 enum class SheetType {
     CREATE_PLAYLIST,
-    ADD_PLAYLIST,
+    ADD_SPOTIFY_PLAYLIST,
+    ADD_WAVEX_PLAYLIST,
     RENAME_PLAYLIST
 }
 
@@ -118,7 +120,9 @@ fun LibraryScreen(
     navController: NavController, snackBarHostState: SnackbarHostState,
     showSheet: Boolean, viewModel: PlaylistViewModel = viewModel()
 ) {
-    val apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
+    val spotifyApiUrl = BuildConfig.SPOTIFY_API_BASE_URL
+    val waveXApiUrl = BuildConfig.WAVEX_API_URL
+
     val importViewModel: ImportPlaylistViewModel = viewModel()
     val importState by importViewModel.importState.collectAsState()
 
@@ -126,13 +130,13 @@ fun LibraryScreen(
         when (importState) {
             is ImportState.Success -> {
                 snackBarHostState.showSnackbar(
-                    "Playlist imported successfully",
+                    message = "Playlist imported successfully",
                     duration = SnackbarDuration.Short
                 )
             }
             is ImportState.Error -> {
                 snackBarHostState.showSnackbar(
-                    (importState as ImportState.Error).message,
+                    message = (importState as ImportState.Error).message,
                     duration = SnackbarDuration.Short
                 )
             }
@@ -201,9 +205,22 @@ fun LibraryScreen(
                     )
                 }
 
-                SheetType.ADD_PLAYLIST -> {
-                    AddPlaylistBottomSheet(
-                        apiUrl,
+                SheetType.ADD_SPOTIFY_PLAYLIST -> {
+                    AddSpotifyPlaylistBottomSheet(
+                        spotifyApiUrl,
+                        importViewModel,
+                        onClose = {
+                            scope.launch {
+                                sheetState.hide()
+                                showBottomSheet.value = false
+                            }
+                        }
+                    )
+                }
+
+                SheetType.ADD_WAVEX_PLAYLIST -> {
+                    AddWaveXPlaylistBottomSheet(
+                        waveXApiUrl,
                         importViewModel,
                         onClose = {
                             scope.launch {
@@ -253,6 +270,8 @@ fun LibraryScreen(
 
     BackHandler(enabled = isLoading) {}
 
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier
         .fillMaxSize()
         )
@@ -271,7 +290,7 @@ fun LibraryScreen(
                 }
             }
         ) {
-            val(backButton, titleText, addButton, spotifyLogo, playlistList) = createRefs()
+            val(backButton, titleText, addButton, importLogo, playlistList) = createRefs()
 
             Text(
                 text = "Library", modifier = Modifier
@@ -356,31 +375,101 @@ fun LibraryScreen(
                 )
             }
 
-            Icon(
-                painter = painterResource(R.drawable.spotify_logo),
-                contentDescription = "Spotify Icon",
-                tint = Color.Unspecified,
-                modifier = Modifier
-                    .constrainAs(spotifyLogo) {
-                        top.linkTo(titleText.top)
-                        bottom.linkTo(titleText.bottom)
-                        end.linkTo(addButton.start, margin = 15.dp)
-                    }
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                    .size(42.dp)
-                    .graphicsLayer {
-                        scaleX = spotifyScale
-                        scaleY = spotifyScale
-                    }
-                    .clickable(
-                        interactionSource = spotifyInteraction,
-                        indication = null
-                    ) {
-                        currentSheet.value = SheetType.ADD_PLAYLIST
-                        showBottomSheet.value = true
-                        scope.launch { sheetState.show() }
-                    }
-            )
+            Box(modifier = Modifier
+                .constrainAs(importLogo) {
+                    top.linkTo(titleText.top)
+                    bottom.linkTo(titleText.bottom)
+                    end.linkTo(addButton.start, margin = 15.dp)
+                }
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .size(36.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.5.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .clickable(
+                    interactionSource = spotifyInteraction,
+                    indication = null
+                ) {
+                    menuExpanded = true
+                }, contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.file_import_icon),
+                    contentDescription = "Import Icon",
+                    tint = colorResource(R.color.primary_text_color),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer {
+                            scaleX = spotifyScale
+                            scaleY = spotifyScale
+                        }
+                )
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    containerColor = Color(0xFF3a3a3a),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.width(200.dp),
+                ) {
+                    DropdownMenuItem(
+                        modifier = Modifier.height(38.dp),
+                        text = {
+                            Text(
+                                text = "Import from Spotify",
+                                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.background_color),
+                                modifier = Modifier.offset(x = (-6).dp)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.spotify_logo),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            currentSheet.value = SheetType.ADD_SPOTIFY_PLAYLIST
+                            showBottomSheet.value = true
+                            scope.launch { sheetState.show() }
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        modifier = Modifier.height(38.dp),
+                        text = {
+                            Text(
+                                text = "Import from WaveX",
+                                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.background_color),
+                                modifier = Modifier.offset(x = (-6).dp)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.logo2),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            currentSheet.value = SheetType.ADD_WAVEX_PLAYLIST
+                            showBottomSheet.value = true
+                            scope.launch { sheetState.show() }
+                        }
+                    )
+                }
+            }
 
             Box(
                 modifier = Modifier
@@ -756,7 +845,216 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun AddPlaylistBottomSheet(
+private fun AddWaveXPlaylistBottomSheet(
+    apiUrl: String,
+    viewModel: ImportPlaylistViewModel,
+    onClose: () -> Unit
+) {
+    var url by remember { mutableStateOf("") }
+    var urlError by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val trimUrl = url.substringAfter("playlists/")
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .height(4.dp)
+                .align(alignment = Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(text = "Import WaveX Playlist", modifier = Modifier.align(Alignment.CenterHorizontally),
+            fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Playlist Url", modifier = Modifier.padding(start = 28.dp),
+            fontSize = 13.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(modifier = Modifier
+            .padding(horizontal = 25.dp)
+            .height(52.dp)
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (urlError) Color.Red else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(
+                colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (inputField, placeholderText, copyIcon) = createRefs()
+
+                if (url.isEmpty()) {
+                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start, margin = 15.dp)
+                        end.linkTo(parent.end, margin = 15.dp)
+                        width = Dimension.fillToConstraints },
+                        text = "Enter Url",
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Normal,
+                        fontStyle = FontStyle.Normal,
+                        fontSize = 14.sp, lineHeight = 17.sp,
+                        color = colorResource(R.color.secondary_text_color)
+                    )
+                }
+
+                val selectionColors = TextSelectionColors(
+                    handleColor = Color(0xFF1C1C1C),
+                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                )
+
+                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                    BasicTextField(
+                        value = url,
+                        onValueChange = {
+                            url = it
+
+                            if (it.isNotBlank()) {
+                                urlError = false
+                                Log.d("Url", trimUrl)
+                            }
+                        },
+                        modifier = Modifier
+                            .constrainAs(inputField) {
+                                top.linkTo(parent.top)
+                                bottom.linkTo(parent.bottom)
+                                start.linkTo(parent.start, margin = 15.dp)
+                                end.linkTo(copyIcon.start, margin = 15.dp)
+                                width = Dimension.fillToConstraints
+                            },
+                        textStyle = TextStyle(
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 14.sp, lineHeight = 17.sp,
+                            color = colorResource(R.color.secondary_text_color)
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                    )
+                }
+
+                Icon(
+                    painter = painterResource(R.drawable.copy_icon),
+                    contentDescription = null,
+                    tint = colorResource(R.color.theme_color),
+                    modifier = Modifier
+                        .constrainAs(copyIcon) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            end.linkTo(parent.end, margin = 15.dp)
+                        }
+                        .size(22.dp)
+                        .clickable (
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            scope.launch {
+                                val clipEntry = clipboard.getClipEntry()
+                                val clipboardText = clipEntry?.clipData
+                                    ?.getItemAt(0)
+                                    ?.text
+                                    ?.toString()
+
+                                if (!clipboardText.isNullOrBlank()) {
+                                    url = clipboardText
+                                    urlError = false
+                                }
+                            }
+                        }
+                )
+            }
+        }
+
+        if (urlError) {
+            Text(
+                text = "Url cannot be empty",
+                color = Color.Red,
+                fontSize = 12.sp,
+                lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
+                modifier = Modifier.padding(start = 28.dp, top = 4.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(148.dp)
+                    .padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                    .clickable { onClose() }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Cancel",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.theme_color)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(148.dp)
+                    .padding(top = 25.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colorResource(R.color.theme_color))
+                    .clickable {
+                        urlError = url.isBlank()
+
+                        if (!urlError) {
+                            viewModel.importWaveXPlaylist(apiUrl, trimUrl)
+                            onClose()
+                        }
+                    }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Import",
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.background_color)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+    }
+}
+
+
+@Composable
+private fun AddSpotifyPlaylistBottomSheet(
     apiUrl: String,
     viewModel: ImportPlaylistViewModel,
     onClose: () -> Unit

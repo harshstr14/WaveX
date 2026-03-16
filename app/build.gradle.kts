@@ -16,9 +16,10 @@ val apiUrl2 = localProps.getProperty("API_BASE_URL2")
     ?: error("API_URL missing in local.properties")
 val apiUrl3 = localProps.getProperty("API_BASE_URL3")
     ?: error("API_URL missing in local.properties")
-
 val spotifyApiUrl = localProps.getProperty("SPOTIFY_API_BASE_URL")
     ?: error("SPOTIFY_API_URL missing in local.properties")
+val waveXApiUrl = localProps.getProperty("WAVEX_API_URL")
+    ?: error("WAVEX_API_URL missing in local.properties")
 
 
 android {
@@ -43,6 +44,8 @@ android {
         buildConfigField("String", "API_BASE_URL3", "\"$apiUrl3\"")
 
         buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"$spotifyApiUrl\"")
+
+        buildConfigField("String", "WAVEX_API_URL", "\"$waveXApiUrl\"")
     }
 
     buildTypes {

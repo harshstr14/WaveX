@@ -298,6 +298,14 @@ fun Main_Screen(
                 }
                 context.startActivity(intent)
             }
+
+            "playlists" -> {
+                navController.navigate(BottomNavRoute.Library.route) {
+                    popUpTo(navController.graph.startDestinationId)
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
         }
     }
 

@@ -115,7 +115,6 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.albumScreen.darkenColor
-import com.example.wavex.albumScreen.generateShareLink
 import com.example.wavex.albumScreen.slightlyDarken
 import com.example.wavex.downloadSong.data.DownloadedSong
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
@@ -134,6 +133,7 @@ import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class PlaylistActivity : ComponentActivity() {
@@ -1048,7 +1048,7 @@ private fun Playlist_Activity(
                                     title = htmlToText(playlistData?.playlistName),
                                     subtitle = "",
                                     image = playlistData?.imageUrl,
-                                    id = "",
+                                    id = playlistId.toString(),
                                     type = ShareType.PLAYLIST
                                 ),
                                 onDismiss = { showShareSheet = false }
@@ -1126,6 +1126,8 @@ fun ShareBottomSheet(
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+
     LaunchedEffect(Unit) {
         sheetState.expand()
     }
@@ -1142,6 +1144,7 @@ fun ShareBottomSheet(
         ) {
             ShareContent(
                 item = item,
+                userId = userId.toString(),
                 context = context,
                 onShowSnackBar = { message ->
                     scope.launch {
@@ -1203,6 +1206,7 @@ fun ShareBottomSheet(
 @Composable
 fun ShareContent(
     item: ShareItem,
+    userId: String,
     context: Context,
     onShowSnackBar: (String) -> Unit
 ) {
@@ -1368,7 +1372,7 @@ fun ShareContent(
                             indication = null
                         ) {
                             scope.launch {
-                                val link = generateShareLink(item)
+                                val link = "https://wavex-edd95.web.app/playlists/${userId + item.id}"
 
                                 val clipData = ClipData.newPlainText("link", link)
                                 val clipEntry = ClipEntry(clipData)
@@ -1418,7 +1422,7 @@ fun ShareContent(
                             interactionSource = whatsAppInteraction,
                             indication = null
                         ) {
-                            val link = generateShareLink(item)
+                            val link = "https://wavex-edd95.web.app/playlists/${userId + item.id}"
 
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 this.type = "text/plain"
@@ -1472,7 +1476,7 @@ fun ShareContent(
                             interactionSource = messageInteraction,
                             indication = null
                         ) {
-                            val link = generateShareLink(item)
+                            val link = "https://wavex-edd95.web.app/playlists/${userId + item.id}"
 
                             val intent = Intent(Intent.ACTION_SENDTO).apply {
                                 data = "smsto:".toUri()
@@ -1522,7 +1526,7 @@ fun ShareContent(
                             interactionSource = moreInteraction,
                             indication = null
                         ) {
-                            val link = generateShareLink(item)
+                            val link = "https://wavex-edd95.web.app/playlists/${userId + item.id}"
 
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 this.type = "text/plain"

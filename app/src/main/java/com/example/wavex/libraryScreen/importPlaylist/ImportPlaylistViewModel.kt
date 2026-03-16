@@ -35,6 +35,64 @@ class ImportPlaylistViewModel : ViewModel() {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    fun importWaveXPlaylist(apiUrl: String, url: String) {
+        viewModelScope.launch {
+
+            _importState.value = ImportState.Loading
+
+            try {
+                val responseBody = withContext(Dispatchers.IO) {
+
+                    val request = Request.Builder()
+                        .url("$apiUrl/playlist/$url")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        throw IOException("HTTP ${response.code}")
+                    }
+
+                    response.body?.string() ?: ""
+                }
+
+                if (responseBody.isEmpty()) {
+                    _importState.value = ImportState.Error("Empty playlist")
+                    return@launch
+                }
+
+                val json = JSONObject(responseBody)
+
+                val success = json.optBoolean("success", true)
+
+                if (!success) {
+                    val message = json.optString("message", "Playlist not found")
+                    _importState.value = ImportState.Error(message)
+                    return@launch
+                }
+
+                val songs = json.optJSONArray("songs")
+
+                if (songs == null || songs.length() == 0) {
+                    _importState.value = ImportState.Error("Playlist is empty")
+                    return@launch
+                }
+
+                parseWaveXPlaylist(responseBody)
+
+            } catch (_: SocketTimeoutException) {
+                _importState.value = ImportState.Error("Request timed out")
+
+            } catch (_: IOException) {
+                _importState.value = ImportState.Error("Playlist not available")
+
+            } catch (_: Exception) {
+                _importState.value = ImportState.Error("Something went wrong")
+            }
+        }
+    }
+
     fun importPlaylistByUrl(apiUrl: String, url: String) {
         viewModelScope.launch {
 
@@ -77,6 +135,70 @@ class ImportPlaylistViewModel : ViewModel() {
 
     fun cancelImport() {
         _importState.value = ImportState.Idle
+    }
+
+    private suspend fun parseWaveXPlaylist(jsonString: String) {
+        val json = JSONObject(jsonString)
+
+        val name = json.optString("playlistName")
+        val image = json.optString("imageUrl")
+        val songsArray = json.optJSONArray("songs")
+
+        val songList = mutableListOf<SongItem>()
+
+        for (i in 0 until (songsArray?.length() ?: 0)) {
+
+            val song = songsArray!!.getJSONObject(i)
+
+            val albumObj = song.optJSONObject("album")
+
+            val album = Album(
+                id = albumObj?.optString("id") ?: "",
+                name = albumObj?.optString("name") ?: ""
+            )
+
+            val artists = parseWaveXArtists(song.optJSONArray("artist"))
+
+            songList.add(
+                SongItem(
+                    id = song.optString("id"),
+                    name = song.optString("name"),
+                    artist = artists.toMutableList(),
+                    album = album,
+                    image = parseImages(song.optJSONArray("image")).toMutableList(),
+                    duration = song.optInt("duration"),
+                    playCount = song.optInt("playCount"),
+                    downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
+                )
+            )
+        }
+
+        val totalDuration = songList.sumOf { it.duration }
+
+        saveToFirebaseSuspend(name, image, songList, totalDuration)
+    }
+
+    private fun parseWaveXArtists(array: JSONArray?): List<Artists> {
+        if (array == null) return emptyList()
+
+        val artists = mutableListOf<Artists>()
+
+        for (i in 0 until array.length()) {
+
+            val artist = array.getJSONObject(i)
+
+            artists.add(
+                Artists(
+                    id = artist.optString("id"),
+                    name = artist.optString("name"),
+                    role = artist.optString("role"),
+                    image = artist.optString("image"),
+                    type = artist.optString("type")
+                )
+            )
+        }
+
+        return artists
     }
 
     private suspend fun parsePlaylistData(jsonString: String) {
