@@ -86,10 +86,12 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -185,6 +187,7 @@ suspend fun requestWithFallback(endpoint: String): String =
 class MainScreen : ComponentActivity() {
     private var deepLinkType: String? = null
     private var deepLinkId: String? = null
+    private var deepLinkUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -214,7 +217,8 @@ class MainScreen : ComponentActivity() {
                 Main_Screen(
                     downloadViewModel,
                     deepLinkType = deepLinkType,
-                    deepLinkId = deepLinkId
+                    deepLinkId = deepLinkId,
+                    deepLinkUrl = deepLinkUrl
                 )
             }
         }
@@ -227,6 +231,8 @@ class MainScreen : ComponentActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
+
+        deepLinkUrl = uri.toString()
 
         val segments = uri.pathSegments
         if (segments.size >= 2) {
@@ -242,7 +248,8 @@ class MainScreen : ComponentActivity() {
 fun Main_Screen(
     downloadViewModel: DownloadViewModel,
     deepLinkType: String?,
-    deepLinkId: String?
+    deepLinkId: String?,
+    deepLinkUrl: String?
 ) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -256,7 +263,6 @@ fun Main_Screen(
     var handled by remember { mutableStateOf(false) }
 
     LaunchedEffect(deepLinkType, deepLinkId) {
-
         if (handled) return@LaunchedEffect
         if (deepLinkType == null || deepLinkId == null) return@LaunchedEffect
 
@@ -300,7 +306,9 @@ fun Main_Screen(
             }
 
             "playlists" -> {
-                navController.navigate(BottomNavRoute.Library.route) {
+                navController.navigate(
+                    "library?openSheet=wavex&url=${deepLinkUrl}"
+                ) {
                     popUpTo(navController.graph.startDestinationId)
                     launchSingleTop = true
                     restoreState = true
@@ -500,8 +508,32 @@ fun Main_Screen(
                     navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
                 )
             }
-            composable(BottomNavRoute.Library.route) {
-                LibraryScreen(navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet)
+            composable(
+                route = "library?openSheet={openSheet}&url={url}",
+                arguments = listOf(
+                    navArgument("openSheet") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument("url") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+
+                val openSheet = backStackEntry.arguments?.getString("openSheet")
+                val url = backStackEntry.arguments?.getString("url")
+
+                LibraryScreen(
+                    navController = navController,
+                    snackBarHostState = snackBarHostState,
+                    showSheet = showSheet,
+                    openSheet = openSheet,
+                    initialUrl = url
+                )
             }
         }
     }
@@ -766,14 +798,14 @@ fun MiniPlayer(
                     if (isBuffering) {
                         Box(
                             modifier = Modifier
-                                .size(25.dp)
+                                .size(23.dp)
                                 .clip(RectangleShape)
                         ) {
                             LottieAnimation(
                                 composition = composition,
                                 iterations = LottieConstants.IterateForever,
                                 modifier = Modifier
-                                    .size(25.dp)
+                                    .size(23.dp)
                                     .graphicsLayer {
                                         scaleX = 2f
                                         scaleY = 2f
@@ -804,7 +836,7 @@ fun MiniPlayer(
             Spacer(modifier = Modifier.width(10.dp))
 
             Icon(
-                painter = painterResource(R.drawable.plus_icon),
+                painter = painterResource(R.drawable.add_icon),
                 contentDescription = "Add Icon",
                 tint = colorResource(R.color.off_white),
                 modifier = Modifier
@@ -911,7 +943,7 @@ private fun BottomNavBar(navController: NavController) {
         ) {
 
             items.forEach { item ->
-                val selected = currentRoute == item.route
+                val selected = currentRoute?.startsWith(item.route) == true
                 val animatedPadding by animateDpAsState(
                     targetValue = if (selected) 14.dp else 22.dp,
                     label = "paddingAnim"

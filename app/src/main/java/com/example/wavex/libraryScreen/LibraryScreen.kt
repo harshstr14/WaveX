@@ -87,7 +87,6 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -118,7 +117,8 @@ enum class SheetType {
 @Composable
 fun LibraryScreen(
     navController: NavController, snackBarHostState: SnackbarHostState,
-    showSheet: Boolean, viewModel: PlaylistViewModel = viewModel()
+    showSheet: Boolean, openSheet: String? = null, initialUrl: String?,
+    viewModel: PlaylistViewModel = viewModel()
 ) {
     val spotifyApiUrl = BuildConfig.SPOTIFY_API_BASE_URL
     val waveXApiUrl = BuildConfig.WAVEX_API_URL
@@ -171,6 +171,16 @@ fun LibraryScreen(
     val likedSongs by likedViewModel.likedSongs.collectAsState()
 
     val selectedPlaylist = remember { mutableStateOf<PlaylistData?>(null) }
+
+    LaunchedEffect(openSheet) {
+        when (openSheet) {
+            "wavex" -> {
+                currentSheet.value = SheetType.ADD_WAVEX_PLAYLIST
+                showBottomSheet.value = true
+                sheetState.show()
+            }
+        }
+    }
 
     if (showBottomSheet.value) {
         ModalBottomSheet(
@@ -227,7 +237,8 @@ fun LibraryScreen(
                                 sheetState.hide()
                                 showBottomSheet.value = false
                             }
-                        }
+                        },
+                        initialUrl = initialUrl
                     )
                 }
 
@@ -848,14 +859,23 @@ fun LibraryScreen(
 private fun AddWaveXPlaylistBottomSheet(
     apiUrl: String,
     viewModel: ImportPlaylistViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    initialUrl: String? = null
 ) {
-    var url by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(initialUrl ?: "") }
     var urlError by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val trimUrl = url.substringAfter("playlists/")
+    val trimUrl = remember(url) {
+        url.substringAfter("playlists/")
+    }
     val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(initialUrl) {
+        if (!initialUrl.isNullOrBlank()) {
+            url = initialUrl
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -1875,7 +1895,6 @@ private fun ErrorState(message: String) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         val composition by rememberLottieComposition(
             LottieCompositionSpec.RawRes (R.raw.spaceman)
         )
@@ -1910,7 +1929,5 @@ private fun ErrorState(message: String) {
 @Preview(showSystemUi = true)
 @Composable
 private fun LibraryScreenPreview() {
-    val navController = rememberNavController()
-    val snackbarHostState = SnackbarHostState()
-    LibraryScreen(navController, snackbarHostState, false)
+
 }
