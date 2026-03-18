@@ -330,6 +330,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
         label = "shadowAlpha"
     )
 
+    var dragProgress by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var wasPlayingBeforeDrag by remember { mutableStateOf(false) }
 
@@ -664,10 +665,18 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 }
                             },
                             onProgressChanged = { newProgress ->
-                                val seekPositionMs = (duration * newProgress).toLong()
+                                dragProgress = newProgress
 
+                                val seekPositionMs = (duration * newProgress).toLong()
                                 musicService?.seekTo(seekPositionMs)
-                            }                        )
+                            }
+                        )
+                    }
+
+                    val displayedProgressMs = if (isDragging) {
+                        (duration * dragProgress).toLong()
+                    } else {
+                        progressMs
                     }
 
                     Text(
@@ -675,7 +684,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             top.linkTo(progressBar.bottom, margin = 12.dp)
                             start.linkTo(parent.start, margin = 22.dp)
                         },
-                        text = formatTime(progressMs.toLong()),
+                        text = formatTime(displayedProgressMs.toLong()),
                         fontSize = 10.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color), maxLines = 1
                     )
@@ -790,14 +799,14 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 if (isBuffering) {
                                     Box(
                                         modifier = Modifier
-                                            .size(35.dp)
+                                            .size(48.dp)
                                             .clip(RectangleShape)
                                     ) {
                                         LottieAnimation(
                                             composition = composition,
                                             iterations = LottieConstants.IterateForever,
                                             modifier = Modifier
-                                                .size(35.dp)
+                                                .size(48.dp)
                                                 .graphicsLayer {
                                                     scaleX = 2f
                                                     scaleY = 2f
@@ -1419,9 +1428,12 @@ fun AudioWaveform(
                         dragProgress = (down.position.x / width)
                             .coerceIn(0f, 1f)
 
+                        onProgressChanged(dragProgress)
+
                         drag(down.id) { change ->
                             dragProgress = (change.position.x / width)
                                 .coerceIn(0f, 1f)
+                            onProgressChanged(dragProgress)
 
                             change.consume()
                         }

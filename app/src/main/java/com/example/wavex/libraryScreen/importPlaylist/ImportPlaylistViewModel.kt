@@ -204,7 +204,6 @@ class ImportPlaylistViewModel : ViewModel() {
     private suspend fun parsePlaylistData(jsonString: String) {
 
         val (name, image, songList) = withContext(Dispatchers.Default) {
-
             val json = JSONObject(jsonString)
             val success = json.optBoolean("success", false)
             if (!success) throw Exception("Invalid response")

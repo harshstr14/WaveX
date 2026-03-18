@@ -1783,7 +1783,7 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(14.dp))
 
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
             thickness = 1.dp,
             color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
         )

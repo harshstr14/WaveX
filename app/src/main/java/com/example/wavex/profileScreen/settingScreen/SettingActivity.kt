@@ -144,7 +144,7 @@ fun Setting_Activity() {
     var downloadExpanded by remember { mutableStateOf(false) }
 
     var selectedStreamingQuality by remember { mutableStateOf("High") }
-    var selectedDownloadQuality by remember { mutableStateOf("High") }
+    var selectedDownloadQuality by remember { mutableStateOf("Normal") }
 
     val qualities = listOf("Low", "Normal", "High")
 
@@ -165,13 +165,13 @@ fun Setting_Activity() {
     }
 
     LaunchedEffect(Unit) {
-        val savedIndex = prefs.getInt("download_quality_index", 4)
+        val savedIndex = prefs.getInt("download_quality_index", 3)
 
         selectedDownloadQuality = when (savedIndex) {
             2 -> "Low"
             3 -> "Normal"
             4 -> "High"
-            else -> "High"
+            else -> "Normal"
         }
     }
 

@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.Handler
@@ -42,6 +43,7 @@ import com.example.wavex.R
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -50,13 +52,18 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -153,13 +160,36 @@ class  MusicPlayerService : LifecycleService() {
 
     private val _queue = MutableStateFlow<List<SongItem>>(emptyList())
     val queueFlow: StateFlow<List<SongItem>> = _queue.asStateFlow()
-
-    private val shuffleOrder: MutableList<Int> = mutableListOf()
-    private var shufflePointer = 0
     private var isQueueOnlyMode = false
     private var queuePointer = 0
-    private var queueShuffleOrder: MutableList<Int> = mutableListOf()
-    private var queueShufflePointer = 0
+    private val repository = SearchSongsRepository()
+    val isOnlineFlow by lazy {
+        NetworkMonitor(applicationContext).isOnline
+    }
+    private val _isOnline = MutableStateFlow(true)
+    val isOnline: StateFlow<Boolean> = _isOnline
+
+    private var shouldRetry = false
+    private var isRetrying = false
+
+    @kotlin.OptIn(FlowPreview::class)
+    val playerUiState = combine(
+        _isOnline,
+        _isBuffering,
+        _isPlaying
+    ) { isOnline, isBuffering, isPlaying ->
+
+        when {
+            !isOnline -> "RECONNECTING"
+            isBuffering -> "BUFFERING"
+            isPlaying -> "PLAYING"
+            else -> "PAUSED"
+        }
+    }.debounce(250).stateIn(
+        serviceScope,
+        SharingStarted.WhileSubscribed(5000),
+        "PAUSED"
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -192,11 +222,79 @@ class  MusicPlayerService : LifecycleService() {
         initMediaSession()
 
         serviceScope.launch {
+            serviceScope.launch {
+                isOnlineFlow.collect { isOnline ->
+                    val currentSong = _currentSong.value ?: return@collect
+                    val localFile = currentSong.localPath?.let { File(it) }
+
+                    val isLocalPlaying = player.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
+
+                    if (!isOnline) {
+                        if (localFile != null && localFile.exists() && !isLocalPlaying) {
+                            val position = player.currentPosition
+
+                            player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                            player.prepare()
+                            player.seekTo(position)
+                            player.playWhenReady = true
+                        } else {
+                            player.pause()
+                        }
+                    }
+
+                    if (isOnline) {
+                        if (shouldRetry && !isRetrying) {
+                            isRetrying = true
+                            shouldRetry = false
+
+                            val song = _currentSong.value ?: return@collect
+                            val position = player.currentPosition
+
+                            val uri = song.getBestUri(true)
+
+                            if (uri != Uri.EMPTY) {
+                                player.setMediaItem(MediaItem.fromUri(uri))
+                                player.prepare()
+                                player.seekTo(position)
+                                player.playWhenReady = true
+                            }
+
+                            isRetrying = false
+                        }
+                    }
+                }
+            }
+        }
+
+        serviceScope.launch {
             _currentSong
                 .filterNotNull()
                 .distinctUntilChangedBy { it.id }
                 .collect { song ->
+
                     RecentlyPlayedManager.add(this@MusicPlayerService, song)
+
+                    if (song.source != "search") return@collect
+
+                    launch(Dispatchers.IO) {
+                        try {
+                            val suggestions = repository.fetchSuggestionSongs(song.id)
+
+                            val updated = (playlist + suggestions)
+                                .distinctBy { it.id }
+
+                            withContext(Dispatchers.Main) {
+                                playlist.clear()
+                                playlist.addAll(updated)
+
+                                _playlistFlow.value = playlist.toList()
+                                updateUpNext()
+                            }
+
+                        } catch (e: Exception) {
+                            Log.e("Suggestion", "Failed: ${e.message}")
+                        }
+                    }
                 }
         }
     }
@@ -225,9 +323,7 @@ class  MusicPlayerService : LifecycleService() {
         player.addListener(object : Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 when(state) {
-                    Player.STATE_BUFFERING -> {
-                        _isBuffering.value = true
-                    }
+                    Player.STATE_BUFFERING -> _isBuffering.value = true
 
                     Player.STATE_READY -> {
                         _isBuffering.value = false
@@ -242,7 +338,7 @@ class  MusicPlayerService : LifecycleService() {
                             val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
                             updateMetadata(song, bitmap)
 
-                            CoroutineScope(Dispatchers.Main).launch {
+                            serviceScope.launch {
                                 updateNotification()
                             }
                         }
@@ -274,19 +370,25 @@ class  MusicPlayerService : LifecycleService() {
                 _isPlaying.value = isPlaying
                 if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable)
                 updatePlaybackState()
-                CoroutineScope(Dispatchers.Main).launch {
+                serviceScope.launch {
                     updateNotification()
                 }
             }
 
-            override fun onIsLoadingChanged(isLoading: Boolean) {
-                super.onIsLoadingChanged(isLoading)
-                _isBuffering.value = isLoading
-                _buffer.value = player.bufferedPosition.toInt()
-            }
-
             override fun onPlayerError(error: PlaybackException) {
-                Log.e("MusicPlayerService", "Player error: ${error.message}")
+                val song = _currentSong.value
+                val localFile = song?.localPath?.let { File(it) }
+
+                if (localFile != null && localFile.exists()) {
+                    val position = player.currentPosition
+
+                    player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                    player.prepare()
+                    player.seekTo(position)
+                    player.playWhenReady = true
+                } else {
+                    shouldRetry = true
+                }
             }
         })
     }
@@ -409,14 +511,19 @@ class  MusicPlayerService : LifecycleService() {
         return START_STICKY
     }
 
+    fun SongItem.getBestUri(isOnline: Boolean): Uri {
+        val localFile = localPath?.let { File(it) }
+        return when {
+            localFile != null && localFile.exists() -> localFile.toUri()
+            isOnline ->  downloadUrl[qualityIndex].url.toUri()
+            else -> Uri.EMPTY
+        }
+    }
+
     fun setPlaylist(songs: List<SongItem>?, startAtIndex: Int = 0) {
         _isShuffle.value = false
         _repeatMode.value = Player.REPEAT_MODE_OFF
 
-        shuffleOrder.clear()
-        queueShuffleOrder.clear()
-        shufflePointer = 0
-        queueShufflePointer = 0
         playlist.clear()
         history.clear()
         clearQueue()
@@ -466,11 +573,6 @@ class  MusicPlayerService : LifecycleService() {
         currentIndex = index
         _currentIndexFlow.value = index
 
-        if (isShuffle.value) {
-            val pointer = shuffleOrder.indexOf(index)
-            if (pointer != -1) shufflePointer = pointer
-        }
-
         val song = playlist[index]
         _currentSong.value = song
 
@@ -482,21 +584,17 @@ class  MusicPlayerService : LifecycleService() {
         currentAlbumArt = null
         currentArtSongId = null
 
-        player.stop()
-        player.clearMediaItems()
+        val uri = song.getBestUri(_isOnline.value)
 
-        val localFile = song.localPath?.let { File(it) }
-
-        val uri = if (localFile != null && localFile.exists()) {
-            localFile.toUri()
-        } else {
-            song.downloadUrl[qualityIndex].url.toUri()
+        if (uri == Uri.EMPTY) {
+            _isBuffering.value = false
+            return
         }
 
         val mediaItem = MediaItem.fromUri(uri)
         player.setMediaItem(mediaItem)
         player.prepare()
-        player.play()
+        player.playWhenReady = true
 
         startForegroundWithNotification(song)
         updatePlaybackState()
@@ -551,27 +649,18 @@ class  MusicPlayerService : LifecycleService() {
         if (queue.isNotEmpty()) {
             if (isQueueOnlyMode) {
                 val nextSong = if (isShuffle.value) {
-                    if (queueShuffleOrder.isEmpty()) {
-                        regenerateQueueShuffle()
-                    }
-
-                    if (_currentSong.value != null) {
-                        queueShufflePointer++
-                    }
-
-                    if (queueShufflePointer >= queueShuffleOrder.size) {
-                        if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                            regenerateQueueShuffle()
+                    if (queue.size == 1) {
+                        queue[0]
+                    } else {
+                        val available = queue.filter { it.id != _currentSong.value?.id }
+                        if (available.isNotEmpty()) {
+                            available.random()
                         } else {
-                            return
+                            queue.random()
                         }
                     }
-
-                    queue[queueShuffleOrder[queueShufflePointer]]
                 } else {
-                    if (_currentSong.value != null) {
-                        queuePointer++
-                    }
+                    queuePointer++
 
                     if (queuePointer >= queue.size) {
                         if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
@@ -584,8 +673,15 @@ class  MusicPlayerService : LifecycleService() {
                     queue[queuePointer]
                 }
 
+                val idx = playlist.indexOfFirst { it.id == nextSong.id }
+                if (idx >= 0) {
+                    currentIndex = idx
+                    _currentIndexFlow.value = idx
+                }
+
                 _currentSong.value = nextSong
                 prepareAndPlay(nextSong)
+                updateUpNext()
 
                 return
             } else {
@@ -600,6 +696,7 @@ class  MusicPlayerService : LifecycleService() {
 
                 _currentSong.value = nextSong
                 prepareAndPlay(nextSong)
+                updateUpNext()
             }
 
             return
@@ -608,22 +705,11 @@ class  MusicPlayerService : LifecycleService() {
         if (playlist.isEmpty()) return
 
         if (isShuffle.value) {
-            if (shuffleOrder.isEmpty()) {
-                regenerateShuffleKeepingCurrent()
+            val randomIndex = getRandomIndex()
+            if (randomIndex != -1) {
+                playIndex(randomIndex)
             }
-
-            shufflePointer++
-
-            if (shufflePointer >= shuffleOrder.size) {
-                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                    shufflePointer = 0
-                } else {
-                    updateUpNext()
-                    return
-                }
-            }
-
-            playIndex(shuffleOrder[shufflePointer])
+            return
         } else {
             val nextIndex = currentIndex + 1
 
@@ -654,55 +740,47 @@ class  MusicPlayerService : LifecycleService() {
 
         if (isQueueOnlyMode && queue.isNotEmpty()) {
             if (isShuffle.value) {
-                if (queueShuffleOrder.isEmpty()) {
-                    regenerateQueueShuffle()
+                val available = queue.filter { it.id != _currentSong.value?.id }
+                val prevSong = if (available.isNotEmpty()) {
+                    available.random()
+                } else {
+                    queue.random()
                 }
 
-                queueShufflePointer--
-
-                if (queueShufflePointer < 0) {
-                    if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                        queueShufflePointer = queueShuffleOrder.lastIndex
-                    } else {
-                        player.seekTo(0)
-                        return
-                    }
+                val idx = playlist.indexOfFirst { it.id == prevSong.id }
+                if (idx >= 0) {
+                    currentIndex = idx
+                    _currentIndexFlow.value = idx
                 }
-
-                if (queueShufflePointer !in queueShuffleOrder.indices) {
-                    queueShufflePointer = queueShuffleOrder.lastIndex
-                }
-
-                val prevIndex = queueShuffleOrder.getOrNull(queueShufflePointer) ?: return
-
-                if (prevIndex !in queue.indices) return
-
-                val prevSong = queue[prevIndex]
 
                 _currentSong.value = prevSong
                 prepareAndPlay(prevSong)
-            } else {
-                queuePointer--
-
-                if (queuePointer < 0) {
-                    if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                        queuePointer = queue.lastIndex
-                    } else {
-                        player.seekTo(0)
-                        return
-                    }
-                }
-
-                if (queuePointer !in queue.indices) {
-                    queuePointer = queue.lastIndex
-                }
-
-                val prevSong = queue.getOrNull(queuePointer) ?: return
-
-                _currentSong.value = prevSong
-                prepareAndPlay(prevSong)
+                updateUpNext()
+                return
             }
 
+            queuePointer--
+
+            if (queuePointer < 0) {
+                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
+                    queuePointer = queue.lastIndex
+                } else {
+                    player.seekTo(0)
+                    return
+                }
+            }
+
+            val prevSong = queue.getOrNull(queuePointer) ?: return
+
+            val idx = playlist.indexOfFirst { it.id == prevSong.id }
+            if (idx >= 0) {
+                currentIndex = idx
+                _currentIndexFlow.value = idx
+            }
+
+            _currentSong.value = prevSong
+            prepareAndPlay(prevSong)
+            updateUpNext()
             return
         }
 
@@ -721,124 +799,47 @@ class  MusicPlayerService : LifecycleService() {
         }
 
         if (isShuffle.value) {
-            if (shuffleOrder.isEmpty()) {
-                regenerateShuffleKeepingCurrent()
+            val randomIndex = getRandomIndex()
+            if (randomIndex != -1) {
+                playIndex(randomIndex)
             }
+            return
+        }
 
-            shufflePointer--
+        val prevIndex = currentIndex - 1
 
-            if (shufflePointer < 0) {
-                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                    shufflePointer = shuffleOrder.lastIndex
-                } else {
-                    player.seekTo(0)
-                    return
-                }
-            }
-
-            if (shufflePointer !in shuffleOrder.indices) {
-                shufflePointer = shuffleOrder.lastIndex
-            }
-
-            val index = shuffleOrder.getOrNull(shufflePointer) ?: return
-
-            if (index in playlist.indices) {
-                playIndex(index)
-            }
+        if (prevIndex >= 0) {
+            playIndex(prevIndex)
         } else {
-            val prevIndex = currentIndex - 1
-
-            if (prevIndex >= 0) {
-                playIndex(prevIndex)
+            if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
+                playIndex(playlist.lastIndex)
             } else {
-                if (_repeatMode.value == Player.REPEAT_MODE_ALL) {
-                    playIndex(playlist.lastIndex)
-                } else {
-                    player.seekTo(0)
-                }
+                player.seekTo(0)
             }
         }
     }
 
     fun shuffleToggle() {
-        val newState = !_isShuffle.value
-        _isShuffle.value = newState
+        _isShuffle.value = !_isShuffle.value
 
-        if (newState) {
-            if (isQueueOnlyMode) {
-                regenerateQueueShuffle()
+        if (!_isShuffle.value) {
+            val current = _currentSong.value
 
-                val current = _currentSong.value
-                val index = queue.indexOfFirst { it.id == current?.id }
-                if (index != -1) {
-                    queueShufflePointer = queueShuffleOrder.indexOf(index)
-                }
-            } else {
-                regenerateShuffleKeepingCurrent()
-            }
-        } else {
             if (isQueueOnlyMode) {
-                val current = _currentSong.value
                 val index = queue.indexOfFirst { it.id == current?.id }
                 if (index != -1) {
                     queuePointer = index
                 }
-
-                queueShuffleOrder.clear()
             } else {
-                val current = _currentSong.value
                 val index = playlist.indexOfFirst { it.id == current?.id }
                 if (index != -1) {
                     currentIndex = index
                 }
-
-                shuffleOrder.clear()
             }
         }
 
         updateUpNext()
         updateNotification()
-    }
-
-    private fun regenerateShuffleKeepingCurrent() {
-        if (playlist.isEmpty() || currentIndex !in playlist.indices) return
-
-        shuffleOrder.clear()
-
-        val current = currentIndex
-
-        val shuffled = playlist.indices
-            .filter { it != current }
-            .shuffled()
-
-        shuffleOrder.add(current)
-        shuffleOrder.addAll(shuffled)
-
-        shufflePointer = 0
-    }
-
-    private fun regenerateQueueShuffle() {
-        if (queue.isEmpty()) return
-
-        val current = _currentSong.value
-        val currentIndexInQueue = queue.indexOfFirst { it.id == current?.id }
-
-        queueShuffleOrder.clear()
-
-        if (currentIndexInQueue == -1) {
-            queueShuffleOrder.addAll(queue.indices.shuffled())
-            queueShufflePointer = 0
-            return
-        }
-
-        val shuffled = queue.indices
-            .filter { it != currentIndexInQueue }
-            .shuffled()
-
-        queueShuffleOrder.add(currentIndexInQueue)
-        queueShuffleOrder.addAll(shuffled)
-
-        queueShufflePointer = 0
     }
 
     fun repeatToggle() {
@@ -939,90 +940,24 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun addToHistory(song: SongItem?) {
-        song?.let { song ->
+        song?.let {
             history.removeAll { it.id == song.id }
-            history.add(song)
+            history.add(it)
+
+            if (history.size > 10) {
+                history.removeAt(0)
+            }
         }
     }
 
-//    fun insertNext(song: SongItem) {
-//        if (currentIndex !in playlist.indices) return
-//
-//        val oldIndex = playlist.indexOfFirst { it.id == song.id }
-//
-//        if (oldIndex != -1 && oldIndex < currentIndex) {
-//            currentIndex--
-//        }
-//
-//        playlist.removeAll { it.id == song.id }
-//
-//        val insertIndex = (currentIndex + 1).coerceAtMost(playlist.size)
-//
-//        playlist.add(insertIndex, song)
-//
-//        _playlistFlow.value = playlist.toList()
-//        _currentIndexFlow.value = currentIndex
-//
-//        updateUpNext()
-//
-//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
-//    }
-//
-//    fun moveSongToNext(song: SongItem) {
-//        val oldIndex = playlist.indexOfFirst { it.id == song.id }
-//
-//        if (oldIndex != -1 && oldIndex < currentIndex) {
-//            currentIndex--
-//        }
-//
-//        playlist.removeAll { it.id == song.id }
-//
-//        val insertIndex = (currentIndex + 1).coerceAtMost(playlist.size)
-//
-//        playlist.add(insertIndex, song)
-//
-//        _playlistFlow.value = playlist.toList()
-//        _currentIndexFlow.value = currentIndex
-//
-//        updateUpNext()
-//
-//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
-//    }
-//
-//    fun removeFromPlaylistAt(index: Int) {
-//        if (index !in playlist.indices) return
-//
-//        if (index < currentIndex) {
-//            currentIndex--
-//        }
-//
-//        if (index == currentIndex) {
-//            val hasNext = currentIndex < playlist.lastIndex
-//
-//            playlist.removeAt(index)
-//
-//            if (playlist.isEmpty()) {
-//                player.stop()
-//                currentIndex = -1
-//                _currentSong.value = null
-//            } else {
-//                currentIndex = if (hasNext) currentIndex else playlist.lastIndex
-//                playIndex(currentIndex)
-//            }
-//
-//            _playlistFlow.value = playlist.toList()
-//            return
-//        }
-//
-//        playlist.removeAt(index)
-//
-//        _playlistFlow.value = playlist.toList()
-//        _currentIndexFlow.value = currentIndex
-//
-//        updateUpNext()
-//
-//        if (isShuffle.value) regenerateShuffleKeepingCurrent()
-//    }
+    private fun getRandomIndex(excludeCurrent: Boolean = true): Int {
+        val size = playlist.size
+        if (size == 0) return -1
+        if (!excludeCurrent || size == 1) return (0 until size).random()
+
+        val rand = (0 until size - 1).random()
+        return if (rand >= currentIndex) rand + 1 else rand
+    }
 
     private fun stopServiceAndNotification() {
         try {
@@ -1277,7 +1212,6 @@ class  MusicPlayerService : LifecycleService() {
 
         return notifBuilder.build()
     }
-
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -854,12 +853,9 @@ private fun SearchSongs(
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
                                     scope.launch {
-                                        val suggestions = viewModel.fetchSuggestionSongs(song.id)
+                                        val searchSong = song.copy(source = "search")
 
-                                        val playlist = (listOf(song) + suggestions)
-                                            .distinctBy { it.id }
-
-                                        PlayerManager.currentPlaylist = playlist
+                                        PlayerManager.currentPlaylist = listOf(searchSong)
                                         PlayerManager.currentIndex = 0
 
                                         val intent = Intent(context, MusicPlayerService::class.java).apply {

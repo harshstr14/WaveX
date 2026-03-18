@@ -42,6 +42,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -98,8 +101,6 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.downloadSong.data.DatabaseProvider
-import com.example.wavex.downloadSong.downloadedSongScreen.DownloadedSongActivity
-import com.example.wavex.downloadSong.downloadedSongScreen.rememberNetworkState
 import com.example.wavex.downloadSong.repository.DownloadRepository
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
@@ -306,9 +307,11 @@ fun HomeScreen (showSheet: Boolean) {
     val userID = auth?.currentUser?.uid
 
     val scrollState = rememberScrollState()
+    var isRefreshing by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    val isOnline = rememberNetworkState()
+    val pullRefreshState = rememberPullToRefreshState()
 
     val viewModel: ProfileViewModel = viewModel()
 
@@ -391,258 +394,261 @@ fun HomeScreen (showSheet: Boolean) {
         label = "ShadowScale"
     )
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()
-        .graphicsLayer {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
-                renderEffect = RenderEffect
-                    .createBlurEffect(
-                        animatedBlur,
-                        animatedBlur,
-                        Shader.TileMode.CLAMP
-                    )
-                    .asComposeRenderEffect()
-            }
+    fun refreshAll() {
+        scope.launch {
+            isRefreshing = true
+
+            playlistsVM.fetchPlayListByQuery("Top","results")
+            newReleasesVM.fetchPlaylistsByID("6689255","songs")
+            trendingVM.fetchPlaylistsByID("946682072","songs")
+            albumsVM.fetchAlbumByQuery("latest","results")
+            artistsVM.fetchArtistsByQuery("top artists","results")
+
+            userID?.let { viewModel.silentRefresh(it) }
+
+            delay(1000)
+
+            isRefreshing = false
+        }
+    }
+
+    PullToRefreshBox(
+        state = pullRefreshState,
+        isRefreshing = isRefreshing,
+        onRefresh = { refreshAll() },
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullRefreshState,
+                isRefreshing = isLoading,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 10.dp),
+                color = colorResource(R.color.theme_color),
+                containerColor = colorResource(R.color.primary_text_color)
+            )
         }
     ) {
-        val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
-
-        Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
-            tint = Color.Unspecified,
-            modifier = Modifier.constrainAs(logoIcon) {
-                top.linkTo(parent.top, margin = (-40).dp)
-                start.linkTo(parent.start)
-            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(158.dp)
-                .graphicsLayer {
-                    alpha = logoAlpha
-                }
-                .zIndex(20f)
-        )
-
-        var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
-
-        Box(
-            modifier = Modifier
-                .constrainAs(profileAvatar) {
-                    top.linkTo(parent.top, margin = 10.dp)
-                    end.linkTo(parent.end, margin = 22.dp)
-                }
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .size(68.dp)
-                .drawBehind {
-                    val glowRadius = (size.minDimension / 3) * shadowScale
-                    val safeBlur = shadowBlur.coerceAtLeast(0.1f)
-
-                    drawIntoCanvas { canvas ->
-                        val paint = Paint().apply {
-                            color = shadowColor.copy(alpha = shadowAlpha)
-                            asFrameworkPaint().apply {
-                                isAntiAlias = true
-
-                                maskFilter = if (shadowBlur > 0f) {
-                                    android.graphics.BlurMaskFilter(
-                                        safeBlur,
-                                        android.graphics.BlurMaskFilter.Blur.NORMAL
-                                    )
-                                } else {
-                                    null
-                                }
-                            }
-                        }
-
-                        canvas.drawCircle(
-                            center,
-                            glowRadius,
-                            paint
+        ConstraintLayout(modifier = Modifier.fillMaxSize()
+            .graphicsLayer {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                    renderEffect = RenderEffect
+                        .createBlurEffect(
+                            animatedBlur,
+                            animatedBlur,
+                            Shader.TileMode.CLAMP
                         )
-                    }
-                }.zIndex(20f)
-            , contentAlignment = Alignment.Center
+                        .asComposeRenderEffect()
+                }
+            }
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .allowHardware(false)
-                    .build(),
-                contentDescription = "Profile Image",
-                contentScale = ContentScale.Crop,
-                onSuccess = { result ->
-                    val drawable = result.result.drawable
-                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+            val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
-                    Palette.from(bitmap).generate { palette ->
-                        palette?.dominantSwatch?.rgb?.let { colorInt ->
-                            shadowColor = Color(colorInt)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        val intent = Intent(context, ProfileActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        context.startActivity(intent)
-                    }
+            Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
+                tint = Color.Unspecified,
+                modifier = Modifier.constrainAs(logoIcon) {
+                    top.linkTo(parent.top, margin = (-40).dp)
+                    start.linkTo(parent.start)
+                }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .size(158.dp)
                     .graphicsLayer {
                         alpha = logoAlpha
                     }
+                    .zIndex(20f)
             )
-        }
 
-        Column(modifier = Modifier.constrainAs(mainContent) {
-            top.linkTo(parent.top, margin = 5.dp)
-            start.linkTo(parent.start)
-            end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom)
-            height = Dimension.fillToConstraints
-        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .verticalScroll(scrollState).zIndex(0f)
-        ) {
-            ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
-                val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
-                    popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
+            var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
-                Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
-                    top.linkTo(parent.top, margin = 80.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }, playlistsVM)
-
-                if (recentSongs.isNotEmpty() && playlists.isNotEmpty()) {
-                    Text("Recently Played", modifier = Modifier.constrainAs(recentlyPlayedTitle) {
-                        top.linkTo(topPlaylistsSection.bottom, margin = 25.dp)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                    )
-
-                    RecentlyPlayedSongs(recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
-                        top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                    })
-                }
-
-                if (newReleases.isNotEmpty()) {
-                    Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
-                        top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                    )
-                }
-
-                NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesSection) {
-                    top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }, newReleasesVM)
-
-                if (artists.isNotEmpty()) {
-                    Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
-                        top.linkTo(newReleasesSection.bottom, margin = 20.dp)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                    )
-                }
-
-                Artists("top artists","results", modifier = Modifier.constrainAs(popularArtistsSection){
-                    top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }, artistsVM)
-
-                if (trending.isNotEmpty()) {
-                    Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
-                        top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                    )
-                }
-
-                TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingSongsSection) {
-                    top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }, trendingVM)
-
-                if (albums.isNotEmpty()) {
-                    Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
-                        top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
-                        start.linkTo(parent.start, margin = 25.dp)
-                    }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                    )
-                }
-
-                TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsSection) {
-                    top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }, albumsVM)
-            }
-        }
-
-        if (isLoading) {
             Box(
                 modifier = Modifier
-                    .constrainAs(loader) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
+                    .constrainAs(profileAvatar) {
+                        top.linkTo(parent.top, margin = 10.dp)
+                        end.linkTo(parent.end, margin = 22.dp)
                     }
-                    .fillMaxSize()
-                    .background(colorResource(R.color.background_color))
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent()
-                            }
-                        }
-                    }
-                    .zIndex(10f),
-                contentAlignment = Alignment.Center
-            ) {
-                LoadingEffect()
-            }
-        }
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .size(68.dp)
+                    .drawBehind {
+                        val glowRadius = (size.minDimension / 3) * shadowScale
+                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
-        if (!isOnline) {
-            Box(
-                modifier = Modifier
-                    .constrainAs(loader) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
-                    .fillMaxSize()
-                    .background(colorResource(R.color.background_color))
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent()
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = shadowColor.copy(alpha = shadowAlpha)
+                                asFrameworkPaint().apply {
+                                    isAntiAlias = true
+
+                                    maskFilter = if (shadowBlur > 0f) {
+                                        android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+
+                            canvas.drawCircle(
+                                center,
+                                glowRadius,
+                                paint
+                            )
+                        }
+                    }.zIndex(20f)
+                , contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .allowHardware(false)
+                        .build(),
+                    contentDescription = "Profile Image",
+                    contentScale = ContentScale.Crop,
+                    onSuccess = { result ->
+                        val drawable = result.result.drawable
+                        val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                        Palette.from(bitmap).generate { palette ->
+                            palette?.dominantSwatch?.rgb?.let { colorInt ->
+                                shadowColor = Color(colorInt)
                             }
                         }
-                    }
-                    .zIndex(10f),
-                contentAlignment = Alignment.Center
-            ) {
-                ErrorState(
-                    onClick = {
-                        val intent = Intent(context, DownloadedSongActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    },
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            val intent = Intent(context, ProfileActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
-                    }
+                        .graphicsLayer {
+                            alpha = logoAlpha
+                        }
                 )
+            }
+
+            Column(modifier = Modifier.constrainAs(mainContent) {
+                top.linkTo(parent.top, margin = 5.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                bottom.linkTo(parent.bottom)
+                height = Dimension.fillToConstraints
+            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .verticalScroll(scrollState).zIndex(0f)
+            ) {
+                ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
+                    val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
+                        popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
+
+                    Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
+                        top.linkTo(parent.top, margin = 80.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }, playlistsVM)
+
+                    if (recentSongs.isNotEmpty() && playlists.isNotEmpty()) {
+                        Text("Recently Played", modifier = Modifier.constrainAs(recentlyPlayedTitle) {
+                            top.linkTo(topPlaylistsSection.bottom, margin = if (playlists.isNotEmpty()) 25.dp else 80.dp)
+                            start.linkTo(parent.start, margin = 25.dp)
+                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        )
+
+                        RecentlyPlayedSongs(recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
+                            top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
+                            start.linkTo(parent.start)
+                        })
+                    }
+
+                    if (newReleases.isNotEmpty()) {
+                        Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
+                            top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 25.dp)
+                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        )
+                    }
+
+                    NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesSection) {
+                        top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }, newReleasesVM)
+
+                    if (artists.isNotEmpty()) {
+                        Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
+                            top.linkTo(newReleasesSection.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 25.dp)
+                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        )
+                    }
+
+                    Artists("top artists","results", modifier = Modifier.constrainAs(popularArtistsSection){
+                        top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }, artistsVM)
+
+                    if (trending.isNotEmpty()) {
+                        Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
+                            top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 25.dp)
+                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        )
+                    }
+
+                    TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingSongsSection) {
+                        top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }, trendingVM)
+
+                    if (albums.isNotEmpty()) {
+                        Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
+                            top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 25.dp)
+                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        )
+                    }
+
+                    TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsSection) {
+                        top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }, albumsVM)
+                }
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .constrainAs(loader) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }
+                        .fillMaxSize()
+                        .background(colorResource(R.color.background_color))
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent()
+                                }
+                            }
+                        }
+                        .zIndex(10f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingEffect()
+                }
             }
         }
     }
@@ -1264,62 +1270,6 @@ private fun LoadingEffect() {
                     scaleY = 1.2f
                 }
         )
-    }
-}
-
-@Composable
-private fun ErrorState(onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = 45.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val composition by rememberLottieComposition(
-            LottieCompositionSpec.RawRes (R.raw.spaceman)
-        )
-
-        Box(
-            modifier = Modifier
-                .size(110.dp)
-                .clip(RectangleShape)
-        ) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier
-                    .size(110.dp)
-                    .graphicsLayer {
-                        scaleX = 1.2f
-                        scaleY = 1.2f
-                    }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(0.dp))
-
-        Text(
-            text = "No Internet Connection",
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-            color = colorResource(R.color.secondary_text_color), maxLines = 2
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(colorResource(R.color.theme_color))
-                .clickable { onClick() }
-                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Go to Downloads",
-                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = colorResource(R.color.background_color)
-            )
-        }
     }
 }
 

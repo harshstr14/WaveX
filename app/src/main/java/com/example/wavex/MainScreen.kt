@@ -798,14 +798,14 @@ fun MiniPlayer(
                     if (isBuffering) {
                         Box(
                             modifier = Modifier
-                                .size(23.dp)
+                                .size(32.dp)
                                 .clip(RectangleShape)
                         ) {
                             LottieAnimation(
                                 composition = composition,
                                 iterations = LottieConstants.IterateForever,
                                 modifier = Modifier
-                                    .size(23.dp)
+                                    .size(32.dp)
                                     .graphicsLayer {
                                         scaleX = 2f
                                         scaleY = 2f
