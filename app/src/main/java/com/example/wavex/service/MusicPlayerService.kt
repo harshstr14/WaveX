@@ -171,6 +171,7 @@ class  MusicPlayerService : LifecycleService() {
 
     private var shouldRetry = false
     private var isRetrying = false
+    private var shouldFetchSuggestions = false
 
     @kotlin.OptIn(FlowPreview::class)
     val playerUiState = combine(
@@ -274,7 +275,9 @@ class  MusicPlayerService : LifecycleService() {
 
                     RecentlyPlayedManager.add(this@MusicPlayerService, song)
 
-                    if (song.source != "search") return@collect
+                    if (!shouldFetchSuggestions) return@collect
+
+                    shouldFetchSuggestions = false
 
                     launch(Dispatchers.IO) {
                         try {
@@ -468,10 +471,12 @@ class  MusicPlayerService : LifecycleService() {
             when (action) {
                 ACTION_PLAY_NEW -> {
                     val index = intent.getIntExtra("index", 0)
+                    val fromSearch = intent.getBooleanExtra("from_search", false)
                     val playlist = PlayerManager.currentPlaylist
 
                     if (playlist.isNotEmpty() && index in playlist.indices) {
                         setPlaylist(playlist, index)
+                        shouldFetchSuggestions = fromSearch
                         // Only start foreground if a song is available
                         _currentSong.value?.let { song ->
                             startForegroundWithNotification(song)

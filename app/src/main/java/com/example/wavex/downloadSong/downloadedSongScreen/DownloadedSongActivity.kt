@@ -1163,10 +1163,10 @@ private fun BottomSheetContent(
                         painter = painterResource(R.drawable.headset_icon),
                         contentDescription = "Headset Icon",
                         tint = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
                         text = "PlayCount • ${formatCount(song.playCount.toLong())}", overflow = TextOverflow.Ellipsis,

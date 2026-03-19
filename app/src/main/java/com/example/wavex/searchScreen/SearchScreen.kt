@@ -853,14 +853,13 @@ private fun SearchSongs(
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
                                     scope.launch {
-                                        val searchSong = song.copy(source = "search")
-
-                                        PlayerManager.currentPlaylist = listOf(searchSong)
+                                        PlayerManager.currentPlaylist = listOf(song)
                                         PlayerManager.currentIndex = 0
 
                                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                                             action = MusicPlayerService.ACTION_PLAY_NEW
                                             putExtra("index", 0)
+                                            putExtra("from_search", true)
                                         }
 
                                         ContextCompat.startForegroundService(context, intent)
