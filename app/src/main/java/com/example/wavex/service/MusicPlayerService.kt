@@ -40,9 +40,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import coil.ImageLoader
 import coil.request.ImageRequest
 import com.example.wavex.R
+import com.example.wavex.downloadSong.data.DownloadedSong
+import com.example.wavex.homeScreen.AppContainer
+import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -83,6 +87,10 @@ class  MusicPlayerService : LifecycleService() {
         const val ACTION_REPEAT = "com.example.app.ACTION_REPEAT"
         const val ACTION_SHUFFLE = "com.example.app.ACTION_SHUFFLE"
         const val ACTION_STOP = "com.example.app.ACTION_STOP"
+
+        const val ACTION_DOWNLOAD_START = "ACTION_DOWNLOAD_START"
+        const val ACTION_DOWNLOAD_RESUME = "ACTION_DOWNLOAD_RESUME"
+        const val ACTION_DOWNLOAD_PAUSE = "ACTION_DOWNLOAD_PAUSE"
     }
 
     inner class LocalBinder : Binder() {
@@ -163,6 +171,9 @@ class  MusicPlayerService : LifecycleService() {
     private var isQueueOnlyMode = false
     private var queuePointer = 0
     private val repository = SearchSongsRepository()
+    private val downloadRepository by lazy {
+        AppContainer.downloadRepository
+    }
     val isOnlineFlow by lazy {
         NetworkMonitor(applicationContext).isOnline
     }
@@ -203,11 +214,11 @@ class  MusicPlayerService : LifecycleService() {
 
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         qualityRef = FirebaseDatabase.getInstance()
             .getReference("Users")
-            .child(userId.toString())
+            .child(userId)
             .child("streamingQuality")
 
         listenForQualityChanges()
@@ -223,45 +234,43 @@ class  MusicPlayerService : LifecycleService() {
         initMediaSession()
 
         serviceScope.launch {
-            serviceScope.launch {
-                isOnlineFlow.collect { isOnline ->
-                    val currentSong = _currentSong.value ?: return@collect
-                    val localFile = currentSong.localPath?.let { File(it) }
+            isOnlineFlow.collect { isOnline ->
+                val currentSong = _currentSong.value ?: return@collect
+                val localFile = currentSong.localPath?.let { File(it) }
 
-                    val isLocalPlaying = player.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
+                val isLocalPlaying = player.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
 
-                    if (!isOnline) {
-                        if (localFile != null && localFile.exists() && !isLocalPlaying) {
-                            val position = player.currentPosition
+                if (!isOnline) {
+                    if (localFile != null && localFile.exists() && !isLocalPlaying) {
+                        val position = player.currentPosition
 
-                            player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                        player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                        player.prepare()
+                        player.seekTo(position)
+                        player.playWhenReady = true
+                    } else {
+                        player.pause()
+                    }
+                }
+
+                if (isOnline) {
+                    if (shouldRetry && !isRetrying) {
+                        isRetrying = true
+                        shouldRetry = false
+
+                        val song = _currentSong.value ?: return@collect
+                        val position = player.currentPosition
+
+                        val uri = song.getBestUri(true)
+
+                        if (uri != Uri.EMPTY) {
+                            player.setMediaItem(MediaItem.fromUri(uri))
                             player.prepare()
                             player.seekTo(position)
                             player.playWhenReady = true
-                        } else {
-                            player.pause()
                         }
-                    }
 
-                    if (isOnline) {
-                        if (shouldRetry && !isRetrying) {
-                            isRetrying = true
-                            shouldRetry = false
-
-                            val song = _currentSong.value ?: return@collect
-                            val position = player.currentPosition
-
-                            val uri = song.getBestUri(true)
-
-                            if (uri != Uri.EMPTY) {
-                                player.setMediaItem(MediaItem.fromUri(uri))
-                                player.prepare()
-                                player.seekTo(position)
-                                player.playWhenReady = true
-                            }
-
-                            isRetrying = false
-                        }
+                        isRetrying = false
                     }
                 }
             }
@@ -501,6 +510,113 @@ class  MusicPlayerService : LifecycleService() {
                 ACTION_SHUFFLE -> shuffleToggle()
                 ACTION_REPEAT -> repeatToggle()
                 ACTION_STOP -> stopServiceAndNotification()
+
+                ACTION_DOWNLOAD_START -> {
+                    val url = intent.getStringExtra("url") ?: return START_NOT_STICKY
+                    val fileName = intent.getStringExtra("fileName") ?: return START_NOT_STICKY
+                    val songId = intent.getStringExtra("songId") ?: return START_NOT_STICKY
+
+                    serviceScope.launch {
+                        Log.d("DOWNLOAD_DEBUG", "Service download start: $songId")
+
+                        ParallelDownloader.start(
+                            scope = serviceScope,
+                            songId = songId,
+                            url = url,
+                            fileName = fileName,
+                            context = this@MusicPlayerService
+                        ) { path ->
+                            if (path != null) {
+                                val song = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    intent.getParcelableExtra("song", SongItem::class.java)
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    intent.getParcelableExtra("song")
+                                }
+
+                                song?.let {
+                                    serviceScope.launch {
+                                        downloadRepository.insert(
+                                            DownloadedSong(
+                                                id = it.id,
+                                                name = it.name,
+                                                artist = it.artist,
+                                                album = it.album,
+                                                image = it.image,
+                                                duration = it.duration,
+                                                playCount = it.playCount,
+                                                downloadUrl = it.downloadUrl,
+                                                localPath = path
+                                            )
+                                        )
+                                    }
+                                }
+
+                                ParallelDownloader.downloadStates[songId] =
+                                    ParallelDownloader.DownloadState.COMPLETED
+                            } else {
+                                ParallelDownloader.downloadStates[songId] =
+                                    ParallelDownloader.DownloadState.FAILED
+                            }
+                        }
+                    }
+                }
+
+                ACTION_DOWNLOAD_RESUME -> {
+                    val url = intent.getStringExtra("url") ?: return START_NOT_STICKY
+                    val fileName = intent.getStringExtra("fileName") ?: return START_NOT_STICKY
+                    val songId = intent.getStringExtra("songId") ?: return START_NOT_STICKY
+
+                    serviceScope.launch {
+                        Log.d("DOWNLOAD_DEBUG", "Service download start: $songId")
+
+                        ParallelDownloader.resume(
+                            scope = serviceScope,
+                            songId = songId,
+                            url = url,
+                            fileName = fileName,
+                            context = this@MusicPlayerService
+                        ) { path ->
+                            if (path != null) {
+                                val song = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    intent.getParcelableExtra("song", SongItem::class.java)
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    intent.getParcelableExtra("song")
+                                }
+
+                                song?.let {
+                                    serviceScope.launch {
+                                        downloadRepository.insert(
+                                            DownloadedSong(
+                                                id = it.id,
+                                                name = it.name,
+                                                artist = it.artist,
+                                                album = it.album,
+                                                image = it.image,
+                                                duration = it.duration,
+                                                playCount = it.playCount,
+                                                downloadUrl = it.downloadUrl,
+                                                localPath = path
+                                            )
+                                        )
+                                    }
+                                }
+
+                                ParallelDownloader.downloadStates[songId] =
+                                    ParallelDownloader.DownloadState.COMPLETED
+                            } else {
+                                ParallelDownloader.downloadStates[songId] =
+                                    ParallelDownloader.DownloadState.FAILED
+                            }
+                        }
+                    }
+                }
+
+                ACTION_DOWNLOAD_PAUSE -> {
+                    val songId = intent.getStringExtra("songId") ?: return START_NOT_STICKY
+                    ParallelDownloader.pause(songId)
+                }
             }
         }
 
@@ -884,9 +1000,6 @@ class  MusicPlayerService : LifecycleService() {
 
         qualityIndex = index
 
-        player.stop()
-        player.clearMediaItems()
-
         val uri = if (!currentSong.localPath.isNullOrEmpty()) {
             currentSong.localPath!!.toUri()
         } else {
@@ -895,7 +1008,7 @@ class  MusicPlayerService : LifecycleService() {
 
         val mediaItem = MediaItem.fromUri(uri)
 
-        player.setMediaItem(mediaItem)
+        player.setMediaItem(mediaItem, currentPosition)
         player.prepare()
         player.seekTo(currentPosition)
 
@@ -1012,7 +1125,6 @@ class  MusicPlayerService : LifecycleService() {
             return
         }
 
-        // 2️⃣ Load real album art in background
         serviceScope.launch(Dispatchers.IO) {
             val bitmap = try {
                 if (song.image.size > 2 && song.image[2].url.isNotBlank()) {
@@ -1115,13 +1227,6 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun buildNotification(song: SongItem, bitmap: Bitmap): Notification {
-//        val playIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PLAY)
-//        val pauseIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PAUSE)
-//        val nextIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_NEXT)
-//        val prevIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PREV)
-//        val shuffleIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_SHUFFLE)
-//        val repeatIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_REPEAT)
-
         val playPending    = servicePendingIntent(ACTION_PLAY)
         val pausePending   = servicePendingIntent(ACTION_PAUSE)
         val nextPending    = servicePendingIntent(ACTION_NEXT)
@@ -1129,8 +1234,8 @@ class  MusicPlayerService : LifecycleService() {
         val shufflePending = servicePendingIntent(ACTION_SHUFFLE)
         val repeatPending  = servicePendingIntent(ACTION_REPEAT)
 
-        //val openIntent = Intent(this, PlaySong::class.java)
-        //val openPending = PendingIntent.getActivity(this, 200, openIntent, PendingIntent.FLAG_IMMUTABLE)
+        val openIntent = Intent(this, PlayerActivityScreen::class.java)
+        val openPending = PendingIntent.getActivity(this, 200, openIntent, PendingIntent.FLAG_IMMUTABLE)
 
         val isPlaying = _isPlaying.value
         val playPauseAction = if (isPlaying) {
@@ -1205,7 +1310,7 @@ class  MusicPlayerService : LifecycleService() {
             .setContentText(artistsNameList)
             .setSmallIcon(R.drawable.headset_icon)
             .setLargeIcon(bitmap)
-            //.setContentIntent(openPending)
+            .setContentIntent(openPending)
             .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(shuffleAction)
@@ -1217,6 +1322,7 @@ class  MusicPlayerService : LifecycleService() {
 
         return notifBuilder.build()
     }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

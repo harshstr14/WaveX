@@ -97,6 +97,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.HttpClientProvider
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
@@ -120,15 +121,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
 
 object PlayerManager {
     var currentPlaylist: List<SongItem> = emptyList()
@@ -147,22 +151,25 @@ object AppContainer {
 object ParallelDownloader {
     private val semaphore = kotlinx.coroutines.sync.Semaphore(5)
     private val jobs = mutableMapOf<String, Job>()
-    val downloadingSongs = mutableStateMapOf<String, Boolean>()
-    val pausedSongs = mutableStateMapOf<String, Boolean>()
 
-    fun isDownloading(songId: String): Boolean {
-        return downloadingSongs[songId] == true
+    enum class DownloadState {
+        DOWNLOADING,
+        PAUSED,
+        COMPLETED,
+        FAILED
     }
 
-    fun isPaused(songId: String): Boolean {
-        return pausedSongs[songId] == true
+    val downloadStates = mutableStateMapOf<String, DownloadState>()
+
+    fun getState(songId: String): DownloadState? {
+        return downloadStates[songId]
     }
 
     fun pause(songId: String) {
         jobs[songId]?.cancel()
+        jobs.remove(songId)
 
-        downloadingSongs[songId] = false
-        pausedSongs[songId] = true
+        downloadStates[songId] = DownloadState.PAUSED
     }
 
     fun resume(
@@ -173,21 +180,37 @@ object ParallelDownloader {
         context: Context,
         onFinished: suspend (String?) -> Unit
     ) {
-        if (isDownloading(songId)) return
+        if (downloadStates[songId] != DownloadState.PAUSED) return
 
-        pausedSongs.remove(songId)
-        downloadingSongs[songId] = true
+        if (jobs[songId]?.isActive == true) return
+
+        jobs[songId]?.cancel()
+        jobs.remove(songId)
+
+        downloadStates[songId] = DownloadState.DOWNLOADING
 
         val job = scope.launch {
-            val path = semaphore.withPermit {
-                downloadSong(url, fileName, context)
+            Log.d("DOWNLOAD_DEBUG", "Resume download for $songId")
+
+            try {
+                val path = semaphore.withPermit {
+                    downloadSong(url, fileName, context)
+                }
+
+                if (isActive) {
+                    downloadStates[songId] =
+                        if (path != null) DownloadState.COMPLETED else DownloadState.FAILED
+
+                    onFinished(path)
+                }
+
+            } catch (e: CancellationException) {
+                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
+                throw e
+
+            } finally {
+                jobs.remove(songId)
             }
-
-            onFinished(path)
-
-            jobs.remove(songId)
-            downloadingSongs.remove(songId)
-            pausedSongs.remove(songId)
         }
 
         jobs[songId] = job
@@ -201,20 +224,37 @@ object ParallelDownloader {
         context: Context,
         onFinished: suspend (String?) -> Unit
     ) {
-        if (isDownloading(songId)) return
+        val currentState = downloadStates[songId]
 
-        downloadingSongs[songId] = true
+        if (jobs[songId]?.isActive == true && currentState == DownloadState.DOWNLOADING) return
+
+        jobs[songId]?.cancel()
+        jobs.remove(songId)
+
+        downloadStates[songId] = DownloadState.DOWNLOADING
 
         val job = scope.launch {
-            val path = semaphore.withPermit {
-                downloadSong(url, fileName, context)
+            Log.d("DOWNLOAD_DEBUG", "Start download for $songId")
+
+            try {
+                val path = semaphore.withPermit {
+                    downloadSong(url, fileName, context)
+                }
+
+                if (isActive) {
+                    downloadStates[songId] =
+                        if (path != null) DownloadState.COMPLETED else DownloadState.FAILED
+
+                    onFinished(path)
+                }
+
+            } catch (e: CancellationException) {
+                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
+                throw e
+
+            } finally {
+                jobs.remove(songId)
             }
-
-            onFinished(path)
-
-            jobs.remove(songId)
-            downloadingSongs.remove(songId)
-            pausedSongs.remove(songId)
         }
 
         jobs[songId] = job
@@ -1203,46 +1243,107 @@ suspend fun downloadSong(
     fileName: String,
     context: Context
 ): String? = withContext(Dispatchers.IO) {
+
+    val client = HttpClientProvider.client
+    Log.d("DOWNLOAD_DEBUG", "Download started for $fileName")
+
     try {
-        val file = File(context.filesDir, "$fileName.mp3")
+        val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
 
-        val downloadedBytes = if (file.exists()) file.length() else 0
+        val initialRequest = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "Mozilla/5.0")
+            .addHeader("Accept", "*/*")
+            .addHeader("Referer", "https://www.jiosaavn.com/")
+            .build()
 
-        Log.d("DOWNLOAD_TEST", "Resume from byte: $downloadedBytes")
+        val initialResponse = client.newCall(initialRequest).execute()
 
-        val connection = URL(url).openConnection() as HttpURLConnection
-
-        if (downloadedBytes > 0) {
-            connection.setRequestProperty("Range", "bytes=$downloadedBytes-")
-        }
-
-        connection.connect()
-
-        if (connection.responseCode !in 200..299) {
+        if (!initialResponse.isSuccessful) {
+            Log.e("DOWNLOAD_DEBUG", "Initial request failed: ${initialResponse.code}")
             return@withContext null
         }
 
-        val inputStream = connection.inputStream.buffered()
+        val contentType = initialResponse.header("Content-Type") ?: ""
 
-        val outputStream = FileOutputStream(file, true).buffered()
-
-        val buffer = ByteArray(8192)
-        var bytesRead: Int
-
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-            outputStream.write(buffer, 0, bytesRead)
+        val extension = when {
+            contentType.contains("mp4") -> ".mp4"
+            contentType.contains("mpeg") -> ".mp3"
+            else -> ".mp3"
         }
 
-        outputStream.close()
-        inputStream.close()
+        val file = File(context.filesDir, "$safeFileName$extension")
 
-        Log.d("DOWNLOAD_TEST", "File saved at: ${file.absolutePath}")
+        val downloadedBytes = if (file.exists()) file.length() else 0
+        Log.d("DOWNLOAD_DEBUG", "Resuming from byte: $downloadedBytes")
 
+        initialResponse.close()
+
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "Mozilla/5.0")
+            .addHeader("Accept", "*/*")
+            .addHeader("Referer", "https://www.jiosaavn.com/")
+
+        if (downloadedBytes > 0) {
+            requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
+            Log.d("DOWNLOAD_DEBUG", "Range header: bytes=$downloadedBytes-")
+        }
+
+        val request = requestBuilder.build()
+        val call = client.newCall(request)
+
+        coroutineContext.job.invokeOnCompletion {
+            call.cancel()
+        }
+
+        val response = call.execute()
+
+        Log.d("DOWNLOAD_DEBUG", "Response code: ${response.code}")
+        Log.d("DOWNLOAD_DEBUG", "Accept-Ranges: ${response.header("Accept-Ranges")}")
+
+        if (!response.isSuccessful) return@withContext null
+
+        if (downloadedBytes > 0 && response.code != 206) {
+            Log.w("DOWNLOAD_DEBUG", "Server doesn't support resume. Restarting...")
+            file.delete()
+            return@withContext downloadSong(url, fileName, context)
+        }
+
+        val body = response.body ?: return@withContext null
+
+        body.byteStream().use { input ->
+            FileOutputStream(file, true).buffered().use { output ->
+
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                var totalBytes = downloadedBytes
+
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+
+                    output.write(buffer, 0, bytesRead)
+
+                    output.flush()
+
+                    ensureActive()
+
+                    totalBytes += bytesRead
+                    Log.d("DOWNLOAD_DEBUG", "Downloaded: $totalBytes bytes")
+                }
+            }
+        }
+
+        Log.d("DOWNLOAD_DEBUG", "Saved: ${file.absolutePath}")
         file.absolutePath
 
     } catch (e: Exception) {
 
-        Log.e("DOWNLOAD_TEST", "Download error", e)
+        if (e is CancellationException) {
+            Log.d("DOWNLOAD_DEBUG", "Download cancelled")
+            throw e
+        }
+
+        Log.e("DOWNLOAD_DEBUG", "Error", e)
         null
     }
 }

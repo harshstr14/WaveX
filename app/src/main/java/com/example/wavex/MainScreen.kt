@@ -100,7 +100,6 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
-import com.example.wavex.downloadSong.data.DownloadedSong
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.homeScreen.AppContainer
@@ -122,26 +121,33 @@ import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
-val okHttpClient by lazy {
-    OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+object HttpClientProvider {
+    val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 }
+
 private lateinit var apiUrl1: String
 private lateinit var apiUrl2: String
 private lateinit var apiUrl3: String
 
 suspend fun requestWithFallback(endpoint: String): String =
     withContext(Dispatchers.IO) {
-
         val apis = listOf(apiUrl1, apiUrl2, apiUrl3)
 
         for (baseUrl in apis) {
@@ -151,27 +157,33 @@ suspend fun requestWithFallback(endpoint: String): String =
                     .get()
                     .build()
 
-                okHttpClient.newCall(request).execute().use { response ->
+                val call = HttpClientProvider.client.newCall(request)
 
-                    if (response.isSuccessful) {
-                        return@withContext response.body?.string().orEmpty()
+                coroutineContext.job.invokeOnCompletion {
+                    call.cancel()
+                }
+
+                val response = call.execute()
+
+                response.use {
+                    if (it.isSuccessful) {
+                        return@withContext it.body.string()
                     }
 
-                    if (response.code in 500..599) {
-                        Log.w("API", "Server error ${response.code} on $baseUrl, trying next...")
+                    if (it.code in 500..599) {
+                        Log.w("API", "Server error ${it.code} on $baseUrl, trying next...")
                         continue
                     }
 
-                    if (response.code in 400..499) {
-                        throw Exception("Client error ${response.code}")
+                    if (it.code in 400..499) {
+                        throw Exception("Client error ${it.code}")
                     }
                 }
-
             } catch (e: Exception) {
                 if (
-                    e is java.net.SocketTimeoutException ||
-                    e is java.net.ConnectException ||
-                    e is java.net.UnknownHostException
+                    e is SocketTimeoutException ||
+                    e is ConnectException ||
+                    e is UnknownHostException
                 ) {
                     Log.w("API", "Network error on $baseUrl, trying next...")
                     continue
@@ -181,7 +193,7 @@ suspend fun requestWithFallback(endpoint: String): String =
             }
         }
 
-        throw Exception("All APIs timed out")
+        throw Exception("All APIs failed")
     }
 
 class MainScreen : ComponentActivity() {
@@ -569,49 +581,53 @@ fun Main_Screen(
             onToggleDownload = { song ->
                 val qualityIndex = musicService?.downloadQualityIndex
                 val url = song.downloadUrl[qualityIndex ?: 4].url
-                val isDownloading = ParallelDownloader.isDownloading(song.id)
+                val state = ParallelDownloader.downloadStates[song.id]
 
                 when {
                     isDownloaded -> {
                         downloadViewModel.deleteSong(song.id)
                     }
 
-                    isDownloading -> {
+                    state == ParallelDownloader.DownloadState.DOWNLOADING -> {
                         scope.launch {
-                            snackBarHostState.showSnackbar("Song is already downloading")
+                            snackBarHostState.showSnackbar("Already downloading")
                         }
                     }
 
-                    else -> {
-                        scope.launch {
-                            ParallelDownloader.start(
-                                scope,
-                                song.id,
-                                url,
-                                song.name,
-                                context
-                            ) { path ->
-                                if (path != null) {
-                                    downloadViewModel.insertSong(
-                                        DownloadedSong(
-                                            id = song.id,
-                                            name = song.name,
-                                            artist = song.artist,
-                                            album = song.album,
-                                            image = song.image,
-                                            duration = song.duration,
-                                            playCount = song.playCount,
-                                            downloadUrl = song.downloadUrl,
-                                            localPath = path
-                                        )
-                                    )
-
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar("Song downloaded successfully")
-                                    }
-                                }
-                            }
+                    state == ParallelDownloader.DownloadState.PAUSED -> {
+                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                            putExtra("url", url)
+                            putExtra("fileName", song.name)
+                            putExtra("songId", song.id)
+                            putExtra("song", song)
                         }
+
+                        ContextCompat.startForegroundService(context, intent)
+                    }
+
+                    state == ParallelDownloader.DownloadState.FAILED -> {
+                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_DOWNLOAD_START
+                            putExtra("url", url)
+                            putExtra("fileName", song.name)
+                            putExtra("songId", song.id)
+                            putExtra("song", song)
+                        }
+
+                        ContextCompat.startForegroundService(context, intent)
+                    }
+
+                    else -> {
+                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_DOWNLOAD_START
+                            putExtra("url", url)
+                            putExtra("fileName", song.name)
+                            putExtra("songId", song.id)
+                            putExtra("song", song)
+                        }
+
+                        ContextCompat.startForegroundService(context, intent)
                     }
                 }
             }

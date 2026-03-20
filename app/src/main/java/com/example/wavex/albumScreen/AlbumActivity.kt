@@ -9,6 +9,7 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -872,12 +873,7 @@ private fun Album_Activity(
                                 ) { index, song ->
 
                                     val isDownloaded = downloadedIds.contains(song.id)
-                                    val isDownloading by remember {
-                                        derivedStateOf { ParallelDownloader.downloadingSongs[song.id] == true }
-                                    }
-                                    val isPaused by remember {
-                                        derivedStateOf { ParallelDownloader.pausedSongs[song.id] == true }
-                                    }
+                                    val state = ParallelDownloader.downloadStates[song.id]
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -1014,6 +1010,7 @@ private fun Album_Activity(
                                                     onClick = {
                                                         val qualityIndex = musicService?.downloadQualityIndex
                                                         val url = song.downloadUrl[qualityIndex ?: 4].url
+                                                        Log.d("DOWNLOAD_DEBUG", "URL: $url")
 
                                                         when {
                                                             isDownloaded -> {
@@ -1022,59 +1019,37 @@ private fun Album_Activity(
                                                                 }
                                                             }
 
-                                                            ParallelDownloader.isDownloading(song.id) -> {
-                                                                ParallelDownloader.pause(song.id)
+                                                            state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
+                                                                    putExtra("songId", song.id)
+                                                                }
+
+                                                                context.startService(intent)
                                                             }
 
-                                                            ParallelDownloader.isPaused(song.id) -> {
-                                                                ParallelDownloader.resume(
-                                                                    scope = scope,
-                                                                    songId = song.id,
-                                                                    url = url,
-                                                                    fileName = song.name,
-                                                                    context = context
-                                                                ) { path ->
-                                                                    if (path != null) {
-                                                                        downloadViewModel.insertSong(
-                                                                            DownloadedSong(
-                                                                                id = song.id,
-                                                                                name = song.name,
-                                                                                artist = song.artist,
-                                                                                album = song.album,
-                                                                                image = song.image,
-                                                                                duration = song.duration,
-                                                                                playCount = song.playCount,
-                                                                                downloadUrl = song.downloadUrl,
-                                                                                localPath = path
-                                                                            )
-                                                                        )
-                                                                    }
+                                                            state == ParallelDownloader.DownloadState.PAUSED -> {
+                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                                                    putExtra("url", url)
+                                                                    putExtra("fileName", song.name)
+                                                                    putExtra("songId", song.id)
+                                                                    putExtra("song", song)
                                                                 }
+
+                                                                ContextCompat.startForegroundService(context, intent)
                                                             }
+
                                                             else -> {
-                                                                ParallelDownloader.start(
-                                                                    scope = scope,
-                                                                    songId = song.id,
-                                                                    url = url,
-                                                                    fileName = song.name,
-                                                                    context = context
-                                                                ) { path ->
-                                                                    if (path != null) {
-                                                                        downloadViewModel.insertSong(
-                                                                            DownloadedSong(
-                                                                                id = song.id,
-                                                                                name = song.name,
-                                                                                artist = song.artist,
-                                                                                album = song.album,
-                                                                                image = song.image,
-                                                                                duration = song.duration,
-                                                                                playCount = song.playCount,
-                                                                                downloadUrl = song.downloadUrl,
-                                                                                localPath = path
-                                                                            )
-                                                                        )
-                                                                    }
+                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                                    putExtra("url", url)
+                                                                    putExtra("fileName", song.name)
+                                                                    putExtra("songId", song.id)
+                                                                    putExtra("song", song)
                                                                 }
+
+                                                                ContextCompat.startForegroundService(context, intent)
                                                             }
                                                         }
                                                     }
@@ -1083,14 +1058,18 @@ private fun Album_Activity(
                                                         LottieCompositionSpec.RawRes(R.raw.timer)
                                                     )
 
+                                                    val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
+
                                                     val progress by animateLottieCompositionAsState(
                                                         composition = composition,
-                                                        isPlaying = isDownloading && !isPaused,
+                                                        isPlaying = isPlayingAnimation,
                                                         iterations = LottieConstants.IterateForever
                                                     )
 
                                                     when {
-                                                        isDownloading || isPaused -> {
+                                                        state == ParallelDownloader.DownloadState.DOWNLOADING ||
+                                                                state == ParallelDownloader.DownloadState.PAUSED -> {
+
                                                             Box(
                                                                 modifier = Modifier
                                                                     .size(30.dp)
@@ -1176,49 +1155,53 @@ private fun Album_Activity(
                                 onToggleDownload = { song ->
                                     val qualityIndex = musicService?.downloadQualityIndex
                                     val url = song.downloadUrl[qualityIndex ?: 4].url
-                                    val isDownloading = ParallelDownloader.isDownloading(song.id)
+                                    val state = ParallelDownloader.downloadStates[song.id]
 
                                     when {
                                         isDownloaded -> {
                                             downloadViewModel.deleteSong(song.id)
                                         }
 
-                                        isDownloading -> {
+                                        state == ParallelDownloader.DownloadState.DOWNLOADING -> {
                                             scope.launch {
-                                                snackBarHostState.showSnackbar("Song is already downloading")
+                                                snackBarHostState.showSnackbar("Already downloading")
                                             }
                                         }
 
-                                        else -> {
-                                            scope.launch {
-                                                ParallelDownloader.start(
-                                                    scope = scope,
-                                                    songId = song.id,
-                                                    url = url,
-                                                    fileName = song.name,
-                                                    context = context
-                                                ) { path ->
-                                                    if (path != null) {
-                                                        downloadViewModel.insertSong(
-                                                            DownloadedSong(
-                                                                id = song.id,
-                                                                name = song.name,
-                                                                artist = song.artist,
-                                                                album = song.album,
-                                                                image = song.image,
-                                                                duration = song.duration,
-                                                                playCount = song.playCount,
-                                                                downloadUrl = song.downloadUrl,
-                                                                localPath = path
-                                                            )
-                                                        )
-
-                                                        scope.launch {
-                                                            snackBarHostState.showSnackbar("Song downloaded successfully")
-                                                        }
-                                                    }
-                                                }
+                                        state == ParallelDownloader.DownloadState.PAUSED -> {
+                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                                putExtra("url", url)
+                                                putExtra("fileName", song.name)
+                                                putExtra("songId", song.id)
+                                                putExtra("song", song)
                                             }
+
+                                            ContextCompat.startForegroundService(context, intent)
+                                        }
+
+                                        state == ParallelDownloader.DownloadState.FAILED -> {
+                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                putExtra("url", url)
+                                                putExtra("fileName", song.name)
+                                                putExtra("songId", song.id)
+                                                putExtra("song", song)
+                                            }
+
+                                            ContextCompat.startForegroundService(context, intent)
+                                        }
+
+                                        else -> {
+                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                putExtra("url", url)
+                                                putExtra("fileName", song.name)
+                                                putExtra("songId", song.id)
+                                                putExtra("song", song)
+                                            }
+
+                                            ContextCompat.startForegroundService(context, intent)
                                         }
                                     }
                                 }
