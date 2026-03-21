@@ -2,11 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
     <queries>
         <intent>
@@ -26,6 +27,23 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WaveX">
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".updateAppScreen.UpdateAppActivity"
+            android:exported="false"
+            android:label="@string/title_activity_update_app"
+            android:theme="@style/Theme.WaveX" />
         <activity
             android:name=".downloadSong.downloadedSongScreen.DownloadedSongActivity"
             android:exported="false"
@@ -116,6 +134,7 @@
             android:exported="false"
             android:label="@string/title_activity_artist"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".MainScreen"
             android:exported="true"
@@ -128,11 +147,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:scheme="https"
                     android:host="wavex-edd95.web.app"
-                    android:pathPrefix="/" />
+                    android:pathPrefix="/"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".VerifyEmail"
             android:exported="false"

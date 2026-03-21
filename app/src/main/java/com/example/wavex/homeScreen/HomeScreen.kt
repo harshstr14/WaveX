@@ -1328,7 +1328,7 @@ suspend fun downloadSong(
                     ensureActive()
 
                     totalBytes += bytesRead
-                    Log.d("DOWNLOAD_DEBUG", "Downloaded: $totalBytes bytes")
+                    //Log.d("DOWNLOAD_DEBUG", "Downloaded: $totalBytes bytes")
                 }
             }
         }

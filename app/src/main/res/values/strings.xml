@@ -22,4 +22,5 @@
     <string name="title_activity_liked_songs_activity">LikedSongsActivity</string>
     <string name="title_activity_player_screen">PlayerActivityScreen</string>
     <string name="title_activity_downloaded_song">DownloadedSongActivity</string>
+    <string name="title_activity_update_app">UpdateAppActivity</string>
 </resources>

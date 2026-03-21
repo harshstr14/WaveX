@@ -66,7 +66,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +82,7 @@ import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.updateAppScreen.UpdateAppActivity
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -140,8 +140,7 @@ fun Setting_Activity() {
     var showLogOutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
-    var showUpdateDialog by remember { mutableStateOf(false) }
-    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
 
     val (backInteraction, backScale) = pressScale()
     val (updateInteraction, updateScale) = pressScale()
@@ -271,7 +270,8 @@ fun Setting_Activity() {
                     ) {
                         Icon(painter = painterResource(when {
                             data.visuals.message.contains("Reset") -> R.drawable.delete_icon
-                            data.visuals.message.contains("Update") -> R.drawable.update_icon
+                            data.visuals.message.contains("Update") ||
+                                 data.visuals.message.contains("update") -> R.drawable.update_icon
                             else -> {
                                 R.drawable.alert_icon
                             }
@@ -332,7 +332,17 @@ fun Setting_Activity() {
                             interactionSource = updateInteraction,
                             indication = null
                         ) {
-                            checkForUpdate(context,
+                            isCheckingUpdate = true
+
+                            scope.launch {
+                                snackBarHostState.showSnackbar(
+                                    message = "Checking for update",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+
+                            checkForUpdate(
+                                context,
                                 onShowMessage = { message ->
                                     scope.launch {
                                         snackBarHostState.showSnackbar(
@@ -340,8 +350,19 @@ fun Setting_Activity() {
                                             duration = SnackbarDuration.Short
                                         )
                                     }
-                                }) { info ->
-                                updateInfo = info
+                                }
+                            ) { info ->
+                                isCheckingUpdate = false
+
+                                val intent = Intent(context, UpdateAppActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+                                    putExtra("message", info.message)
+                                    putExtra("latestVersion", info.latestVersion)
+                                    putExtra("currentVersion", info.currentVersion)
+                                    putExtra("downloadUrl", info.downloadUrl)
+                                }
+                                context.startActivity(intent)
                             }
                         },
                     verticalAlignment = Alignment.CenterVertically
@@ -918,20 +939,6 @@ fun Setting_Activity() {
                 }
             }
 
-            updateInfo?.let { info ->
-                UpdateDialog(
-                    message = info.message,
-                    latestVersion = info.latestVersion,
-                    currentVersion = info.currentVersion,
-                    downloadUrl = info.downloadUrl,
-                    onDismiss = { updateInfo = null },
-                    onConfirm = {
-                        val intent = Intent(Intent.ACTION_VIEW, info.downloadUrl.toUri())
-                        context.startActivity(intent)
-                    }
-                )
-            }
-
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1149,101 +1156,6 @@ fun ConfirmActionDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = dismissText,
-                        color = colorResource(R.color.theme_color),
-                        fontSize = 15.sp, lineHeight = 15.sp,
-                        fontFamily = fonts, fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Normal,
-                        modifier = Modifier.clickable { onDismiss() }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Text(
-                        text = confirmText,
-                        fontSize = 15.sp, lineHeight = 15.sp,
-                        fontFamily = fonts, fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .clickable { onConfirm() }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun UpdateDialog(
-    message: String,
-    latestVersion: String,
-    currentVersion: String,
-    downloadUrl: String,
-    confirmText: String = "Update Now",
-    dismissText: String = "Later",
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = { onDismiss() }) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = colorResource(R.color.off_white)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                        .background(colorResource(R.color.theme_color)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Update Available",
-                        fontFamily = fonts,
-                        fontSize = 18.sp, lineHeight = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.off_white),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    text = message,
-                    fontFamily = fonts,
-                    textAlign = TextAlign.Center,
-                    fontSize = 14.sp, lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    text = "Version : $currentVersion - $latestVersion",
-                    fontFamily = fonts,
-                    textAlign = TextAlign.Center,
-                    fontSize = 12.sp, lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color)
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(20.dp)
                 ) {
                     Text(
                         text = dismissText,

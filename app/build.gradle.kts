@@ -68,11 +68,12 @@ android {
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom))
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.firebase.config)
     implementation(libs.okhttp)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.compose.runtime.livedata)
     ksp(libs.androidx.room.compiler)
     implementation(libs.pratikfagadiya.animatedsmoothbottomnavigation.jetpackcompose)
     implementation(libs.ucrop)
