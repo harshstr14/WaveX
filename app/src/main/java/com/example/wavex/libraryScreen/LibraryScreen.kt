@@ -309,8 +309,7 @@ fun LibraryScreen(
                     top.linkTo(parent.top, margin = 22.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                }
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+                },
                 fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
             )
@@ -322,7 +321,6 @@ fun LibraryScreen(
                     bottom.linkTo(titleText.bottom)
                     start.linkTo(parent.start, margin = 25.dp)
                 }
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .size(36.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .border(
@@ -356,7 +354,6 @@ fun LibraryScreen(
                     bottom.linkTo(titleText.bottom)
                     end.linkTo(parent.end, margin = 25.dp)
                 }
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .size(36.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .border(
@@ -392,7 +389,6 @@ fun LibraryScreen(
                     bottom.linkTo(titleText.bottom)
                     end.linkTo(addButton.start, margin = 15.dp)
                 }
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .size(36.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .border(

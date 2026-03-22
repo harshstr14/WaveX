@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -247,7 +248,6 @@ fun Update_App_Activity(
     LaunchedEffect(isCompleted) {
         if (isCompleted) {
             downloadedVersion = getDownloadedVersion(context)
-
 
             if (!file.exists() || file.length() == 0L) {
                 return@LaunchedEffect
@@ -475,8 +475,8 @@ fun Update_App_Activity(
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 }.fillMaxWidth()
-                    .padding(horizontal = 18.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .padding(horizontal = 20.dp).height(52.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable (
                         interactionSource = remember { MutableInteractionSource() },
@@ -561,7 +561,7 @@ fun Update_App_Activity(
                         currentWork != null && !isCompleted -> "Resume Download"
                         else -> "Update Now"
                     },
-                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.off_white)
                 )
             }

@@ -148,7 +148,7 @@ fun VerifyEmailScreen() {
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -240,7 +240,7 @@ fun VerifyEmailScreen() {
                 top.linkTo(titleText.bottom, margin = 18.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-            }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 20.sp
             )
 

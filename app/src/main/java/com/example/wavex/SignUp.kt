@@ -147,7 +147,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -217,7 +217,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                 top.linkTo(titleText.bottom, margin = 14.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-            }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 18.sp
             )
 
@@ -580,8 +580,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                             contentColor = colorResource(R.color.background_color)
                         ) , shape = RoundedCornerShape(26.dp)) {
 
-                        Text("Sign Up", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal, fontSize = 18.sp
+                        Text(
+                            text = "Sign Up", fontSize = 17.sp, lineHeight = 18.sp,
+                            fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
                         )
                     }
 
@@ -604,7 +606,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         top.linkTo(signUpButton.bottom, margin = 18.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 15.sp
                     )
 
@@ -628,11 +630,11 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                     }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().shadow(
                         elevation = 26.dp,
                         shape = RoundedCornerShape(26.dp),
-                        ambientColor = Color(0xFF1C1C1C).copy(alpha = 0.2f),
-                        spotColor = Color(0xFF1C1C1C).copy(alpha = 0.4f)
+                        ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
+                        spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
                     ).clickable { onGoogleSignIn()
                         keyboardController?.hide()
-                    }.background(Color(0xFF1C1C1C),
+                    }.background(Color(0xFF2C2C2C),
                         shape = RoundedCornerShape(26.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -641,8 +643,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                             Spacer(modifier = Modifier.width(5.dp))
 
-                            Text("Sign in with google", fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.background_color)
+                            Text(
+                                text = "Sign in with google", fontSize = 14.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
                             )
                         }
                     }
@@ -652,8 +656,8 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                     }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().shadow(
                         elevation = 26.dp,
                         shape = RoundedCornerShape(26.dp),
-                        ambientColor = Color(0xFF1C1C1C).copy(alpha = 0.2f),
-                        spotColor = Color(0xFF1C1C1C).copy(alpha = 0.4f)
+                        ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
+                        spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
                     ).clickable {
                         auth.signInAnonymously().addOnCompleteListener { task ->
                             if (task.isSuccessful) {
@@ -697,7 +701,7 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                             }
                         }
                         keyboardController?.hide()
-                    }.background(Color(0xFF1C1C1C),
+                    }.background(Color(0xFF2C2C2C),
                         shape = RoundedCornerShape(26.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -707,8 +711,10 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 
                             Spacer(modifier = Modifier.width(5.dp))
 
-                            Text("Continue as Guest", fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.background_color)
+                            Text(
+                                text = "Continue as Guest", fontSize = 14.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
                             )
                         }
                     }

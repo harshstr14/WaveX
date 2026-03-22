@@ -86,6 +86,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -214,7 +215,8 @@ fun Downloaded_Song_Activity(
         ?: remember { mutableStateOf(null) }
 
     Scaffold(
-        modifier = Modifier.background(colorResource(R.color.background_color)),
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -387,13 +389,13 @@ fun Downloaded_Song_Activity(
                         LazyColumn (
                             state = songsListState,
                             modifier = Modifier.constrainAs(songList){
-                                top.linkTo(parent.top, margin = 5.dp)
+                                top.linkTo(parent.top)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 25.dp),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             itemsIndexed(

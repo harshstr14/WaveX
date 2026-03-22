@@ -412,7 +412,6 @@ fun Main_Screen(
                 BottomNavBar(navController = navController)
             }
         },
-        contentWindowInsets = WindowInsets(0),
         snackbarHost = {
             SnackbarHost(hostState = snackBarHostState) { data ->
                 Snackbar(

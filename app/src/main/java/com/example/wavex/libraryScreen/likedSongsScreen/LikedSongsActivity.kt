@@ -31,11 +31,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,7 +53,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -79,7 +76,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -171,40 +167,6 @@ fun Liked_Songs_Activity(
     val (shareInteraction, shareScale) = pressScale()
     val interactionSource = remember { MutableInteractionSource() }
 
-    val rawProgress by remember {
-        derivedStateOf {
-            val offset = listState.firstVisibleItemScrollOffset
-            (offset / 600f).coerceIn(0f, 1f)
-        }
-    }
-
-    val smoothProgress by animateFloatAsState(
-        targetValue = rawProgress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "ImageCollapseSpring"
-    )
-
-    val startSize = 160.dp
-    val startOffsetX = 24.dp
-    val startOffsetY = 0.dp
-
-    val endSize = 88.dp
-    val endOffsetX = 12.dp
-    val endOffsetY = 0.dp
-
-    val size = lerpDp(startSize, endSize, smoothProgress)
-    val offsetX = lerpDp(startOffsetX, endOffsetX, smoothProgress)
-    val offsetY = lerpDp(startOffsetY, endOffsetY, smoothProgress)
-
-    val cornerRadius = lerpDp(16.dp, 14.dp, smoothProgress)
-    val metaAlpha = (1f - smoothProgress * 1.3f).coerceIn(0f, 1f)
-    val titleTopPadding = lerpDp(12.dp, 0.dp, smoothProgress)
-    val titleStartPadding = lerpDp(25.dp, 8.dp, smoothProgress)
-    val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
-
     val isTitleVisible = !songsList.isLoading && !songsList.isError
 
     var showSongSheet by remember { mutableStateOf(false) }
@@ -241,7 +203,6 @@ fun Liked_Songs_Activity(
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
         nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0),
         topBar = {
             if (isTitleVisible) {
                 TopAppBar(
@@ -324,7 +285,7 @@ fun Liked_Songs_Activity(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -413,11 +374,11 @@ fun Liked_Songs_Activity(
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(bottom = if (currentSong != null) 95.dp else 25.dp)
+                            contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 15.dp)
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp, end = 24.dp)
                                 ) {
                                     AsyncImage(
                                         model = R.drawable.liked,
@@ -425,27 +386,21 @@ fun Liked_Songs_Activity(
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
-                                            .offset(x = offsetX, y = offsetY)
-                                            .size(size)
-                                            .clip(RoundedCornerShape(cornerRadius))
-                                            .graphicsLayer {
-                                                alpha = metaAlpha
-                                            }.zIndex(10f)
+                                            .size(160.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .zIndex(10f)
                                     )
 
                                     Column(
                                         modifier = Modifier.fillMaxWidth()
-                                            .padding(horizontal = 15.dp)
+                                            .padding(start = 15.dp)
                                             .animateContentSize()
                                     ) {
+                                        Spacer(modifier = Modifier.height(14.dp))
+
                                         Text(
-                                            modifier = Modifier.padding(
-                                                top = titleTopPadding,
-                                                start = titleStartPadding,
-                                                end = 10.dp
-                                            ),
                                             text = "Liked Songs",
-                                            fontSize = titleFontSize.value.sp,
+                                            fontSize = 20.sp,
                                             lineHeight = 22.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.Bold,
@@ -455,23 +410,16 @@ fun Liked_Songs_Activity(
                                             overflow = TextOverflow.Ellipsis
                                         )
 
+                                        Spacer(modifier = Modifier.height(8.dp))
+
                                         Row(
-                                            modifier = Modifier.padding(
-                                                top = 15.dp,
-                                                start = titleStartPadding
-                                            )
-                                                .graphicsLayer {
-                                                    alpha = metaAlpha
-                                                    scaleX = 1f - smoothProgress * 0.04f
-                                                    scaleY = 1f - smoothProgress * 0.04f
-                                                },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
+                                                tint = colorResource(R.color.primary_text_color),
+                                                modifier = Modifier.size(16.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
@@ -489,23 +437,16 @@ fun Liked_Songs_Activity(
                                             )
                                         }
 
+                                        Spacer(modifier = Modifier.height(4.dp))
+
                                         Row(
-                                            modifier = Modifier.padding(
-                                                top = 4.dp,
-                                                start = titleStartPadding
-                                            )
-                                                .graphicsLayer {
-                                                    alpha = metaAlpha
-                                                    scaleX = 1f - smoothProgress * 0.04f
-                                                    scaleY = 1f - smoothProgress * 0.04f
-                                                },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
                                                 painter = painterResource(R.drawable.airpods_icon),
-                                                contentDescription = "Time Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
+                                                contentDescription = "Airpods Icon",
+                                                tint = colorResource(R.color.primary_text_color),
+                                                modifier = Modifier.size(16.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(4.dp))
@@ -627,18 +568,14 @@ fun Liked_Songs_Activity(
 
                             item {
                                 Text(
-                                    modifier = Modifier.padding(
-                                        top = 15.dp,
-                                        start = 24.dp,
-                                        bottom = 10.dp
-                                    ),
+                                    modifier = Modifier.padding(top = 20.dp, start = 24.dp, bottom = 10.dp),
                                     text = "Songs",
                                     fontSize = 18.sp,
                                     fontFamily = fonts,
                                     fontWeight = FontWeight.Bold,
                                     fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.primary_text_color),
-                                    lineHeight = 20.sp
+                                    lineHeight = 18.sp
                                 )
                             }
 
@@ -1005,7 +942,7 @@ fun Liked_Songs_Activity(
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 20.dp)
+                            }.fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(
@@ -1056,11 +993,6 @@ fun Liked_Songs_Activity(
             }
         }
     }
-}
-
-@Composable
-private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
-    return start + (end - start) * fraction
 }
 
 private fun formatTotalDuration(totalSeconds: Int?): String {
@@ -1127,8 +1059,7 @@ private fun LoadingEffect() {
 @Composable
 private fun ErrorState(message: String) {
     Column(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

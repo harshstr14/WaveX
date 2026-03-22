@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -127,7 +128,8 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
     Log.d("artists", artistList.toString())
 
     Scaffold(
-        modifier = Modifier.background(colorResource(R.color.background_color)),
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -225,7 +227,7 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -298,13 +300,13 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
                             state = artistsGridState,
                             columns = GridCells.Fixed(3),
                             modifier = Modifier.constrainAs(artistsGrid){
-                                top.linkTo(parent.top, margin = 5.dp)
+                                top.linkTo(parent.top)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 25.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {

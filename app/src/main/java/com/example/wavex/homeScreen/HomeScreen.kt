@@ -23,14 +23,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -434,6 +431,8 @@ fun HomeScreen (showSheet: Boolean) {
         label = "ShadowScale"
     )
 
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+
     fun refreshAll() {
         scope.launch {
             isRefreshing = true
@@ -483,20 +482,25 @@ fun HomeScreen (showSheet: Boolean) {
         ) {
             val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
-            Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
-                tint = Color.Unspecified,
+            Box(
                 modifier = Modifier.constrainAs(logoIcon) {
-                    top.linkTo(parent.top, margin = (-40).dp)
-                    start.linkTo(parent.start)
-                }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                    .size(158.dp)
-                    .graphicsLayer {
-                        alpha = logoAlpha
-                    }
+                    top.linkTo(profileAvatar.top)
+                    bottom.linkTo(profileAvatar.bottom)
+                    start.linkTo(parent.start, margin = 10.dp)
+                }.size(width = 140.dp, height = 40.dp)
                     .zIndex(20f)
-            )
-
-            var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+            ) {
+                Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
+                    tint = Color.Unspecified,
+                    modifier = Modifier
+                        .size(width = 140.dp, height = 40.dp)
+                        .graphicsLayer {
+                            alpha = logoAlpha
+                            scaleX = 1.6f
+                            scaleY = 1.6f
+                        }
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -504,7 +508,6 @@ fun HomeScreen (showSheet: Boolean) {
                         top.linkTo(parent.top, margin = 10.dp)
                         end.linkTo(parent.end, margin = 22.dp)
                     }
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                     .size(68.dp)
                     .drawBehind {
                         val glowRadius = (size.minDimension / 3) * shadowScale
@@ -577,15 +580,14 @@ fun HomeScreen (showSheet: Boolean) {
                 end.linkTo(parent.end)
                 bottom.linkTo(parent.bottom)
                 height = Dimension.fillToConstraints
-            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .verticalScroll(scrollState).zIndex(0f)
+            }.verticalScroll(scrollState).zIndex(0f)
             ) {
                 ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
                     val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
                         popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
 
                     Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
-                        top.linkTo(parent.top, margin = 80.dp)
+                        top.linkTo(parent.top, margin = 90.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }, playlistsVM)

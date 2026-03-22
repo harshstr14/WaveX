@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,7 +100,7 @@ fun ForgotPasswordScreen() {
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -180,7 +181,7 @@ fun ForgotPasswordScreen() {
                 top.linkTo(titleText.bottom, margin = 14.dp)
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-            }, fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 18.sp
             )
 
@@ -327,8 +328,10 @@ fun ForgotPasswordScreen() {
                     contentColor = colorResource(R.color.background_color)
                 ) , shape = RoundedCornerShape(26.dp)) {
 
-                Text("Send Link", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal, fontSize = 18.sp
+                Text(
+                    text = "Send Link", fontSize = 16.sp, lineHeight = 18.sp,
+                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
                 )
             }
         }

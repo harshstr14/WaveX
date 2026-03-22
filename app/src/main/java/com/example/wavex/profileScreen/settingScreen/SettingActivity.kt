@@ -33,7 +33,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -61,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -187,6 +190,22 @@ fun Setting_Activity() {
         }
     }
 
+    val versionName = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(0)
+            )
+            packageInfo.versionName
+        } else {
+            @Suppress("DEPRECATION")
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName
+        }
+    } catch (_: Exception) {
+        "1.0"
+    }
+
     val musicService = ServiceLocator.musicService
 
     LaunchedEffect(musicService?.downloadQualityIndex) {
@@ -194,7 +213,8 @@ fun Setting_Activity() {
     }
 
     Scaffold(
-        modifier = Modifier.background(colorResource(R.color.background_color)),
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -252,7 +272,7 @@ fun Setting_Activity() {
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 12.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -296,22 +316,6 @@ fun Setting_Activity() {
     ) { paddingValues ->
         val context = LocalContext.current
 
-        val versionName = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val packageInfo = context.packageManager.getPackageInfo(
-                    context.packageName,
-                    PackageManager.PackageInfoFlags.of(0)
-                )
-                packageInfo.versionName
-            } else {
-                @Suppress("DEPRECATION")
-                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                packageInfo.versionName
-            }
-        } catch (_: Exception) {
-            "1.0"
-        }
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -321,6 +325,7 @@ fun Setting_Activity() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(bottom = 60.dp)
                     .background(colorResource(R.color.background_color))
             ) {
@@ -394,16 +399,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Check for New Updates",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -441,16 +446,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Quality of audio files streamed from \nonline sources",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
 
@@ -558,16 +563,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Quality of audio files saved for offline\nlistening",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
 
@@ -682,16 +687,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Clear all your data and reset the app to its default state",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -735,16 +740,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Permanently delete your account from the \nwaveX app",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -788,16 +793,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Sign out of your WaveX account",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -845,16 +850,16 @@ fun Setting_Activity() {
                             lineHeight = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "For more information about waveX app",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 14.sp
+                            lineHeight = 16.sp
                         )
                     }
                 }

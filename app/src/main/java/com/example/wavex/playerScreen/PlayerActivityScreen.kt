@@ -42,7 +42,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -396,8 +395,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
     ) {
         Scaffold(
             modifier = Modifier.background(colorResource(R.color.background_color))
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentWindowInsets = WindowInsets(0),
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 TopAppBar(
                     scrollBehavior = scrollBehavior,
@@ -480,7 +478,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                     hostState = snackBarHostState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 25.dp)
+                        .padding(horizontal = 18.dp, vertical = 15.dp)
                 ) { data ->
                     Snackbar(
                         modifier = Modifier.fillMaxWidth()
@@ -1034,7 +1032,7 @@ fun UpNextSheetContent(
                 fontSize = 16.sp,
                 lineHeight = 18.sp,
                 fontFamily = fonts,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -1048,12 +1046,11 @@ fun UpNextSheetContent(
                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = 25.dp)
             ) {
                 itemsIndexed(

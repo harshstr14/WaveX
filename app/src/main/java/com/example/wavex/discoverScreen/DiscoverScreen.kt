@@ -162,7 +162,8 @@ fun DiscoverScreen(
         .downloadedSongIds
         .collectAsState(initial = emptySet())
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()
+    ConstraintLayout(
+        modifier = Modifier.fillMaxSize()
         .graphicsLayer {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
                 renderEffect = RenderEffect
@@ -170,8 +171,7 @@ fun DiscoverScreen(
                         animatedBlur,
                         animatedBlur,
                         Shader.TileMode.CLAMP
-                    )
-                    .asComposeRenderEffect()
+                    ).asComposeRenderEffect()
             }
         }
     ) {
@@ -179,31 +179,33 @@ fun DiscoverScreen(
 
         Text(
             text = "Explore", modifier = Modifier.constrainAs(titleText) {
-            top.linkTo(parent.top, margin = 22.dp)
-            start.linkTo(parent.start)
-            end.linkTo(parent.end)
-        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
-            fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                top.linkTo(parent.top, margin = 22.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            },
+            fontSize = 20.sp, fontFamily = fonts,
+            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
         Box(
             modifier = Modifier.constrainAs(backButton) {
-            top.linkTo(titleText.top)
-            bottom.linkTo(titleText.bottom)
-            start.linkTo(parent.start, margin = 25.dp)
-        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                top.linkTo(titleText.top)
+                bottom.linkTo(titleText.bottom)
+                start.linkTo(parent.start, margin = 25.dp)
+            }
             .size(36.dp).clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.5.dp,
                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                 shape = RoundedCornerShape(20.dp)
             ).clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) {
-                navController.popBackStack()
-            }, contentAlignment = Alignment.Center
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {
+                    navController.popBackStack()
+                },
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),

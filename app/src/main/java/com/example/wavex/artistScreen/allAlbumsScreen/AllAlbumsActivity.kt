@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -183,7 +184,8 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
     )
 
     Scaffold(
-        modifier = Modifier.background(colorResource(R.color.background_color)),
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -238,7 +240,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -318,13 +320,13 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                             state = albumsGridState,
                             columns = GridCells.Fixed(3),
                             modifier = Modifier.constrainAs(albumsGrid){
-                                top.linkTo(parent.top, margin = 5.dp)
+                                top.linkTo(parent.top)
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 95.dp else 25.dp),
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 90.dp else 20.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)
                         ) {
@@ -419,7 +421,7 @@ private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel =
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth()
+                            }.fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

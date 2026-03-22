@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -337,7 +338,8 @@ private fun YourProfileScreen(
     }
 
     Scaffold(
-        modifier = Modifier.background(colorResource(R.color.background_color)),
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
@@ -392,7 +394,7 @@ private fun YourProfileScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -868,10 +870,10 @@ private fun YourProfileScreen(
                 }
 
                 Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
-                    bottom.linkTo(parent.bottom, margin = 35.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
+                    bottom.linkTo(parent.bottom, margin = 25.dp)
+                }.fillMaxWidth().padding(horizontal = 20.dp).height(52.dp).shadow(
                     elevation = 26.dp,
-                    shape = RoundedCornerShape(26.dp),
+                    shape = RoundedCornerShape(14.dp),
                     ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
                     spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
                 ),
@@ -908,11 +910,14 @@ private fun YourProfileScreen(
                         }
                     }, colors = ButtonDefaults.buttonColors(
                         containerColor = colorResource(R.color.theme_color),
-                        contentColor = colorResource(R.color.background_color)
-                    ) , shape = RoundedCornerShape(26.dp)) {
+                        contentColor = colorResource(R.color.off_white)
+                    ) , shape = RoundedCornerShape(14.dp)) {
 
-                    Text("Update", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                        fontStyle = FontStyle.Normal, fontSize = 18.sp
+                    Text(
+                        text = "Update", fontSize = 16.sp,
+                        lineHeight = 18.sp, fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.off_white)
                     )
                 }
             }

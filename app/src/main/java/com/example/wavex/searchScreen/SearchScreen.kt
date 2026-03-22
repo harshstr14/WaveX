@@ -211,21 +211,21 @@ fun SearchScreen(
 
         Box(
             modifier = Modifier.constrainAs(backButton) {
-            top.linkTo(searchField.top)
-            bottom.linkTo(searchField.bottom)
-            start.linkTo(parent.start, margin = 25.dp)
-        }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-            .size(36.dp).clip(RoundedCornerShape(20.dp))
-            .border(
-                width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                shape = RoundedCornerShape(20.dp)
-            ).clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) {
-                navController.popBackStack()
-            }, contentAlignment = Alignment.Center
+                top.linkTo(searchField.top)
+                bottom.linkTo(searchField.bottom)
+                start.linkTo(parent.start, margin = 25.dp)
+            }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.5.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                ).clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {
+                    navController.popBackStack()
+                },
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
@@ -245,7 +245,7 @@ fun SearchScreen(
                 start.linkTo(backButton.end)
                 end.linkTo(parent.end)
                 width = Dimension.fillToConstraints
-            }.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), start = 20.dp, end = 20.dp)
+            }.padding(start = 20.dp, end = 20.dp)
                 .height(52.dp).focusRequester(focusRequester),
             query = searchText,
             onQueryChange = { newValue ->

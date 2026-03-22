@@ -38,7 +38,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -331,8 +330,7 @@ private fun Artist_Activity(
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
-            nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0),
+        nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             if (isTitleVisible) {
                 TopAppBar(
@@ -344,7 +342,7 @@ private fun Artist_Activity(
                                 .clip(RoundedCornerShape(20.dp))
                                 .border(
                                     width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color),
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
@@ -454,7 +452,7 @@ private fun Artist_Activity(
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
                                         width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color),
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
@@ -484,7 +482,7 @@ private fun Artist_Activity(
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
                                         width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color),
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = interactionSource,
@@ -571,7 +569,7 @@ private fun Artist_Activity(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 25.dp)
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -660,7 +658,7 @@ private fun Artist_Activity(
                                 bottom.linkTo(parent.bottom)
                                 height = Dimension.fillToConstraints
                             },
-                            contentPadding = PaddingValues(bottom = if (currentSong != null) 85.dp else 8.dp)
+                            contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 5.dp)
                         ) {
                             item {
                                 Row(
@@ -732,7 +730,7 @@ private fun Artist_Activity(
                                                     painter = painterResource(R.drawable.followers_icon),
                                                     contentDescription = "Followers Icon",
                                                     tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(16.dp)
                                                 )
 
                                                 Spacer(modifier = Modifier.width(6.dp))
@@ -760,7 +758,7 @@ private fun Artist_Activity(
                                                     painter = painterResource(R.drawable.headset_icon),
                                                     contentDescription = "Headset Icon",
                                                     tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(16.dp)
                                                 )
 
                                                 Spacer(modifier = Modifier.width(6.dp))
@@ -789,7 +787,7 @@ private fun Artist_Activity(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 10.dp),
+                                            .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -1074,7 +1072,7 @@ private fun Artist_Activity(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 8.dp),
+                                            .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 5.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -1165,7 +1163,7 @@ private fun Artist_Activity(
                             if (artists.singles.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 8.dp)
+                                        text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 5.dp)
                                         , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
@@ -1174,7 +1172,7 @@ private fun Artist_Activity(
                                 item {
                                     LazyRow(
                                         modifier = Modifier.fillMaxWidth()
-                                            .padding(top = 10.dp, bottom = 25.dp),
+                                            .padding(top = 10.dp, bottom = 15.dp),
                                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
                                         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                                         items(artists.singles) { album ->
@@ -1338,7 +1336,7 @@ private fun Artist_Activity(
                                 start.linkTo(parent.start)
                                 end.linkTo(parent.end)
                                 bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 20.dp)
+                            }.fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(
