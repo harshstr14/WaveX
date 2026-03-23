@@ -487,8 +487,7 @@ fun HomeScreen (showSheet: Boolean) {
                     top.linkTo(profileAvatar.top)
                     bottom.linkTo(profileAvatar.bottom)
                     start.linkTo(parent.start, margin = 10.dp)
-                }.size(width = 140.dp, height = 40.dp)
-                    .zIndex(20f)
+                }.size(width = 140.dp, height = 40.dp).zIndex(20f)
             ) {
                 Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
                     tint = Color.Unspecified,
@@ -496,8 +495,8 @@ fun HomeScreen (showSheet: Boolean) {
                         .size(width = 140.dp, height = 40.dp)
                         .graphicsLayer {
                             alpha = logoAlpha
-                            scaleX = 1.6f
-                            scaleY = 1.6f
+                            scaleX = 1.5f
+                            scaleY = 1.5f
                         }
                 )
             }

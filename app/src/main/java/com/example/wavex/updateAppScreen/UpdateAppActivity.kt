@@ -1,5 +1,6 @@
 package com.example.wavex.updateAppScreen
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -13,15 +14,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -80,6 +79,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.wavex.R
 import com.example.wavex.fonts
+import com.example.wavex.libraryScreen.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 import java.io.File
@@ -102,10 +102,15 @@ class UpdateAppActivity : ComponentActivity() {
         val latestVersion = intent.getStringExtra("latestVersion")
         val currentVersion = intent.getStringExtra("currentVersion")
         val downloadUrl = intent.getStringExtra("downloadUrl")
+        val expectedSizeInBytes = intent.getLongExtra("expectedSizeInBytes", 0)
+        Log.d("size", "$expectedSizeInBytes")
 
         setContent {
             WaveXTheme {
-                Update_App_Activity(message, downloadUrl, latestVersion)
+                Update_App_Activity(
+                    message, downloadUrl, currentVersion,
+                    latestVersion, expectedSizeInBytes
+                )
             }
         }
     }
@@ -131,24 +136,18 @@ fun clearDownloadedVersion(context: Context) {
 fun Update_App_Activity(
     message: String? = null,
     downloadUrl: String? = null,
-    latestVersion: String? = null
+    currentVersion: String? = null,
+    latestVersion: String? = null,
+    expectedSizeInBytes: Long
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val activity = context as? Activity
+    val (backInteraction, backScale) = pressScale()
 
     var downloadedVersion by remember { mutableStateOf<String?>(null) }
     var isApkExists by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        val file = File(
-            context.getExternalFilesDir(null),
-            "waveX.apk"
-        )
-
-        isApkExists = file.exists()
-        downloadedVersion = getDownloadedVersion(context)
-    }
 
     val workManager = WorkManager.getInstance(context)
 
@@ -162,7 +161,8 @@ fun Update_App_Activity(
                 .setInputData(
                     workDataOf(
                         "url" to downloadUrl,
-                        "version" to latestVersion
+                        "version" to latestVersion,
+                        "expectedSizeInBytes" to expectedSizeInBytes.toString().toLong()
                     )
                 )
                 .build()
@@ -173,6 +173,11 @@ fun Update_App_Activity(
                 request
             )
         }
+    }
+
+    fun checkApkState() {
+        val file = File(context.getExternalFilesDir(null), "waveX.apk")
+        isApkExists = file.exists() && file.length() > 0
     }
 
     val workInfo = workManager
@@ -208,16 +213,12 @@ fun Update_App_Activity(
             file.delete()
             clearDownloadedVersion(context)
 
-            isApkExists = false
+            checkApkState()
             downloadedVersion = null
         }
     }
 
     var startAnimation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        startAnimation = true
-    }
 
     val shadowBlur by animateFloatAsState(
         targetValue = if (startAnimation) 50f else 20f,
@@ -239,15 +240,10 @@ fun Update_App_Activity(
 
     var glowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
-    LaunchedEffect(Unit) {
-        extractDominantColor(context, R.drawable.logo) {
-            glowColor = it
-        }
-    }
-
     LaunchedEffect(isCompleted) {
         if (isCompleted) {
             downloadedVersion = getDownloadedVersion(context)
+            checkApkState()
 
             if (!file.exists() || file.length() == 0L) {
                 return@LaunchedEffect
@@ -270,6 +266,33 @@ fun Update_App_Activity(
             }
 
             installApk(context)
+        }
+    }
+
+    LaunchedEffect(isApkExists) {
+        if (!isApkExists) {
+            workManager.cancelUniqueWork("app_update_download")
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val file = File(context.getExternalFilesDir(null), "waveX.apk")
+
+        val isValidFile = file.exists() && file.length() >= expectedSizeInBytes
+
+        if (!isValidFile) {
+            clearDownloadedVersion(context)
+            downloadedVersion = null
+        } else {
+            downloadedVersion = getDownloadedVersion(context)
+        }
+
+        isApkExists = isValidFile
+
+        startAnimation = true
+
+        extractDominantColor(context, R.drawable.logo) {
+            glowColor = it
         }
     }
 
@@ -327,7 +350,37 @@ fun Update_App_Activity(
                 .padding(paddingValues)
                 .background(colorResource(R.color.background_color))
         ) {
-            val(updateButton, text1, text2, text3, divider, logo) = createRefs()
+            val(backButton, updateButton, text1, text2, text3, text4, divider, logo) = createRefs()
+
+            Box(
+                modifier = Modifier.constrainAs(backButton) {
+                    top.linkTo(parent.top, margin = 15.dp)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }.size(36.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    ).clickable(
+                        interactionSource = backInteraction,
+                        indication = null
+                    ) {
+                        activity?.finish()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_icon),
+                    contentDescription = "Back Icon",
+                    tint = colorResource(R.color.primary_text_color),
+                    modifier = Modifier.size(20.dp)
+                        .graphicsLayer {
+                            scaleX = backScale
+                            scaleY = backScale
+                        }
+                )
+            }
 
             Image(
                 painter = painterResource(id = R.drawable.logo2),
@@ -391,7 +444,7 @@ fun Update_App_Activity(
 
                 Box(
                     modifier = Modifier
-                        .size(78.dp)
+                        .size(74.dp)
                         .align(Alignment.Center)
                         .clip(RoundedCornerShape(20.dp))
                 ) {
@@ -438,12 +491,28 @@ fun Update_App_Activity(
 
             Text(
                 modifier = Modifier.constrainAs(text3) {
-                    bottom.linkTo(updateButton.top, margin = 45.dp)
+                    bottom.linkTo(updateButton.top, margin = 55.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 }.padding(horizontal = 30.dp),
                 text = message ?: "A new version of Wavex is now available! Update your app to enjoy the latest features and improvements.",
                 fontSize = 13.sp,
+                fontFamily = fonts,
+                fontWeight = FontWeight.SemiBold,
+                fontStyle = FontStyle.Normal,
+                textAlign = TextAlign.Center,
+                color = colorResource(R.color.secondary_text_color),
+                lineHeight = 16.sp
+            )
+
+            Text(
+                modifier = Modifier.constrainAs(text4) {
+                    bottom.linkTo(divider.top)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }.padding(horizontal = 30.dp),
+                text = "version $currentVersion - $latestVersion",
+                fontSize = 12.sp,
                 fontFamily = fonts,
                 fontWeight = FontWeight.SemiBold,
                 fontStyle = FontStyle.Normal,
@@ -462,11 +531,9 @@ fun Update_App_Activity(
                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.4f)
             )
 
-            val apkFile = File(context.getExternalFilesDir(null), "waveX.apk")
-
             val isApkReady =
-                apkFile.exists() &&
-                        apkFile.length() > 0 &&
+                file.exists() &&
+                        file.length() >= expectedSizeInBytes &&
                         downloadedVersion == latestVersion
 
             Box(
@@ -489,7 +556,8 @@ fun Update_App_Activity(
                                         .setInputData(
                                             workDataOf(
                                                 "url" to downloadUrl,
-                                                "version" to latestVersion
+                                                "version" to latestVersion,
+                                                "expectedSizeInBytes" to expectedSizeInBytes.toString().toLong()
                                             )
                                         )
                                         .build()
@@ -555,10 +623,9 @@ fun Update_App_Activity(
                 Text(
                     text = when {
                         isApkReady -> "Install Now"
-                        downloadedVersion != null && downloadedVersion != latestVersion -> "Update Now"
                         isDownloading -> "Downloading • $progress%"
                         isFailed -> "Retry Download"
-                        currentWork != null && !isCompleted -> "Resume Download"
+                        currentWork != null && !isCompleted && file.exists() && file.length() < expectedSizeInBytes -> "Resume Download"
                         else -> "Update Now"
                     },
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
@@ -602,29 +669,10 @@ fun installApk(context: Context) {
     context.startActivity(intent)
 }
 
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
-}
-
 @Preview(showSystemUi = true)
 @Composable
 fun UpdateAppActivityPreview() {
     WaveXTheme {
-        Update_App_Activity()
+
     }
 }

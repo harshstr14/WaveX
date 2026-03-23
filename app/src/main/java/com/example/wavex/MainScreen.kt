@@ -116,10 +116,12 @@ import com.example.wavex.navigation.BottomNavRoute
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.settingScreen.checkForUpdate
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.updateAppScreen.UpdateAppActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -271,6 +273,33 @@ fun Main_Screen(
     val downloadedIds by downloadViewModel
         .downloadedSongIds
         .collectAsState(initial = emptySet())
+
+    var hasChecked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!hasChecked) {
+            hasChecked = true
+
+            checkForUpdate(
+                context,
+                onShowMessage = { message ->
+                }
+            ) { info ->
+
+                val intent = Intent(context, UpdateAppActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+                    putExtra("message", info.message)
+                    putExtra("latestVersion", info.latestVersion)
+                    putExtra("currentVersion", info.currentVersion)
+                    putExtra("downloadUrl", info.downloadUrl)
+                    putExtra("expectedSizeInBytes", info.expectedSizeInBytes)
+                }
+
+                context.startActivity(intent)
+            }
+        }
+    }
 
     var handled by remember { mutableStateOf(false) }
 

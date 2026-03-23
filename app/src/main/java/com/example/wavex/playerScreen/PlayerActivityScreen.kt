@@ -364,7 +364,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
         sheetDragHandle = null,
         sheetPeekHeight = 85.dp,
         sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        sheetContainerColor = Color(0xFFdbdbdb),
+        sheetContainerColor = Color(0xFFFCFBFB),
         sheetContent = {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth()

@@ -19,6 +19,7 @@ class AppDownloadWorker(
     override suspend fun doWork(): Result {
         val url = inputData.getString("url") ?: return Result.failure()
         val version = inputData.getString("version") ?: ""
+        val expectedSizeInBytes = inputData.getLong("expectedSizeInBytes", 0)
 
         val file = File(applicationContext.getExternalFilesDir(null), "waveX.apk")
         val client = OkHttpClient()
@@ -83,7 +84,9 @@ class AppDownloadWorker(
             }
 
             // Save the version
-            saveDownloadedVersion(applicationContext, version)
+            if (file.length() >= expectedSizeInBytes) {
+                saveDownloadedVersion(applicationContext, version)
+            }
 
             Result.success()
 

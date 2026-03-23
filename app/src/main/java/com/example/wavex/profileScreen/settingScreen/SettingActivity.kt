@@ -102,7 +102,8 @@ data class UpdateInfo(
     val message: String,
     val latestVersion: String,
     val currentVersion: String,
-    val downloadUrl: String
+    val downloadUrl: String,
+    val expectedSizeInBytes: Long
 )
 
 class SettingActivity : ComponentActivity() {
@@ -366,6 +367,7 @@ fun Setting_Activity() {
                                     putExtra("latestVersion", info.latestVersion)
                                     putExtra("currentVersion", info.currentVersion)
                                     putExtra("downloadUrl", info.downloadUrl)
+                                    putExtra("expectedSizeInBytes", info.expectedSizeInBytes)
                                 }
                                 context.startActivity(intent)
                             }
@@ -958,7 +960,7 @@ fun Setting_Activity() {
                     contentDescription = "Android Icon",
                     tint = colorResource(R.color.theme_color),
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(22.dp)
                         .graphicsLayer {
                             scaleX = androidScale
                             scaleY = androidScale
@@ -1139,7 +1141,7 @@ fun ConfirmActionDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
                     thickness = 1.2.dp,
                     color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
                 )
@@ -1189,7 +1191,7 @@ fun ConfirmActionDialog(
     }
 }
 
-private fun checkForUpdate(
+fun checkForUpdate(
     context: Context,
     onShowMessage: (String) -> Unit,
     onResult: (UpdateInfo) -> Unit
@@ -1206,6 +1208,7 @@ private fun checkForUpdate(
             val latestVersion = remoteConfig.getString("latest_version")
             val message = remoteConfig.getString("update_message")
             val downloadUrl = remoteConfig.getString("download_url")
+            val expectedSizeInBytes = remoteConfig.getLong("expected_size_in_bytes")
 
             val currentVersion = getCurrentVersion(context)
 
@@ -1215,7 +1218,8 @@ private fun checkForUpdate(
                         message = message,
                         latestVersion = latestVersion,
                         currentVersion = currentVersion,
-                        downloadUrl = downloadUrl
+                        downloadUrl = downloadUrl,
+                        expectedSizeInBytes = expectedSizeInBytes
                     )
                 )
             } else {
