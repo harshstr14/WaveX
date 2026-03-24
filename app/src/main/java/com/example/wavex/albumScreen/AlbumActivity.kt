@@ -1478,7 +1478,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = copyLinkInteraction,
                             indication = null
@@ -1529,7 +1529,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = whatsAppInteraction,
                             indication = null
@@ -1583,7 +1583,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = messageInteraction,
                             indication = null
@@ -1633,7 +1633,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = moreInteraction,
                             indication = null

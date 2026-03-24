@@ -18,7 +18,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -27,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,12 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -89,12 +93,11 @@ class UpdateAppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(
-                darkScrim = 0xFF121212.toInt(),
-                scrim = 0xFFF6F6F6.toInt()
+            statusBarStyle = SystemBarStyle.dark(
+                scrim = android.graphics.Color.TRANSPARENT
             ),
             navigationBarStyle = SystemBarStyle.dark(
-                scrim = 0xFFF6F6F6.toInt()
+                scrim = android.graphics.Color.TRANSPARENT
             )
         )
 
@@ -145,6 +148,7 @@ fun Update_App_Activity(
     val context = LocalContext.current
     val activity = context as? Activity
     val (backInteraction, backScale) = pressScale()
+    val layoutDirection = LocalLayoutDirection.current
 
     var downloadedVersion by remember { mutableStateOf<String?>(null) }
     var isApkExists by remember { mutableStateOf(false) }
@@ -347,57 +351,77 @@ fun Update_App_Activity(
     ) { paddingValues ->
         ConstraintLayout(
             modifier = Modifier.fillMaxSize()
-                .padding(paddingValues)
+                .padding(start = paddingValues.calculateLeftPadding(layoutDirection),
+                    end = paddingValues.calculateRightPadding(layoutDirection))
                 .background(colorResource(R.color.background_color))
         ) {
             val(backButton, updateButton, text1, text2, text3, text4, divider, logo) = createRefs()
 
-            Box(
-                modifier = Modifier.constrainAs(backButton) {
-                    top.linkTo(parent.top, margin = 15.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }.size(36.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(
-                        width = 1.5.dp,
-                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(20.dp)
-                    ).clickable(
-                        interactionSource = backInteraction,
-                        indication = null
-                    ) {
-                        activity?.finish()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_icon),
-                    contentDescription = "Back Icon",
-                    tint = colorResource(R.color.primary_text_color),
-                    modifier = Modifier.size(20.dp)
-                        .graphicsLayer {
-                            scaleX = backScale
-                            scaleY = backScale
-                        }
-                )
-            }
+//            Box(
+//                modifier = Modifier.constrainAs(backButton) {
+//                    top.linkTo(parent.top, margin = 15.dp)
+//                    start.linkTo(parent.start, margin = 25.dp)
+//                }.size(36.dp)
+//                    .clip(RoundedCornerShape(20.dp))
+//                    .border(
+//                        width = 1.5.dp,
+//                        color = colorResource(R.color.background_color).copy(alpha = 0.6f),
+//                        shape = RoundedCornerShape(20.dp)
+//                    ).clickable(
+//                        interactionSource = backInteraction,
+//                        indication = null
+//                    ) {
+//                        activity?.finish()
+//                    }.zIndex(1f),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    painter = painterResource(R.drawable.arrow_icon),
+//                    contentDescription = "Back Icon",
+//                    tint = colorResource(R.color.off_white),
+//                    modifier = Modifier.size(20.dp)
+//                        .graphicsLayer {
+//                            scaleX = backScale
+//                            scaleY = backScale
+//                        }
+//                )
+//            }
 
-            Image(
-                painter = painterResource(id = R.drawable.logo2),
-                contentDescription = null,
+            Box(
                 modifier = Modifier
+                    .fillMaxSize()
                     .constrainAs(createRef()) {
                         top.linkTo(parent.top)
-                        bottom.linkTo(logo.top)
+                        bottom.linkTo(parent.bottom)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }
-                    .size(350.dp)
-                    .graphicsLayer {
-                        rotationZ = -12f
-                        alpha = 0.4f
-                    }
-            )
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.backgroung_image),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 0.7f
+                        }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    colorResource(R.color.primary_text_color).copy(alpha = 0.4f),
+                                    colorResource(R.color.primary_text_color).copy(alpha = 0.90f),
+                                    colorResource(R.color.primary_text_color).copy(alpha = 1f)
+                                )
+                            )
+                        )
+                )
+            }
 
             Box(
                 modifier = Modifier.constrainAs(logo) {
@@ -469,7 +493,7 @@ fun Update_App_Activity(
                 fontWeight = FontWeight.SemiBold,
                 fontStyle = FontStyle.Normal,
                 textAlign = TextAlign.Center,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.off_white).copy(alpha = 0.5f),
                 lineHeight = 16.sp
             )
 
@@ -485,7 +509,7 @@ fun Update_App_Activity(
                 fontWeight = FontWeight.Bold,
                 fontStyle = FontStyle.Normal,
                 textAlign = TextAlign.Center,
-                color = colorResource(R.color.primary_text_color),
+                color = colorResource(R.color.off_white),
                 lineHeight = 24.sp
             )
 
@@ -501,7 +525,7 @@ fun Update_App_Activity(
                 fontWeight = FontWeight.SemiBold,
                 fontStyle = FontStyle.Normal,
                 textAlign = TextAlign.Center,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.off_white).copy(alpha = 0.5f),
                 lineHeight = 16.sp
             )
 
@@ -517,7 +541,7 @@ fun Update_App_Activity(
                 fontWeight = FontWeight.SemiBold,
                 fontStyle = FontStyle.Normal,
                 textAlign = TextAlign.Center,
-                color = colorResource(R.color.secondary_text_color),
+                color = colorResource(R.color.off_white).copy(alpha = 0.5f),
                 lineHeight = 16.sp
             )
 
@@ -536,15 +560,37 @@ fun Update_App_Activity(
                         file.length() >= expectedSizeInBytes &&
                         downloadedVersion == latestVersion
 
+            val animatedProgress by animateFloatAsState(
+                targetValue = progress / 100f,
+                animationSpec = tween(durationMillis = 400),
+                label = "progress_animation"
+            )
+
             Box(
                 modifier = Modifier.constrainAs(updateButton) {
                     bottom.linkTo(parent.bottom, margin = 15.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 }.fillMaxWidth()
-                    .padding(horizontal = 20.dp).height(52.dp)
+                    .padding(horizontal = 20.dp)
+                    .navigationBarsPadding()
+                    .height(52.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(colorResource(R.color.theme_color))
+                    .background(
+                        if (isDownloading) colorResource(R.color.off_white)
+                    else colorResource(R.color.theme_color)
+                    )
+                    .drawBehind {
+                        if (isDownloading) {
+                            val progressWidth = size.width * animatedProgress
+
+                            drawRoundRect(
+                                color = Color(0xFF34A853).copy(alpha = 0.2f),
+                                size = Size(progressWidth, size.height),
+                                cornerRadius = CornerRadius(14.dp.toPx())
+                            )
+                        }
+                    }
                     .clickable (
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true)
@@ -629,7 +675,7 @@ fun Update_App_Activity(
                         else -> "Update Now"
                     },
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.off_white)
+                    color = if (isDownloading) colorResource(R.color.theme_color) else colorResource(R.color.off_white)
                 )
             }
         }

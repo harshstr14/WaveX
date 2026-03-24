@@ -978,7 +978,7 @@ private fun Playlist_Activity(
                             ShareBottomSheet(
                                 item = ShareItem(
                                     title = htmlToText(playlistData?.playlistName),
-                                    subtitle = "",
+                                    subtitle = "${playlistData?.songs?.size} Songs in Playlist",
                                     image = playlistData?.imageUrl,
                                     id = playlistId.toString(),
                                     type = ShareType.PLAYLIST
@@ -1248,18 +1248,18 @@ fun ShareContent(
                     lineHeight = 20.sp
                 )
 
-//                Spacer(modifier = Modifier.height(6.dp))
-//
-//                Text(
-//                    text = item.subtitle,
-//                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
-//                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-//                    fontSize = 12.sp,
-//                    fontFamily = fonts,
-//                    fontWeight = FontWeight.SemiBold,
-//                    fontStyle = FontStyle.Normal,
-//                    lineHeight = 14.sp
-//                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = item.subtitle,
+                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    lineHeight = 14.sp
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -1298,7 +1298,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = copyLinkInteraction,
                             indication = null
@@ -1349,7 +1349,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = whatsAppInteraction,
                             indication = null
@@ -1403,7 +1403,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = messageInteraction,
                             indication = null
@@ -1453,7 +1453,7 @@ fun ShareContent(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.8f))
+                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
                         .clickable(
                             interactionSource = moreInteraction,
                             indication = null

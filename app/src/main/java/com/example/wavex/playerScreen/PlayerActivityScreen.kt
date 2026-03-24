@@ -1046,6 +1046,20 @@ fun UpNextSheetContent(
                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                modifier = Modifier.padding(start = 15.dp),
+                text = "${songLists.size} Songs in Queue",
+                fontSize = 13.sp,
+                lineHeight = 14.sp,
+                fontFamily = fonts,
+                fontWeight = FontWeight.SemiBold,
+                fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.primary_text_color),
+                maxLines = 1
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
