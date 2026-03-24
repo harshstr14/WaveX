@@ -13,6 +13,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -307,6 +308,7 @@ fun Update_App_Activity(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 18.dp, vertical = 68.dp)
             ) { data ->
                 Snackbar(
@@ -550,7 +552,7 @@ fun Update_App_Activity(
                     bottom.linkTo(updateButton.top)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                }.padding(vertical = 8.dp, horizontal = 2.dp),
+                }.padding(vertical = 10.dp, horizontal = 2.dp),
                 thickness = 1.2.dp,
                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.4f)
             )
@@ -566,6 +568,30 @@ fun Update_App_Activity(
                 label = "progress_animation"
             )
 
+            val animatedBackgroundColor by animateColorAsState(
+                targetValue = if (isDownloading)
+                    colorResource(R.color.off_white)
+                else
+                    colorResource(R.color.theme_color),
+                animationSpec = tween(durationMillis = 400),
+                label = "bg_color_anim"
+            )
+
+            val animatedTextColor by animateColorAsState(
+                targetValue = if (isDownloading)
+                    colorResource(R.color.theme_color)
+                else
+                    colorResource(R.color.off_white),
+                animationSpec = tween(400),
+                label = "text_color_anim"
+            )
+
+            val progressAlpha by animateFloatAsState(
+                targetValue = if (isDownloading) 1f else 0f,
+                animationSpec = tween(400),
+                label = "progress_alpha"
+            )
+
             Box(
                 modifier = Modifier.constrainAs(updateButton) {
                     bottom.linkTo(parent.bottom, margin = 15.dp)
@@ -576,16 +602,13 @@ fun Update_App_Activity(
                     .navigationBarsPadding()
                     .height(52.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        if (isDownloading) colorResource(R.color.off_white)
-                    else colorResource(R.color.theme_color)
-                    )
+                    .background(animatedBackgroundColor)
                     .drawBehind {
                         if (isDownloading) {
                             val progressWidth = size.width * animatedProgress
 
                             drawRoundRect(
-                                color = Color(0xFF34A853).copy(alpha = 0.2f),
+                                color = Color(0xFF34A853).copy(alpha = 0.2f * progressAlpha),
                                 size = Size(progressWidth, size.height),
                                 cornerRadius = CornerRadius(14.dp.toPx())
                             )
@@ -675,7 +698,7 @@ fun Update_App_Activity(
                         else -> "Update Now"
                     },
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = if (isDownloading) colorResource(R.color.theme_color) else colorResource(R.color.off_white)
+                    color = animatedTextColor
                 )
             }
         }
