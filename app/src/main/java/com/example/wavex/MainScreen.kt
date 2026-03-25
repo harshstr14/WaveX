@@ -361,6 +361,7 @@ fun Main_Screen(
     var showSheet by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
+    var selectedPlaylist by remember { mutableStateOf<List<SongItem>>(emptyList()) }
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
@@ -375,16 +376,16 @@ fun Main_Screen(
 
     val qualityIndex = musicService?.downloadQualityIndex
 
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             Column {
-                val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
-                    ?: remember { mutableStateOf(false) }
-
-                val currentSong by musicService?.currentSong?.collectAsState(initial = null)
-                    ?: remember { mutableStateOf(null) }
-
                 val progress by musicService?.progress?.collectAsState(initial = 0)
                     ?: remember { mutableIntStateOf(0) }
 
@@ -433,6 +434,7 @@ fun Main_Screen(
                         onAddClick = {
                             selectedSong = song
                             selectedIndex = currentIndex
+                            selectedPlaylist = playlist
                             showSheet = true
                         }
                     )
@@ -536,7 +538,15 @@ fun Main_Screen(
             }
         ) {
             composable(BottomNavRoute.Home.route) {
-                HomeScreen(showSheet = showSheet)  // ⬅ current Home UI
+                HomeScreen(
+                    showSheet = showSheet,
+                    onSongLongPress = { playlist, song, index ->
+                        selectedSong = song
+                        selectedIndex = index
+                        selectedPlaylist = playlist
+                        showSheet = true
+                    }
+                )  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
                 DiscoverScreen(downloadViewModel = downloadViewModel, qualityIndex = qualityIndex,
@@ -585,21 +595,32 @@ fun Main_Screen(
 
         SongOptionsBottomSheet(
             song = song,
+            isPlaying = isPlaying,
+            isCurrentSong = currentSong?.id == song.id,
             onDismiss = {
                 showSheet = false
                 selectedSong = null
             },
             onPlayNow = {
-                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                    action = MusicPlayerService.ACTION_PLAY_NEW
-                    putExtra("index", selectedIndex)
+                val isSameSong = currentSong?.id == song.id
+
+                val intent = Intent(context, MusicPlayerService::class.java)
+
+                if (isSameSong) {
+                    intent.action = if (isPlaying) {
+                        MusicPlayerService.ACTION_PAUSE
+                    } else {
+                        MusicPlayerService.ACTION_PLAY
+                    }
+                } else {
+                    intent.action = MusicPlayerService.ACTION_PLAY_NEW
+                    intent.putExtra("index", selectedIndex)
+
+                    PlayerManager.currentPlaylist = selectedPlaylist.toMutableList()
+                    PlayerManager.currentIndex = selectedIndex
                 }
 
-                PlayerManager.currentPlaylist = playlist.toMutableList()
-                PlayerManager.currentIndex = selectedIndex
-
                 ContextCompat.startForegroundService(context, intent)
-                showSheet = false
             },
             isFavourite = isFavourite,
             isDownloaded = isDownloaded,

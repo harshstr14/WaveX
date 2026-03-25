@@ -15,6 +15,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -335,7 +336,10 @@ object ProfilePrefs {
 }
 
 @Composable
-fun HomeScreen (showSheet: Boolean) {
+fun HomeScreen (
+    showSheet: Boolean,
+    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
+) {
     val isPreview = LocalInspectionMode.current
 
     val auth = remember(isPreview) {
@@ -599,10 +603,12 @@ fun HomeScreen (showSheet: Boolean) {
                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                         )
 
-                        RecentlyPlayedSongs(recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
-                            top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
-                            start.linkTo(parent.start)
-                        })
+                        RecentlyPlayedSongs(
+                            recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
+                                top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
+                                start.linkTo(parent.start)
+                            }, onSongLongPress = onSongLongPress
+                        )
                     }
 
                     if (newReleases.isNotEmpty()) {
@@ -618,7 +624,7 @@ fun HomeScreen (showSheet: Boolean) {
                         top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }, newReleasesVM)
+                    }, newReleasesVM, onSongLongPress = onSongLongPress)
 
                     if (artists.isNotEmpty()) {
                         Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
@@ -648,7 +654,7 @@ fun HomeScreen (showSheet: Boolean) {
                         top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }, trendingVM)
+                    }, trendingVM, onSongLongPress = onSongLongPress)
 
                     if (albums.isNotEmpty()) {
                         Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
@@ -809,7 +815,11 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 }
 
 @Composable
-fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
+fun RecentlyPlayedSongs(
+    recentSongs: List<SongItem>,
+    modifier: Modifier,
+    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -835,27 +845,34 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 2.dp)
-                            .clickable(
+                            .combinedClickable(
                                 interactionSource = interactionSource,
-                                indication = null
-                            ) {
-                                val songIndex = recentSongs.indexOfFirst { it.id == song.id }
-                                if (songIndex == -1) return@clickable
+                                indication = null,
+                                onClick = {
+                                    val songIndex = recentSongs.indexOfFirst { it.id == song.id }
+                                    if (songIndex == -1) return@combinedClickable
 
-                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                    action = MusicPlayerService.ACTION_PLAY_NEW
-                                    putExtra("index", songIndex)
+                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        action = MusicPlayerService.ACTION_PLAY_NEW
+                                        putExtra("index", songIndex)
+                                    }
+
+                                    PlayerManager.currentPlaylist = recentSongs
+                                    PlayerManager.currentIndex = songIndex
+
+                                    ContextCompat.startForegroundService(context, intent)
+
+                                    scope.launch {
+                                        RecentlyPlayedManager.add(context, song)
+                                    }
+                                },
+                                onLongClick = {
+                                    val songIndex = recentSongs.indexOfFirst { it.id == song.id }
+                                    if (songIndex != -1) {
+                                        onSongLongPress(recentSongs, song, songIndex)
+                                    }
                                 }
-
-                                PlayerManager.currentPlaylist = recentSongs
-                                PlayerManager.currentIndex = songIndex
-
-                                ContextCompat.startForegroundService(context, intent)
-
-                                scope.launch {
-                                    RecentlyPlayedManager.add(context, song)
-                                }
-                            },
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
@@ -930,8 +947,9 @@ fun RecentlyPlayedSongs(recentSongs: List<SongItem>, modifier: Modifier) {
 @Composable
 fun NewReleasesSongs(
     playlistId: String, root: String, modifier: Modifier,
-    viewModel: NewReleasesSongsViewModel = viewModel())
-{
+    viewModel: NewReleasesSongsViewModel = viewModel(),
+    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
+) {
     val songs by viewModel.songs
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -951,24 +969,34 @@ fun NewReleasesSongs(
             Column(
                 modifier = Modifier
                     .width(110.dp)
-                    .clickable(
+                    .combinedClickable(
                         interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        val intent = Intent(context, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putExtra("index", index)
+                        indication = null,
+                        onClick = {
+                            val songIndex = songs.indexOfFirst { it.id == song.id }
+                            if (songIndex == -1) return@combinedClickable
+
+                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                putExtra("index", songIndex)
+                            }
+
+                            PlayerManager.currentPlaylist = songs
+                            PlayerManager.currentIndex = songIndex
+
+                            ContextCompat.startForegroundService(context, intent)
+
+                            scope.launch {
+                                RecentlyPlayedManager.add(context, song)
+                            }
+                        },
+                        onLongClick = {
+                            val songIndex = songs.indexOfFirst { it.id == song.id }
+                            if (songIndex != -1) {
+                                onSongLongPress(songs, song, songIndex)
+                            }
                         }
-
-                        PlayerManager.currentPlaylist = songs
-                        PlayerManager.currentIndex = index
-
-                        ContextCompat.startForegroundService(context, intent)
-
-                        scope.launch {
-                            RecentlyPlayedManager.add(context, song)
-                        }
-                    }
+                    )
             ) {
                 AsyncImage(
                     model = song.image.getOrNull(2)?.url,
@@ -1069,7 +1097,12 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
 }
 
 @Composable
-fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewModel: TrendingSongsViewModel = viewModel()) {
+fun TrendingSongs(
+    playlistId: String, root: String,
+    modifier: Modifier,
+    viewModel: TrendingSongsViewModel = viewModel(),
+    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
+) {
     val songs by viewModel.songs
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -1089,24 +1122,34 @@ fun TrendingSongs(playlistId: String, root: String, modifier: Modifier, viewMode
             Column(
                 modifier = Modifier
                     .width(110.dp)
-                    .clickable(
+                    .combinedClickable(
                         interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        val intent = Intent(context, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putExtra("index", index)
+                        indication = null,
+                        onClick = {
+                            val songIndex = songs.indexOfFirst { it.id == song.id }
+                            if (songIndex == -1) return@combinedClickable
+
+                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                putExtra("index", songIndex)
+                            }
+
+                            PlayerManager.currentPlaylist = songs
+                            PlayerManager.currentIndex = songIndex
+
+                            ContextCompat.startForegroundService(context, intent)
+
+                            scope.launch {
+                                RecentlyPlayedManager.add(context, song)
+                            }
+                        },
+                        onLongClick = {
+                            val songIndex = songs.indexOfFirst { it.id == song.id }
+                            if (songIndex != -1) {
+                                onSongLongPress(songs, song, songIndex)
+                            }
                         }
-
-                        PlayerManager.currentPlaylist = songs
-                        PlayerManager.currentIndex = index
-
-                        ContextCompat.startForegroundService(context, intent)
-
-                        scope.launch {
-                            RecentlyPlayedManager.add(context, song)
-                        }
-                    }
+                    )
             ) {
                 AsyncImage(
                     model = song.image.getOrNull(2)?.url,
@@ -1378,5 +1421,5 @@ private fun LoadingEffect() {
 @Composable
 @Preview(showSystemUi = true)
 private fun HomeScreenPreview() {
-    HomeScreen(false)
+
 }

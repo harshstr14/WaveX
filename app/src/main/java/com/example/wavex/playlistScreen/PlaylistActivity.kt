@@ -1086,21 +1086,32 @@ fun Playlist_Activity(
 
                             SongOptionsBottomSheet(
                                 song = song,
+                                isPlaying = isPlaying,
+                                isCurrentSong = currentSong?.id == song.id,
                                 onDismiss = {
                                     showSongSheet = false
                                     selectedSong = null
                                 },
                                 onPlayNow = {
-                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                        action = MusicPlayerService.ACTION_PLAY_NEW
-                                        putExtra("index", selectedIndex)
+                                    val isSameSong = currentSong?.id == song.id
+
+                                    val intent = Intent(context, MusicPlayerService::class.java)
+
+                                    if (isSameSong) {
+                                        intent.action = if (isPlaying) {
+                                            MusicPlayerService.ACTION_PAUSE
+                                        } else {
+                                            MusicPlayerService.ACTION_PLAY
+                                        }
+                                    } else {
+                                        intent.action = MusicPlayerService.ACTION_PLAY_NEW
+                                        intent.putExtra("index", selectedIndex)
+
+                                        PlayerManager.currentPlaylist = playlists.songs
+                                        PlayerManager.currentIndex = selectedIndex
                                     }
 
-                                    PlayerManager.currentPlaylist = playlists.songs
-                                    PlayerManager.currentIndex = selectedIndex
-
                                     ContextCompat.startForegroundService(context, intent)
-                                    showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
                                 isDownloaded = isDownloaded,
@@ -1225,6 +1236,8 @@ fun Playlist_Activity(
 @Composable
 fun SongOptionsBottomSheet(
     song: SongItem,
+    isPlaying: Boolean,
+    isCurrentSong: Boolean,
     onDismiss: () -> Unit,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
@@ -1271,6 +1284,8 @@ fun SongOptionsBottomSheet(
         ) {
             BottomSheetContent(
                 song,
+                isPlaying = isPlaying,
+                isCurrentSong = isCurrentSong,
                 onPlayNow,
                 isFavourite,
                 isDownloaded,
@@ -1546,6 +1561,8 @@ fun SongOptionsBottomSheet(
 @Composable
 private fun BottomSheetContent(
     song: SongItem,
+    isPlaying: Boolean,
+    isCurrentSong: Boolean,
     onPlayNow: () -> Unit,
     isFavourite: Boolean,
     isDownloaded: Boolean,
@@ -1723,8 +1740,14 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(6.dp))
 
         SheetOptionItem(
-            icon = R.drawable.notificationplaybutton,
-            text = "Play Now"
+            icon = if (isCurrentSong && isPlaying)
+                R.drawable.notificationpausebutton
+            else
+                R.drawable.notificationplaybutton,
+            text = if (isCurrentSong && isPlaying)
+                "Pause"
+            else
+                "Play Now"
         ) {
             onPlayNow()
         }

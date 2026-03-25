@@ -606,7 +606,6 @@ fun Liked_Songs_Activity(
                                 items = uniqueSongs,
                                 key = { _, song -> song.id }
                             ) { index, song ->
-
                                 val isDownloaded = downloadedIds.contains(song.id)
                                 val state = ParallelDownloader.downloadStates[song.id]
 
@@ -864,21 +863,32 @@ fun Liked_Songs_Activity(
 
                             SongOptionsBottomSheet(
                                 song = song,
+                                isPlaying = isPlaying,
+                                isCurrentSong = currentSong?.id == song.id,
                                 onDismiss = {
                                     showSongSheet = false
                                     selectedSong = null
                                 },
                                 onPlayNow = {
-                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                        action = MusicPlayerService.ACTION_PLAY_NEW
-                                        putExtra("index", selectedIndex)
+                                    val isSameSong = currentSong?.id == song.id
+
+                                    val intent = Intent(context, MusicPlayerService::class.java)
+
+                                    if (isSameSong) {
+                                        intent.action = if (isPlaying) {
+                                            MusicPlayerService.ACTION_PAUSE
+                                        } else {
+                                            MusicPlayerService.ACTION_PLAY
+                                        }
+                                    } else {
+                                        intent.action = MusicPlayerService.ACTION_PLAY_NEW
+                                        intent.putExtra("index", selectedIndex)
+
+                                        PlayerManager.currentPlaylist = songsList.songs
+                                        PlayerManager.currentIndex = selectedIndex
                                     }
 
-                                    PlayerManager.currentPlaylist  = songsList.songs
-                                    PlayerManager.currentIndex = selectedIndex
-
                                     ContextCompat.startForegroundService(context, intent)
-                                    showSongSheet = false
                                 },
                                 isFavourite = isFavourite,
                                 isDownloaded = isDownloaded,

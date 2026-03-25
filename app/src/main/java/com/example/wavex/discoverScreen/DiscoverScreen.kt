@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +32,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -161,6 +158,14 @@ fun DiscoverScreen(
     val downloadedIds by downloadViewModel
         .downloadedSongIds
         .collectAsState(initial = emptySet())
+
+    val musicService = ServiceLocator.musicService
+
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
 
     ConstraintLayout(
         modifier = Modifier.fillMaxSize()
@@ -393,6 +398,8 @@ fun DiscoverScreen(
 
         SongOptionsBottomSheet(
             song = song,
+            isPlaying = isPlaying,
+            isCurrentSong = currentSong?.id == song.id,
             isFavourite = isFavourite,
             isDownloaded = isDownloaded,
             onDismiss = {
@@ -400,12 +407,22 @@ fun DiscoverScreen(
                 selectedSong = null
             },
             onPlayNow = {
-                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                    action = MusicPlayerService.ACTION_PLAY_NEW
-                    putExtra("index", selectedIndex)
+                val isSameSong = currentSong?.id == song.id
+
+                val intent = Intent(context, MusicPlayerService::class.java)
+
+                if (isSameSong) {
+                    intent.action = if (isPlaying) {
+                        MusicPlayerService.ACTION_PAUSE
+                    } else {
+                        MusicPlayerService.ACTION_PLAY
+                    }
+                } else {
+                    intent.action = MusicPlayerService.ACTION_PLAY_NEW
+                    intent.putExtra("index", selectedIndex)
                 }
+
                 ContextCompat.startForegroundService(context, intent)
-                showSongSheet = false
             },
             onToggleFavourite = {
                 likedViewModel.toggleLike(

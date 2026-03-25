@@ -394,7 +394,7 @@ private fun YourProfileScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
+                    .padding(horizontal = 18.dp, vertical = 25.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
@@ -871,7 +871,7 @@ private fun YourProfileScreen(
 
                 Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
                     bottom.linkTo(parent.bottom, margin = 25.dp)
-                }.fillMaxWidth().padding(horizontal = 20.dp).height(52.dp).shadow(
+                }.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp).shadow(
                     elevation = 26.dp,
                     shape = RoundedCornerShape(14.dp),
                     ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
@@ -914,7 +914,7 @@ private fun YourProfileScreen(
                     ) , shape = RoundedCornerShape(14.dp)) {
 
                     Text(
-                        text = "Update", fontSize = 16.sp,
+                        text = "Update", fontSize = 17.sp,
                         lineHeight = 18.sp, fontFamily = fonts,
                         fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.off_white)

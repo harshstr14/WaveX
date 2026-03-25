@@ -48,6 +48,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -223,7 +224,9 @@ fun Update_App_Activity(
         }
     }
 
-    var startAnimation by remember { mutableStateOf(false) }
+    var startAnimation by rememberSaveable { mutableStateOf(false) }
+
+    var glowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
     val shadowBlur by animateFloatAsState(
         targetValue = if (startAnimation) 50f else 20f,
@@ -243,7 +246,26 @@ fun Update_App_Activity(
         label = "glowScale"
     )
 
-    var glowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
+    LaunchedEffect(Unit) {
+        val file = File(context.getExternalFilesDir(null), "waveX.apk")
+
+        val isValidFile = file.exists() && file.length() >= expectedSizeInBytes
+
+        if (!isValidFile) {
+            clearDownloadedVersion(context)
+            downloadedVersion = null
+        } else {
+            downloadedVersion = getDownloadedVersion(context)
+        }
+
+        isApkExists = isValidFile
+
+        startAnimation = true
+
+        extractDominantColor(context, R.drawable.logo) {
+            glowColor = it
+        }
+    }
 
     LaunchedEffect(isCompleted) {
         if (isCompleted) {
@@ -277,27 +299,6 @@ fun Update_App_Activity(
     LaunchedEffect(isApkExists) {
         if (!isApkExists) {
             workManager.cancelUniqueWork("app_update_download")
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val file = File(context.getExternalFilesDir(null), "waveX.apk")
-
-        val isValidFile = file.exists() && file.length() >= expectedSizeInBytes
-
-        if (!isValidFile) {
-            clearDownloadedVersion(context)
-            downloadedVersion = null
-        } else {
-            downloadedVersion = getDownloadedVersion(context)
-        }
-
-        isApkExists = isValidFile
-
-        startAnimation = true
-
-        extractDominantColor(context, R.drawable.logo) {
-            glowColor = it
         }
     }
 
@@ -357,37 +358,7 @@ fun Update_App_Activity(
                     end = paddingValues.calculateRightPadding(layoutDirection))
                 .background(colorResource(R.color.background_color))
         ) {
-            val(backButton, updateButton, text1, text2, text3, text4, divider, logo) = createRefs()
-
-//            Box(
-//                modifier = Modifier.constrainAs(backButton) {
-//                    top.linkTo(parent.top, margin = 15.dp)
-//                    start.linkTo(parent.start, margin = 25.dp)
-//                }.size(36.dp)
-//                    .clip(RoundedCornerShape(20.dp))
-//                    .border(
-//                        width = 1.5.dp,
-//                        color = colorResource(R.color.background_color).copy(alpha = 0.6f),
-//                        shape = RoundedCornerShape(20.dp)
-//                    ).clickable(
-//                        interactionSource = backInteraction,
-//                        indication = null
-//                    ) {
-//                        activity?.finish()
-//                    }.zIndex(1f),
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Icon(
-//                    painter = painterResource(R.drawable.arrow_icon),
-//                    contentDescription = "Back Icon",
-//                    tint = colorResource(R.color.off_white),
-//                    modifier = Modifier.size(20.dp)
-//                        .graphicsLayer {
-//                            scaleX = backScale
-//                            scaleY = backScale
-//                        }
-//                )
-//            }
+            val(updateButton, text1, text2, text3, text4, divider, logo) = createRefs()
 
             Box(
                 modifier = Modifier
