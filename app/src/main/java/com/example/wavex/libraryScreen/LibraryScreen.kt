@@ -523,7 +523,7 @@ fun LibraryScreen(
                     else -> {
                         LazyColumn (
                             state = playlistState,
-                            contentPadding = PaddingValues(start = 24.dp, end = 12.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
+                            contentPadding = PaddingValues(start = 22.dp, end = 12.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                             item {

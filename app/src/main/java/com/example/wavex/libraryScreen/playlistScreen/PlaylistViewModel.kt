@@ -39,4 +39,12 @@ class PlaylistViewModel(
                 }
         }
     }
+
+    fun removeSong(
+        playlistId: String,
+        songId: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        repository.removeSongFromPlaylist(playlistId, songId, onResult)
+    }
 }

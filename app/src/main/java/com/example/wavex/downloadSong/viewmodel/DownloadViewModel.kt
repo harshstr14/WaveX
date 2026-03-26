@@ -27,19 +27,31 @@ class DownloadViewModel(
         }
     }
 
-    fun deleteSong(id: String) {
+    fun deleteSong(
+        id: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
-            val song = repository.getSongById(id)
+            try {
+                val song = repository.getSongById(id)
 
-            song?.localPath?.let { path ->
-                val file = File(path)
+                if (song != null) {
+                    val file = File(song.localPath)
 
-                if (file.exists()) {
-                    file.delete()
+                    val isDeleted = if (file.exists()) {
+                        file.delete()
+                    } else true
+
+                    repository.delete(id)
+
+                    onResult(true, "Removed from downloads")
+                } else {
+                    onResult(false, "Song not found")
                 }
-            }
 
-            repository.delete(id)
+            } catch (e: Exception) {
+                onResult(false, "Failed to remove song")
+            }
         }
     }
 

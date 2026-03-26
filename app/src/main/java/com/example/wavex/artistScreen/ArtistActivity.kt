@@ -859,7 +859,7 @@ private fun Artist_Activity(
 
                                         Row(
                                             modifier = Modifier.fillMaxWidth()
-                                                .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                                                .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
                                                 .clickable(
                                                     interactionSource = interactionSource,
                                                     indication = null
@@ -1293,7 +1293,7 @@ private fun Artist_Activity(
 
                                     when {
                                         isDownloaded -> {
-                                            downloadViewModel.deleteSong(song.id)
+                                            downloadViewModel.deleteSong(song.id) { success, message -> }
                                         }
 
                                         state == ParallelDownloader.DownloadState.DOWNLOADING -> {

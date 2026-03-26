@@ -54,4 +54,19 @@ class LikedSongsViewModel : ViewModel() {
     fun isLiked(songId: String): Boolean {
         return _likedSongs.value.contains(songId)
     }
+
+    fun removeFromFavourites(
+        songId: String,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        val ref = favouriteRef?.child(songId) ?: return
+
+        ref.removeValue()
+            .addOnSuccessListener {
+                onResult(true)
+            }
+            .addOnFailureListener {
+                onResult(false)
+            }
+    }
 }

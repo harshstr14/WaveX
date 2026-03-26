@@ -963,7 +963,7 @@ fun NewReleasesSongs(
     if (songs.isEmpty()) return
 
     LazyRow(modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 18.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
             Column(

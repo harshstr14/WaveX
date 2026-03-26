@@ -634,7 +634,7 @@ fun Main_Screen(
 
                 when {
                     isDownloaded -> {
-                        downloadViewModel.deleteSong(song.id)
+                        downloadViewModel.deleteSong(song.id) { success, message -> }
                     }
 
                     state == ParallelDownloader.DownloadState.DOWNLOADING -> {

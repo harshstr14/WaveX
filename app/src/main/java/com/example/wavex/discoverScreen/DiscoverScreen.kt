@@ -435,7 +435,7 @@ fun DiscoverScreen(
 
                 when {
                     isDownloaded -> {
-                        downloadViewModel.deleteSong(song.id)
+                        downloadViewModel.deleteSong(song.id) { success, message -> }
                     }
 
                     state == ParallelDownloader.DownloadState.DOWNLOADING -> {
@@ -641,7 +641,7 @@ fun ExploreSongs(
 
                         Row(
                             modifier = Modifier.fillMaxWidth()
-                                .padding(start = if (currentSong?.id == song.id) 0.dp else 24.dp, end = 12.dp)
+                                .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
                                 .clickable(
                                     interactionSource = interactionSource,
                                     indication = null
