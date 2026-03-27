@@ -85,6 +85,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -193,6 +194,9 @@ private fun Album_Activity(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
 
     val downloadedIds by downloadViewModel
         .downloadedSongIds
@@ -562,7 +566,7 @@ private fun Album_Activity(
                                         contentDescription = "Album Image",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
-                                            .size(160.dp)
+                                            .size((screenWidth * 0.4f).coerceAtMost(220.dp))
                                             .clip(RoundedCornerShape(16.dp))
                                             .zIndex(10f)
                                     )

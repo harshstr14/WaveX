@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
@@ -163,6 +164,9 @@ fun Liked_Songs_Activity(
     val context = LocalContext.current
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
 
     val downloadedIds by downloadViewModel
         .downloadedSongIds
@@ -405,7 +409,7 @@ fun Liked_Songs_Activity(
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
-                                            .size(160.dp)
+                                            .size((screenWidth * 0.4f).coerceAtMost(220.dp))
                                             .clip(RoundedCornerShape(16.dp))
                                             .zIndex(10f)
                                     )

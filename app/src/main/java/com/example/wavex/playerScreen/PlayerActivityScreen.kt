@@ -96,6 +96,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -104,6 +105,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -201,6 +203,12 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
 
     val context = LocalContext.current
     val activity = context as? Activity
+
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+
+    val imageSize = (screenHeight * 0.39f).coerceAtMost(420.dp)
+    val waveformHeight = screenHeight * 0.08f
 
     var showSongSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
@@ -572,7 +580,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 start.linkTo(parent.start, margin = 24.dp)
                                 end.linkTo(parent.end, margin = 24.dp)
                             }
-                            .size(310.dp)
+                            .size(imageSize)
                             .drawBehind {
                                 val safeBlur = (shadowBlurImage * 1.2f).coerceAtLeast(0.1f)
                                 val cornerRadius = 20.dp.toPx()
@@ -642,6 +650,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                     }) {
                         AudioWaveform(
                             amplitudes = amplitudes,
+                            waveformHeight = waveformHeight,
                             progress = progressFraction,
                             onDragStateChanged = { dragging ->
                                 if (dragging) {
@@ -1395,6 +1404,7 @@ private fun formatTime(ms: Long): String {
 @Composable
 fun AudioWaveform(
     amplitudes: List<Float>,
+    waveformHeight: Dp,
     progress: Float,
     onDragStateChanged: (Boolean) -> Unit,
     onProgressChanged: (Float) -> Unit,
@@ -1416,7 +1426,7 @@ fun AudioWaveform(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(waveformHeight)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {

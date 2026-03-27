@@ -93,6 +93,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -189,6 +190,9 @@ fun Playlist_Activity(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
 
     val downloadedIds by downloadViewModel
         .downloadedSongIds
@@ -552,7 +556,7 @@ fun Playlist_Activity(
                                         contentScale = ContentScale.Crop,
                                         error = painterResource(R.drawable.default_image),
                                         modifier = Modifier
-                                            .size(160.dp)
+                                            .size((screenWidth * 0.4f).coerceAtMost(220.dp))
                                             .clip(RoundedCornerShape(16.dp))
                                             .zIndex(10f)
                                     )
