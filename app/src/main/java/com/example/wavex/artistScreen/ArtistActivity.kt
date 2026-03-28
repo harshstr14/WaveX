@@ -3,6 +3,7 @@ package com.example.wavex.artistScreen
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
@@ -38,6 +39,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,6 +91,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -191,6 +195,9 @@ private fun Artist_Activity(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val downloadedIds by downloadViewModel
         .downloadedSongIds
@@ -646,262 +653,630 @@ private fun Artist_Activity(
                 }
 
                 else -> {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))) {
-                        val (contentList, miniPlayer) = createRefs()
-
-                        LazyColumn (
-                            state = listState,
-                            modifier = Modifier.constrainAs(contentList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
-                            contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 5.dp)
+                    if (isLandscape) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(colorResource(R.color.background_color))
                         ) {
-                            item {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    AsyncImage(
-                                        model = imageToLoad,
-                                        contentDescription = "Artist Image",
-                                        contentScale = ContentScale.Crop,
-                                        modifier =  Modifier
-                                            .offset(x = offsetX, y = offsetY)
-                                            .size(size)
-                                            .clip(RoundedCornerShape(cornerRadius))
-                                            .graphicsLayer {
-                                                alpha = metaAlpha
-                                            }
-                                            .zIndex(10f)
-                                    )
+                            Column(
+                                modifier = Modifier
+                                    .weight(0.3f)
+                                    .fillMaxHeight()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                AsyncImage(
+                                    model = imageToLoad,
+                                    contentDescription = "Artist Image",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(0.98f)
+                                        .clip(RoundedCornerShape(60.dp))
+                                )
+                            }
 
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
-                                        .offset(y = titleOffsetY).animateContentSize()
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(0.6f)
+                                    .fillMaxHeight(),
+                                contentPadding = PaddingValues(bottom = 15.dp)
+                            ) {
+                                item {
+                                    Row(
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = htmlToText(artists.name),
+                                            fontSize = 22.sp,
+                                            lineHeight = 24.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        if (artists.isVerified) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.verified_icon),
+                                                contentDescription = "Verified Icon",
+                                                tint = Color.Unspecified,
+                                                modifier = Modifier.size(22.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = iconScale
+                                                        scaleY = iconScale
+                                                    }
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Row(
-                                            modifier = Modifier
-                                                .padding(top = titleTopPadding, start = titleStartPadding),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.followers_icon),
+                                                contentDescription = "Followers Icon",
+                                                tint = colorResource(R.color.primary_text_color),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(6.dp))
+
                                             Text(
-                                                text = htmlToText(artists.name),
-                                                fontSize = titleFontSize.value.sp,
-                                                lineHeight = 22.sp,
+                                                text = "Followers : ${
+                                                    formatCount(artists.followerCount.toLong())
+                                                }",
+                                                fontSize = 13.sp,
+                                                lineHeight = 13.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.primary_text_color),
+                                                color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-
-                                            Spacer(modifier = Modifier.width(8.dp))
-
-                                            if (artists.isVerified) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.verified_icon),
-                                                    contentDescription = "Verified Icon",
-                                                    tint = Color.Unspecified,
-                                                    modifier = Modifier.size(20.dp)
-                                                        .graphicsLayer {
-                                                            scaleX = iconScale
-                                                            scaleY = iconScale
-                                                        }
-                                                )
-                                            }
                                         }
 
-                                        if (showMetaInfo) {
+                                        Spacer(modifier = Modifier.width(15.dp))
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.headset_icon),
+                                                contentDescription = "Headset Icon",
+                                                tint = colorResource(R.color.primary_text_color),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(6.dp))
+
+                                            Text(
+                                                text = "Listeners : ${
+                                                    formatCount(artists.fanCount.toLongOrNull() ?: 0L)
+                                                }",
+                                                fontSize = 13.sp,
+                                                lineHeight = 13.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (artists.topSongs.isNotEmpty()) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 12.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                            )
+
+                                            Text(
+                                                modifier = Modifier.clickable(
+                                                    interactionSource = interactionSource,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllSongsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
+                                                }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                            )
+                                        }
+                                    }
+
+                                    itemsIndexed(
+                                        artists.topSongs,
+                                        key = { _, song -> song.id }
+                                    ) { index, song ->
+
+                                        val isDownloaded = downloadedIds.contains(song.id)
+                                        val state = ParallelDownloader.downloadStates[song.id]
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AnimatedVisibility(
+                                                visible = currentSong?.id == song.id,
+                                                enter = fadeIn() + expandHorizontally(),
+                                                exit = fadeOut() + shrinkHorizontally()
+                                            ) {
+                                                val composition by rememberLottieComposition(
+                                                    LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+                                                )
+
+                                                val progress by animateLottieCompositionAsState(
+                                                    composition = composition,
+                                                    isPlaying = isPlaying && currentSong?.id == song.id,
+                                                    iterations = LottieConstants.IterateForever
+                                                )
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(50.dp)
+                                                        .clip(RectangleShape)
+                                                ) {
+                                                    LottieAnimation(
+                                                        composition = composition,
+                                                        progress = { progress },
+                                                        modifier = Modifier
+                                                            .size(50.dp)
+                                                            .graphicsLayer {
+                                                                scaleX = 2.2f
+                                                                scaleY = 2.2f
+                                                            }
+                                                    )
+                                                }
+                                            }
+
                                             Row(
-                                                modifier = Modifier.padding(top = 12.dp, start = 25.dp)
-                                                    .graphicsLayer {
-                                                        alpha = metaAlpha
-                                                        scaleX = 1f - smoothProgress * 0.04f
-                                                        scaleY = 1f - smoothProgress * 0.04f
+                                                modifier = Modifier.fillMaxWidth()
+                                                    .padding(start = if (currentSong?.id == song.id) 0.dp else 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                                                    .clickable(
+                                                        interactionSource = interactionSource,
+                                                        indication = null
+                                                    ) {
+                                                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                            action = MusicPlayerService.ACTION_PLAY_NEW
+                                                            putExtra("index", index)
+                                                        }
+
+                                                        PlayerManager.currentPlaylist = artists.topSongs
+                                                        PlayerManager.currentIndex = index
+
+                                                        ContextCompat.startForegroundService(context, intent)
+
+                                                        scope.launch {
+                                                            RecentlyPlayedManager.add(context, song)
+                                                        }
                                                     },
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.followers_icon),
-                                                    contentDescription = "Followers Icon",
-                                                    tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(16.dp)
+                                                AsyncImage(
+                                                    model = song.image.getOrNull(2)?.url,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(64.dp)
+                                                        .clip(RoundedCornerShape(10.dp)),
+                                                    contentScale = ContentScale.Crop
                                                 )
 
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Spacer(modifier = Modifier.width(14.dp))
 
-                                                Text(
-                                                    text = "Followers : ${
-                                                        formatCount(artists.followerCount.toLong())
-                                                    }",
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 12.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                Column(
+                                                    modifier = Modifier
+                                                        .weight(1f),
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    val songName = htmlToText(song.name)
+
+                                                    Text(
+                                                        text = songName,
+                                                        fontSize = 15.sp,
+                                                        lineHeight = 16.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                                    val artistsList = song.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        text = artistsName,
+                                                        fontSize = 13.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                                    Text(
+                                                        text = formatDuration(song.duration),
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.width(14.dp))
+
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            val qualityIndex = musicService?.downloadQualityIndex
+                                                            val url = song.downloadUrl[qualityIndex ?: 4].url
+
+                                                            when {
+                                                                isDownloaded -> {
+                                                                    scope.launch {
+                                                                        snackBarHostState.showSnackbar("Song already downloaded")
+                                                                    }
+                                                                }
+
+                                                                state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
+                                                                        putExtra("songId", song.id)
+                                                                    }
+
+                                                                    context.startService(intent)
+                                                                }
+
+                                                                state == ParallelDownloader.DownloadState.PAUSED -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                                                        putExtra("url", url)
+                                                                        putExtra("fileName", song.name)
+                                                                        putExtra("songId", song.id)
+                                                                        putExtra("song", song)
+                                                                    }
+
+                                                                    ContextCompat.startForegroundService(context, intent)
+                                                                }
+
+                                                                else -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                                        putExtra("url", url)
+                                                                        putExtra("fileName", song.name)
+                                                                        putExtra("songId", song.id)
+                                                                        putExtra("song", song)
+                                                                    }
+
+                                                                    ContextCompat.startForegroundService(context, intent)
+                                                                }
+                                                            }
+                                                        }
+                                                    ) {
+                                                        val composition by rememberLottieComposition(
+                                                            LottieCompositionSpec.RawRes(R.raw.timer)
+                                                        )
+
+                                                        val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
+
+                                                        val progress by animateLottieCompositionAsState(
+                                                            composition = composition,
+                                                            isPlaying = isPlayingAnimation,
+                                                            iterations = LottieConstants.IterateForever
+                                                        )
+
+                                                        when {
+                                                            state == ParallelDownloader.DownloadState.DOWNLOADING ||
+                                                                    state == ParallelDownloader.DownloadState.PAUSED -> {
+
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(30.dp)
+                                                                        .clip(RectangleShape)
+                                                                ) {
+                                                                    LottieAnimation(
+                                                                        composition = composition,
+                                                                        progress = { progress },
+                                                                        modifier = Modifier
+                                                                            .size(30.dp)
+                                                                            .graphicsLayer {
+                                                                                scaleX = 2f
+                                                                                scaleY = 2f
+                                                                            }
+                                                                    )
+                                                                }
+                                                            }
+
+                                                            else -> {
+                                                                Icon(
+                                                                    painter = if (isDownloaded)
+                                                                        painterResource(R.drawable.downloaded_icon)
+                                                                    else
+                                                                        painterResource(R.drawable.download_icon),
+                                                                    contentDescription = "Download",
+                                                                    modifier = Modifier.size(24.dp),
+                                                                    tint = if (isDownloaded)
+                                                                        colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                                    else
+                                                                        colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+                                                    IconButton(onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSongSheet = true
+                                                    }) {
+                                                        Icon(
+                                                            modifier = Modifier.size(20.dp),
+                                                            painter = painterResource(R.drawable.three_dots_icon),
+                                                            contentDescription = "Three Dots",
+                                                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                        )
+                                                    }
+                                                }
                                             }
+                                        }
+                                    }
+                                }
 
-                                            Row(
-                                                modifier = Modifier.padding(top = 4.dp, start = 25.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.headset_icon),
-                                                    contentDescription = "Headset Icon",
-                                                    tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
+                                if (artists.topAlbums.isNotEmpty()) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 12.dp, end = 24.dp, top = 15.dp, bottom = 5.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                            )
 
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                modifier = Modifier.clickable(
+                                                    interactionSource = interactionSource,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllAlbumsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
+                                                }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                            )
+                                        }
+                                    }
 
-                                                Text(
-                                                    text = "Listeners : ${
-                                                        formatCount(artists.fanCount.toLongOrNull() ?: 0L)
-                                                    }",
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 12.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                    item {
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(top = 10.dp),
+                                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                            items(artists.topAlbums) { album ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .width(110.dp)
+                                                        .clickable(
+                                                            interactionSource = interactionSource,
+                                                            indication = null
+                                                        ) {
+                                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                                putExtra("album_id", album.id)
+                                                                putExtra("album_imageUrl", album.image[2].url)
+                                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                            }
+                                                            context.startActivity(intent)
+                                                        }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = album.image.getOrNull(2)?.url,
+                                                        contentDescription = album.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_image),
+                                                        modifier = Modifier
+                                                            .height(110.dp)
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                                        text = album.name,
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    val artistsList = album.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp ),
+                                                        text = artistsName,
+                                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (artists.singles.isNotEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "Singles", modifier = Modifier.padding(start = 12.dp, top = 18.dp, bottom = 5.dp)
+                                            , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                        )
+                                    }
+
+                                    item {
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(top = 10.dp, bottom = 15.dp),
+                                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                            items(artists.singles) { album ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .width(110.dp)
+                                                        .clickable(
+                                                            interactionSource = interactionSource,
+                                                            indication = null
+                                                        ) {
+                                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                                putExtra("album_id", album.id)
+                                                                putExtra("album_imageUrl", album.image[2].url)
+                                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                            }
+                                                            context.startActivity(intent)
+                                                        }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = album.image.getOrNull(2)?.url,
+                                                        contentDescription = album.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_image),
+                                                        modifier = Modifier
+                                                            .height(110.dp)
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                                        text = album.name,
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    val artistsList = album.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp ),
+                                                        text = artistsName,
+                                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+                        }
+                    } else {
+                        ConstraintLayout(modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))) {
+                            val (contentList, miniPlayer) = createRefs()
 
-                            if (artists.topSongs.isNotEmpty()) {
+                            LazyColumn (
+                                state = listState,
+                                modifier = Modifier.constrainAs(contentList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
+                                contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 5.dp)
+                            ) {
                                 item {
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = "Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                        )
-
-                                        Text(
-                                            modifier = Modifier.clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                val intent = Intent(context, AllSongsActivity::class.java).apply {
-                                                    putExtra("artist_id", artists.id)
-                                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        AsyncImage(
+                                            model = imageToLoad,
+                                            contentDescription = "Artist Image",
+                                            contentScale = ContentScale.Crop,
+                                            modifier =  Modifier
+                                                .offset(x = offsetX, y = offsetY)
+                                                .size(size)
+                                                .clip(RoundedCornerShape(cornerRadius))
+                                                .graphicsLayer {
+                                                    alpha = metaAlpha
                                                 }
-                                                context.startActivity(intent)
-                                            }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                                .zIndex(10f)
                                         )
-                                    }
-                                }
 
-                                itemsIndexed(
-                                    artists.topSongs,
-                                    key = { _, song -> song.id }
-                                ) { index, song ->
-
-                                    val isDownloaded = downloadedIds.contains(song.id)
-                                    val state = ParallelDownloader.downloadStates[song.id]
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        AnimatedVisibility(
-                                            visible = currentSong?.id == song.id,
-                                            enter = fadeIn() + expandHorizontally(),
-                                            exit = fadeOut() + shrinkHorizontally()
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
+                                                .offset(y = titleOffsetY).animateContentSize()
                                         ) {
-                                            val composition by rememberLottieComposition(
-                                                LottieCompositionSpec.RawRes(R.raw.music_spectrum)
-                                            )
-
-                                            val progress by animateLottieCompositionAsState(
-                                                composition = composition,
-                                                isPlaying = isPlaying && currentSong?.id == song.id,
-                                                iterations = LottieConstants.IterateForever
-                                            )
-
-                                            Box(
+                                            Row(
                                                 modifier = Modifier
-                                                    .size(50.dp)
-                                                    .clip(RectangleShape)
+                                                    .padding(top = titleTopPadding, start = titleStartPadding),
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                LottieAnimation(
-                                                    composition = composition,
-                                                    progress = { progress },
-                                                    modifier = Modifier
-                                                        .size(50.dp)
-                                                        .graphicsLayer {
-                                                            scaleX = 2.2f
-                                                            scaleY = 2.2f
-                                                        }
-                                                )
-                                            }
-                                        }
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth()
-                                                .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
-                                                .clickable(
-                                                    interactionSource = interactionSource,
-                                                    indication = null
-                                                ) {
-                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                        action = MusicPlayerService.ACTION_PLAY_NEW
-                                                        putExtra("index", index)
-                                                    }
-
-                                                    PlayerManager.currentPlaylist = artists.topSongs
-                                                    PlayerManager.currentIndex = index
-
-                                                    ContextCompat.startForegroundService(context, intent)
-
-                                                    scope.launch {
-                                                        RecentlyPlayedManager.add(context, song)
-                                                    }
-                                                },
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            AsyncImage(
-                                                model = song.image.getOrNull(2)?.url,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(64.dp)
-                                                    .clip(RoundedCornerShape(10.dp)),
-                                                contentScale = ContentScale.Crop
-                                            )
-
-                                            Spacer(modifier = Modifier.width(14.dp))
-
-                                            Column(
-                                                modifier = Modifier
-                                                    .weight(1f),
-                                                verticalArrangement = Arrangement.Center
-                                            ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
-                                                    text = songName,
-                                                    fontSize = 15.sp,
-                                                    lineHeight = 16.sp,
+                                                    text = htmlToText(artists.name),
+                                                    fontSize = titleFontSize.value.sp,
+                                                    lineHeight = 22.sp,
                                                     fontFamily = fonts,
                                                     fontWeight = FontWeight.Bold,
                                                     fontStyle = FontStyle.Normal,
@@ -910,155 +1285,531 @@ private fun Artist_Activity(
                                                     overflow = TextOverflow.Ellipsis
                                                 )
 
-                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
 
-                                                val artistsList = song.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
-
-                                                Text(
-                                                    text = artistsName,
-                                                    fontSize = 13.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-
-                                                Spacer(modifier = Modifier.height(4.dp))
-
-                                                Text(
-                                                    text = formatDuration(song.duration),
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                if (artists.isVerified) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.verified_icon),
+                                                        contentDescription = "Verified Icon",
+                                                        tint = Color.Unspecified,
+                                                        modifier = Modifier.size(20.dp)
+                                                            .graphicsLayer {
+                                                                scaleX = iconScale
+                                                                scaleY = iconScale
+                                                            }
+                                                    )
+                                                }
                                             }
 
-                                            Spacer(modifier = Modifier.width(14.dp))
+                                            if (showMetaInfo) {
+                                                Row(
+                                                    modifier = Modifier.padding(top = 12.dp, start = 25.dp)
+                                                        .graphicsLayer {
+                                                            alpha = metaAlpha
+                                                            scaleX = 1f - smoothProgress * 0.04f
+                                                            scaleY = 1f - smoothProgress * 0.04f
+                                                        },
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.followers_icon),
+                                                        contentDescription = "Followers Icon",
+                                                        tint = colorResource(R.color.primary_text_color),
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+
+                                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                                    Text(
+                                                        text = "Followers : ${
+                                                            formatCount(artists.followerCount.toLong())
+                                                        }",
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 12.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                Row(
+                                                    modifier = Modifier.padding(top = 4.dp, start = 25.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.headset_icon),
+                                                        contentDescription = "Headset Icon",
+                                                        tint = colorResource(R.color.primary_text_color),
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+
+                                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                                    Text(
+                                                        text = "Listeners : ${
+                                                            formatCount(artists.fanCount.toLongOrNull() ?: 0L)
+                                                        }",
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 12.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (artists.topSongs.isNotEmpty()) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                            )
+
+                                            Text(
+                                                modifier = Modifier.clickable(
+                                                    interactionSource = interactionSource,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllSongsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
+                                                }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                            )
+                                        }
+                                    }
+
+                                    itemsIndexed(
+                                        artists.topSongs,
+                                        key = { _, song -> song.id }
+                                    ) { index, song ->
+
+                                        val isDownloaded = downloadedIds.contains(song.id)
+                                        val state = ParallelDownloader.downloadStates[song.id]
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AnimatedVisibility(
+                                                visible = currentSong?.id == song.id,
+                                                enter = fadeIn() + expandHorizontally(),
+                                                exit = fadeOut() + shrinkHorizontally()
+                                            ) {
+                                                val composition by rememberLottieComposition(
+                                                    LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+                                                )
+
+                                                val progress by animateLottieCompositionAsState(
+                                                    composition = composition,
+                                                    isPlaying = isPlaying && currentSong?.id == song.id,
+                                                    iterations = LottieConstants.IterateForever
+                                                )
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(50.dp)
+                                                        .clip(RectangleShape)
+                                                ) {
+                                                    LottieAnimation(
+                                                        composition = composition,
+                                                        progress = { progress },
+                                                        modifier = Modifier
+                                                            .size(50.dp)
+                                                            .graphicsLayer {
+                                                                scaleX = 2.2f
+                                                                scaleY = 2.2f
+                                                            }
+                                                    )
+                                                }
+                                            }
 
                                             Row(
+                                                modifier = Modifier.fillMaxWidth()
+                                                    .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+                                                    .clickable(
+                                                        interactionSource = interactionSource,
+                                                        indication = null
+                                                    ) {
+                                                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                            action = MusicPlayerService.ACTION_PLAY_NEW
+                                                            putExtra("index", index)
+                                                        }
+
+                                                        PlayerManager.currentPlaylist = artists.topSongs
+                                                        PlayerManager.currentIndex = index
+
+                                                        ContextCompat.startForegroundService(context, intent)
+
+                                                        scope.launch {
+                                                            RecentlyPlayedManager.add(context, song)
+                                                        }
+                                                    },
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                IconButton(
-                                                    onClick = {
-                                                        val qualityIndex = musicService?.downloadQualityIndex
-                                                        val url = song.downloadUrl[qualityIndex ?: 4].url
+                                                AsyncImage(
+                                                    model = song.image.getOrNull(2)?.url,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(64.dp)
+                                                        .clip(RoundedCornerShape(10.dp)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+
+                                                Spacer(modifier = Modifier.width(14.dp))
+
+                                                Column(
+                                                    modifier = Modifier
+                                                        .weight(1f),
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    val songName = htmlToText(song.name)
+
+                                                    Text(
+                                                        text = songName,
+                                                        fontSize = 15.sp,
+                                                        lineHeight = 16.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                                    val artistsList = song.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        text = artistsName,
+                                                        fontSize = 13.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                                    Text(
+                                                        text = formatDuration(song.duration),
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.width(14.dp))
+
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            val qualityIndex = musicService?.downloadQualityIndex
+                                                            val url = song.downloadUrl[qualityIndex ?: 4].url
+
+                                                            when {
+                                                                isDownloaded -> {
+                                                                    scope.launch {
+                                                                        snackBarHostState.showSnackbar("Song already downloaded")
+                                                                    }
+                                                                }
+
+                                                                state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
+                                                                        putExtra("songId", song.id)
+                                                                    }
+
+                                                                    context.startService(intent)
+                                                                }
+
+                                                                state == ParallelDownloader.DownloadState.PAUSED -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                                                        putExtra("url", url)
+                                                                        putExtra("fileName", song.name)
+                                                                        putExtra("songId", song.id)
+                                                                        putExtra("song", song)
+                                                                    }
+
+                                                                    ContextCompat.startForegroundService(context, intent)
+                                                                }
+
+                                                                else -> {
+                                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                                        action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                                        putExtra("url", url)
+                                                                        putExtra("fileName", song.name)
+                                                                        putExtra("songId", song.id)
+                                                                        putExtra("song", song)
+                                                                    }
+
+                                                                    ContextCompat.startForegroundService(context, intent)
+                                                                }
+                                                            }
+                                                        }
+                                                    ) {
+                                                        val composition by rememberLottieComposition(
+                                                            LottieCompositionSpec.RawRes(R.raw.timer)
+                                                        )
+
+                                                        val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
+
+                                                        val progress by animateLottieCompositionAsState(
+                                                            composition = composition,
+                                                            isPlaying = isPlayingAnimation,
+                                                            iterations = LottieConstants.IterateForever
+                                                        )
 
                                                         when {
-                                                            isDownloaded -> {
-                                                                scope.launch {
-                                                                    snackBarHostState.showSnackbar("Song already downloaded")
+                                                            state == ParallelDownloader.DownloadState.DOWNLOADING ||
+                                                                    state == ParallelDownloader.DownloadState.PAUSED -> {
+
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(30.dp)
+                                                                        .clip(RectangleShape)
+                                                                ) {
+                                                                    LottieAnimation(
+                                                                        composition = composition,
+                                                                        progress = { progress },
+                                                                        modifier = Modifier
+                                                                            .size(30.dp)
+                                                                            .graphicsLayer {
+                                                                                scaleX = 2f
+                                                                                scaleY = 2f
+                                                                            }
+                                                                    )
                                                                 }
-                                                            }
-
-                                                            state == ParallelDownloader.DownloadState.DOWNLOADING -> {
-                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
-                                                                    putExtra("songId", song.id)
-                                                                }
-
-                                                                context.startService(intent)
-                                                            }
-
-                                                            state == ParallelDownloader.DownloadState.PAUSED -> {
-                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                                    putExtra("url", url)
-                                                                    putExtra("fileName", song.name)
-                                                                    putExtra("songId", song.id)
-                                                                    putExtra("song", song)
-                                                                }
-
-                                                                ContextCompat.startForegroundService(context, intent)
                                                             }
 
                                                             else -> {
-                                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                                    action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                                    putExtra("url", url)
-                                                                    putExtra("fileName", song.name)
-                                                                    putExtra("songId", song.id)
-                                                                    putExtra("song", song)
-                                                                }
-
-                                                                ContextCompat.startForegroundService(context, intent)
-                                                            }
-                                                        }
-                                                    }
-                                                ) {
-                                                    val composition by rememberLottieComposition(
-                                                        LottieCompositionSpec.RawRes(R.raw.timer)
-                                                    )
-
-                                                    val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
-
-                                                    val progress by animateLottieCompositionAsState(
-                                                        composition = composition,
-                                                        isPlaying = isPlayingAnimation,
-                                                        iterations = LottieConstants.IterateForever
-                                                    )
-
-                                                    when {
-                                                        state == ParallelDownloader.DownloadState.DOWNLOADING ||
-                                                                state == ParallelDownloader.DownloadState.PAUSED -> {
-
-                                                            Box(
-                                                                modifier = Modifier
-                                                                    .size(30.dp)
-                                                                    .clip(RectangleShape)
-                                                            ) {
-                                                                LottieAnimation(
-                                                                    composition = composition,
-                                                                    progress = { progress },
-                                                                    modifier = Modifier
-                                                                        .size(30.dp)
-                                                                        .graphicsLayer {
-                                                                            scaleX = 2f
-                                                                            scaleY = 2f
-                                                                        }
+                                                                Icon(
+                                                                    painter = if (isDownloaded)
+                                                                        painterResource(R.drawable.downloaded_icon)
+                                                                    else
+                                                                        painterResource(R.drawable.download_icon),
+                                                                    contentDescription = "Download",
+                                                                    modifier = Modifier.size(24.dp),
+                                                                    tint = if (isDownloaded)
+                                                                        colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                                    else
+                                                                        colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                                                 )
                                                             }
                                                         }
+                                                    }
 
-                                                        else -> {
-                                                            Icon(
-                                                                painter = if (isDownloaded)
-                                                                    painterResource(R.drawable.downloaded_icon)
-                                                                else
-                                                                    painterResource(R.drawable.download_icon),
-                                                                contentDescription = "Download",
-                                                                modifier = Modifier.size(24.dp),
-                                                                tint = if (isDownloaded)
-                                                                    colorResource(R.color.theme_color).copy(alpha = 0.6f)
-                                                                else
-                                                                    colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
-                                                            )
-                                                        }
+                                                    IconButton(onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSongSheet = true
+                                                    }) {
+                                                        Icon(
+                                                            modifier = Modifier.size(20.dp),
+                                                            painter = painterResource(R.drawable.three_dots_icon),
+                                                            contentDescription = "Three Dots",
+                                                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                        )
                                                     }
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSongSheet = true
-                                                }) {
-                                                    Icon(
-                                                        modifier = Modifier.size(20.dp),
-                                                        painter = painterResource(R.drawable.three_dots_icon),
-                                                        contentDescription = "Three Dots",
-                                                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                if (artists.topAlbums.isNotEmpty()) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 5.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                            )
+
+                                            Text(
+                                                modifier = Modifier.clickable(
+                                                    interactionSource = interactionSource,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllAlbumsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
+                                                }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.theme_color), lineHeight = 18.sp
+                                            )
+                                        }
+                                    }
+
+                                    item {
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(top = 10.dp),
+                                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                            items(artists.topAlbums) { album ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .width(110.dp)
+                                                        .clickable(
+                                                            interactionSource = interactionSource,
+                                                            indication = null
+                                                        ) {
+                                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                                putExtra("album_id", album.id)
+                                                                putExtra("album_imageUrl", album.image[2].url)
+                                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                            }
+                                                            context.startActivity(intent)
+                                                        }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = album.image.getOrNull(2)?.url,
+                                                        contentDescription = album.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_image),
+                                                        modifier = Modifier
+                                                            .height(110.dp)
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                                        text = album.name,
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    val artistsList = album.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp ),
+                                                        text = artistsName,
+                                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (artists.singles.isNotEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 5.dp)
+                                            , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                        )
+                                    }
+
+                                    item {
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(top = 10.dp, bottom = 15.dp),
+                                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                            items(artists.singles) { album ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .width(110.dp)
+                                                        .clickable(
+                                                            interactionSource = interactionSource,
+                                                            indication = null
+                                                        ) {
+                                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                                putExtra("album_id", album.id)
+                                                                putExtra("album_imageUrl", album.image[2].url)
+                                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                            }
+                                                            context.startActivity(intent)
+                                                        }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = album.image.getOrNull(2)?.url,
+                                                        contentDescription = album.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_image),
+                                                        modifier = Modifier
+                                                            .height(110.dp)
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                                        text = album.name,
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+
+                                                    val artistsList = album.artist
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.joinToString(", ") { it.name }
+                                                        ?: "Unknown Artist"
+
+                                                    val artistsName = htmlToText(artistsList)
+
+                                                    Text(
+                                                        modifier = Modifier.padding(horizontal = 2.dp ),
+                                                        text = artistsName,
+                                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                 }
                                             }
@@ -1067,334 +1818,169 @@ private fun Artist_Activity(
                                 }
                             }
 
-                            if (artists.topAlbums.isNotEmpty()) {
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 24.dp, end = 24.dp, top = 15.dp, bottom = 5.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
-                                        )
+                            Box(
+                                modifier = Modifier.constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }.fillMaxWidth().padding(bottom = 5.dp)
+                            ) {
+                                currentSong?.let { song ->
+                                    MiniPlayer(
+                                        song = song,
+                                        isPlaying = isPlaying,
+                                        progress = if (duration > 0)
+                                            progress.toFloat() / duration.toFloat()
+                                        else 0f,
+                                        isBuffering = isBuffering,
+                                        onPlayPause = {
+                                            musicService?.togglePlayPause()
+                                        },
+                                        onClick = {
+                                            val activity = context as? Activity
 
-                                        Text(
-                                            modifier = Modifier.clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                val intent = Intent(context, AllAlbumsActivity::class.java).apply {
-                                                    putExtra("artist_id", artists.id)
-                                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                                }
-                                                context.startActivity(intent)
-                                            }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.theme_color), lineHeight = 18.sp
-                                        )
-                                    }
-                                }
-
-                                item {
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(top = 10.dp),
-                                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                                        items(artists.topAlbums) { album ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .width(110.dp)
-                                                    .clickable(
-                                                        interactionSource = interactionSource,
-                                                        indication = null
-                                                    ) {
-                                                        val intent = Intent(context, AlbumActivity::class.java).apply {
-                                                            putExtra("album_id", album.id)
-                                                            putExtra("album_imageUrl", album.image[2].url)
-                                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                                        }
-                                                        context.startActivity(intent)
-                                                    }
-                                            ) {
-                                                AsyncImage(
-                                                    model = album.image.getOrNull(2)?.url,
-                                                    contentDescription = album.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    error = painterResource(R.drawable.default_image),
-                                                    modifier = Modifier
-                                                        .height(110.dp)
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(16.dp))
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                                                    text = album.name,
-                                                    fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.primary_text_color), maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-
-                                                val artistsList = album.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
-
-                                                Text(
-                                                    modifier = Modifier.padding(horizontal = 2.dp ),
-                                                    text = artistsName,
-                                                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                            val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                             }
-                                        }
-                                    }
-                                }
-                            }
 
-                            if (artists.singles.isNotEmpty()) {
-                                item {
-                                    Text(
-                                        text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 5.dp)
-                                        , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                            context.startActivity(intent)
+
+                                            activity?.let {
+                                                if (Build.VERSION.SDK_INT >= 34) {
+                                                    it.overrideActivityTransition(
+                                                        Activity.OVERRIDE_TRANSITION_OPEN,
+                                                        R.anim.slide_up,
+                                                        R.anim.fade_out
+                                                    )
+                                                } else {
+                                                    @Suppress("DEPRECATION")
+                                                    it.overridePendingTransition(
+                                                        R.anim.slide_up,
+                                                        R.anim.fade_out
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onAddClick = {
+                                            selectedSong = song
+                                            selectedIndex = currentIndex
+                                            showSongSheet = true
+                                        }
                                     )
                                 }
-
-                                item {
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(top = 10.dp, bottom = 15.dp),
-                                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                                        items(artists.singles) { album ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .width(110.dp)
-                                                    .clickable(
-                                                        interactionSource = interactionSource,
-                                                        indication = null
-                                                    ) {
-                                                        val intent = Intent(context, AlbumActivity::class.java).apply {
-                                                            putExtra("album_id", album.id)
-                                                            putExtra("album_imageUrl", album.image[2].url)
-                                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                                        }
-                                                        context.startActivity(intent)
-                                                    }
-                                            ) {
-                                                AsyncImage(
-                                                    model = album.image.getOrNull(2)?.url,
-                                                    contentDescription = album.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    error = painterResource(R.drawable.default_image),
-                                                    modifier = Modifier
-                                                        .height(110.dp)
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(16.dp))
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                                                    text = album.name,
-                                                    fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.primary_text_color), maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-
-                                                val artistsList = album.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
-
-                                                Text(
-                                                    modifier = Modifier.padding(horizontal = 2.dp ),
-                                                    text = artistsName,
-                                                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (showShareSheet) {
-                            ShareBottomSheetArtists(
-                                item = ShareItem(
-                                    title = htmlToText(artists.name),
-                                    subtitle = "Artists",
-                                    image = imageToLoad,
-                                    id = artists.id,
-                                    type = ShareType.ARTIST
-                                ),
-                                isVerified = artists.isVerified,
-                                onDismiss = { showShareSheet = false }
-                            )
-                        }
-
-                        if (showSongSheet && selectedSong != null) {
-                            val song = selectedSong!!
-                            val isFavourite = likedSongs.contains(song.id)
-                            val isDownloaded = downloadedIds.contains(song.id)
-
-                            SongOptionsBottomSheet(
-                                song = song,
-                                isPlaying = isPlaying,
-                                isCurrentSong = currentSong?.id == song.id,
-                                onDismiss = {
-                                    showSongSheet = false
-                                    selectedSong = null
-                                },
-                                onPlayNow = {
-                                    val isSameSong = currentSong?.id == song.id
-
-                                    val intent = Intent(context, MusicPlayerService::class.java)
-
-                                    if (isSameSong) {
-                                        intent.action = if (isPlaying) {
-                                            MusicPlayerService.ACTION_PAUSE
-                                        } else {
-                                            MusicPlayerService.ACTION_PLAY
-                                        }
-                                    } else {
-                                        intent.action = MusicPlayerService.ACTION_PLAY_NEW
-                                        intent.putExtra("index", selectedIndex)
-
-                                        PlayerManager.currentPlaylist = artists.topSongs
-                                        PlayerManager.currentIndex = selectedIndex
-                                    }
-
-                                    ContextCompat.startForegroundService(context, intent)
-                                },
-                                isFavourite = isFavourite,
-                                isDownloaded = isDownloaded,
-                                onToggleFavourite = {
-                                    likedViewModel.toggleLike(song)
-                                },
-                                onToggleDownload = { song ->
-                                    val qualityIndex = musicService?.downloadQualityIndex
-                                    val url = song.downloadUrl[qualityIndex ?: 4].url
-                                    val state = ParallelDownloader.downloadStates[song.id]
-
-                                    when {
-                                        isDownloaded -> {
-                                            downloadViewModel.deleteSong(song.id) { success, message -> }
-                                        }
-
-                                        state == ParallelDownloader.DownloadState.DOWNLOADING -> {
-                                            scope.launch {
-                                                snackBarHostState.showSnackbar("Already downloading")
-                                            }
-                                        }
-
-                                        state == ParallelDownloader.DownloadState.PAUSED -> {
-                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                putExtra("url", url)
-                                                putExtra("fileName", song.name)
-                                                putExtra("songId", song.id)
-                                                putExtra("song", song)
-                                            }
-
-                                            ContextCompat.startForegroundService(context, intent)
-                                        }
-
-                                        state == ParallelDownloader.DownloadState.FAILED -> {
-                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                putExtra("url", url)
-                                                putExtra("fileName", song.name)
-                                                putExtra("songId", song.id)
-                                                putExtra("song", song)
-                                            }
-
-                                            ContextCompat.startForegroundService(context, intent)
-                                        }
-
-                                        else -> {
-                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                putExtra("url", url)
-                                                putExtra("fileName", song.name)
-                                                putExtra("songId", song.id)
-                                                putExtra("song", song)
-                                            }
-
-                                            ContextCompat.startForegroundService(context, intent)
-                                        }
-                                    }
-                                }
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
-                        ) {
-                            currentSong?.let { song ->
-                                MiniPlayer(
-                                    song = song,
-                                    isPlaying = isPlaying,
-                                    progress = if (duration > 0)
-                                        progress.toFloat() / duration.toFloat()
-                                    else 0f,
-                                    isBuffering = isBuffering,
-                                    onPlayPause = {
-                                        musicService?.togglePlayPause()
-                                    },
-                                    onClick = {
-                                        val activity = context as? Activity
-
-                                        val intent = Intent(context, PlayerActivityScreen::class.java).apply {
-                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                        }
-
-                                        context.startActivity(intent)
-
-                                        activity?.let {
-                                            if (Build.VERSION.SDK_INT >= 34) {
-                                                it.overrideActivityTransition(
-                                                    Activity.OVERRIDE_TRANSITION_OPEN,
-                                                    R.anim.slide_up,
-                                                    R.anim.fade_out
-                                                )
-                                            } else {
-                                                @Suppress("DEPRECATION")
-                                                it.overridePendingTransition(
-                                                    R.anim.slide_up,
-                                                    R.anim.fade_out
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onAddClick = {
-                                        selectedSong = song
-                                        selectedIndex = currentIndex
-                                        showSongSheet = true
-                                    }
-                                )
                             }
                         }
                     }
                 }
+            }
+
+            if (showShareSheet) {
+                ShareBottomSheetArtists(
+                    item = ShareItem(
+                        title = htmlToText(artists.name),
+                        subtitle = "Artists",
+                        image = imageToLoad,
+                        id = artists.id,
+                        type = ShareType.ARTIST
+                    ),
+                    isVerified = artists.isVerified,
+                    onDismiss = { showShareSheet = false }
+                )
+            }
+
+            if (showSongSheet && selectedSong != null) {
+                val song = selectedSong!!
+                val isFavourite = likedSongs.contains(song.id)
+                val isDownloaded = downloadedIds.contains(song.id)
+
+                SongOptionsBottomSheet(
+                    song = song,
+                    isPlaying = isPlaying,
+                    isCurrentSong = currentSong?.id == song.id,
+                    onDismiss = {
+                        showSongSheet = false
+                        selectedSong = null
+                    },
+                    onPlayNow = {
+                        val isSameSong = currentSong?.id == song.id
+
+                        val intent = Intent(context, MusicPlayerService::class.java)
+
+                        if (isSameSong) {
+                            intent.action = if (isPlaying) {
+                                MusicPlayerService.ACTION_PAUSE
+                            } else {
+                                MusicPlayerService.ACTION_PLAY
+                            }
+                        } else {
+                            intent.action = MusicPlayerService.ACTION_PLAY_NEW
+                            intent.putExtra("index", selectedIndex)
+
+                            PlayerManager.currentPlaylist = artists.topSongs
+                            PlayerManager.currentIndex = selectedIndex
+                        }
+
+                        ContextCompat.startForegroundService(context, intent)
+                    },
+                    isFavourite = isFavourite,
+                    isDownloaded = isDownloaded,
+                    onToggleFavourite = {
+                        likedViewModel.toggleLike(song)
+                    },
+                    onToggleDownload = { song ->
+                        val qualityIndex = musicService?.downloadQualityIndex
+                        val url = song.downloadUrl[qualityIndex ?: 4].url
+                        val state = ParallelDownloader.downloadStates[song.id]
+
+                        when {
+                            isDownloaded -> {
+                                downloadViewModel.deleteSong(song.id) { success, message -> }
+                            }
+
+                            state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                                scope.launch {
+                                    snackBarHostState.showSnackbar("Already downloading")
+                                }
+                            }
+
+                            state == ParallelDownloader.DownloadState.PAUSED -> {
+                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                    action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                    putExtra("url", url)
+                                    putExtra("fileName", song.name)
+                                    putExtra("songId", song.id)
+                                    putExtra("song", song)
+                                }
+
+                                ContextCompat.startForegroundService(context, intent)
+                            }
+
+                            state == ParallelDownloader.DownloadState.FAILED -> {
+                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                    action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                    putExtra("url", url)
+                                    putExtra("fileName", song.name)
+                                    putExtra("songId", song.id)
+                                    putExtra("song", song)
+                                }
+
+                                ContextCompat.startForegroundService(context, intent)
+                            }
+
+                            else -> {
+                                val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                    action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                    putExtra("url", url)
+                                    putExtra("fileName", song.name)
+                                    putExtra("songId", song.id)
+                                    putExtra("song", song)
+                                }
+
+                                ContextCompat.startForegroundService(context, intent)
+                            }
+                        }
+                    }
+                )
             }
         }
     }

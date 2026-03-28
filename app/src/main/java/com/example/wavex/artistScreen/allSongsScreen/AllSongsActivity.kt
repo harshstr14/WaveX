@@ -318,8 +318,8 @@ private fun All_Songs_Activity(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(colorResource(R.color.background_color))
+                .padding(paddingValues)
                 .graphicsLayer {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
                         renderEffect = RenderEffect

@@ -1068,17 +1068,38 @@ fun UpNextSheetContent(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                modifier = Modifier.padding(start = 15.dp),
-                text = "${songLists.size} Songs in Queue",
-                fontSize = 13.sp,
-                lineHeight = 14.sp,
-                fontFamily = fonts,
-                fontWeight = FontWeight.SemiBold,
-                fontStyle = FontStyle.Normal,
-                color = colorResource(R.color.primary_text_color),
-                maxLines = 1
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modifier = Modifier.padding(start = 15.dp),
+                    text = "${songLists.size} Songs in Queue",
+                    fontSize = 13.sp,
+                    lineHeight = 14.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color),
+                    maxLines = 1
+                )
+
+                Box(
+                    modifier = Modifier.padding(horizontal = 18.dp)
+                        .size(width = 80.dp, height = 26.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(colorResource(R.color.theme_color)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Auto Play", fontSize = 11.sp,
+                        lineHeight = 14.sp, fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.off_white)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
