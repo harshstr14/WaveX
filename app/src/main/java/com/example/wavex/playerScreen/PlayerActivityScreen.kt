@@ -1,10 +1,12 @@
 package com.example.wavex.playerScreen
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,6 +34,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -42,6 +45,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -81,6 +85,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -93,11 +98,13 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -141,6 +148,8 @@ import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class PlayerActivityScreen : ComponentActivity() {
@@ -239,6 +248,28 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
         ),
         label = "BlurAnim"
     )
+
+    val blurEffect = remember(animatedBlur) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+            RenderEffect.createBlurEffect(
+                animatedBlur,
+                animatedBlur,
+                Shader.TileMode.CLAMP
+            ).asComposeRenderEffect()
+        } else null
+    }
+
+    val audioManager = remember {
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    var showVolumeUI by remember { mutableStateOf(false) }
+    var currentVolume by remember {
+        mutableStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+    }
+    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
+    var hideJob by remember { mutableStateOf<Job?>(null) }
 
     val musicService = ServiceLocator.musicService
 
@@ -542,20 +573,30 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                     .background(colorResource(R.color.background_color))
                     .padding(paddingValues)
                     .graphicsLayer {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
-                            renderEffect = RenderEffect
-                                .createBlurEffect(
-                                    animatedBlur,
-                                    animatedBlur,
-                                    Shader.TileMode.CLAMP
-                                )
-                                .asComposeRenderEffect()
+                        renderEffect = blurEffect
+                    }
+                    .volumeGesture(
+                        isDraggingSeek = isDragging,
+                        onGestureStart = {
+                            showVolumeUI = true
+                            hideJob?.cancel()
+                        },
+                        onGestureEnd = {
+                            hideJob = scope.launch {
+                                delay(1000)
+                                showVolumeUI = false
+                            }
+                        },
+                        onVolumeChanged = {
+                            currentVolume = it
                         }
-                    },
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                    val(songImage, songName, albumName, progressBar, startTime, endTime, row) = createRefs()
+                    val(songImage, songName, albumName,
+                        progressBar, startTime, endTime, row, volume
+                    ) = createRefs()
 
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -611,6 +652,37 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             }
                             .clip(RoundedCornerShape(20.dp))
                     )
+
+                    AnimatedVisibility(
+                        visible = showVolumeUI,
+                        modifier = Modifier.constrainAs(volume) {
+                            top.linkTo(songImage.top)
+                            bottom.linkTo(songImage.bottom)
+                            end.linkTo(parent.end)
+                        }.padding(end = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(35.dp)
+                                .height(180.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(colorResource(R.color.primary_text_color)),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = currentVolume / maxVolume.toFloat(),
+                                animationSpec = tween(100),
+                                label = ""
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(animatedProgress)
+                                    .background(colorResource(R.color.theme_color))
+                            )
+                        }
+                    }
 
                     Text(
                         modifier = Modifier.constrainAs(songName) {
@@ -882,6 +954,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                     }
                 }
 
+
                 if (showShareSheet) {
                     ShareBottomSheet(
                         item = ShareItem(
@@ -991,6 +1064,118 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                 }
             }
         }
+    }
+}
+
+fun Modifier.volumeGesture(
+    isEnabled: Boolean = true,
+    isDraggingSeek: Boolean = false,
+    onVolumeChanged: (Int) -> Unit,
+    onGestureStart: () -> Unit,
+    onGestureEnd: () -> Unit
+): Modifier = composed {
+
+    val context = LocalContext.current
+    val audioManager = remember {
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    val maxVolume = remember {
+        audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    }
+
+    var startY by remember { mutableStateOf(0f) }
+    var startProgress by remember { mutableStateOf(0f) }
+
+    var uiProgress by remember { mutableStateOf(0f) }
+
+    var lastVolumeSent by remember { mutableStateOf(-1) }
+    var lastUpdateTime by remember { mutableStateOf(0L) }
+
+    var hitMin by remember { mutableStateOf(false) }
+    var hitMax by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+
+    pointerInput(isEnabled, isDraggingSeek) {
+        if (!isEnabled) return@pointerInput
+
+        detectVerticalDragGestures(
+
+            onDragStart = { offset ->
+                if (offset.x < size.width * 0.3f && !isDraggingSeek) {
+
+                    onGestureStart()
+
+                    startY = offset.y
+
+                    val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    startProgress = currentVolume / maxVolume.toFloat()
+
+                    uiProgress = startProgress
+                }
+            },
+
+            onVerticalDrag = { change, _ ->
+                if (change.position.x >= size.width * 0.3f || isDraggingSeek) return@detectVerticalDragGestures
+
+                change.consume()
+
+                val dragDistance = startY - change.position.y
+
+                val rawPercent = (dragDistance / size.height) * 2.5f
+                val boosted = rawPercent * (1f + kotlin.math.abs(rawPercent) * 2f)
+                val friction = 1f - kotlin.math.abs(uiProgress - 0.5f) * 0.5f
+
+                val finalPercent = boosted * friction
+
+                val newProgress = (startProgress + finalPercent)
+                    .coerceIn(0f, 1f)
+
+                uiProgress = newProgress
+
+                val now = System.currentTimeMillis()
+                val newVolume = (uiProgress * maxVolume).toInt()
+
+                when (newVolume) {
+                    0 -> {
+                        if (!hitMin) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            hitMin = true
+                            hitMax = false
+                        }
+                    }
+
+                    maxVolume -> {
+                        if (!hitMax) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            hitMax = true
+                            hitMin = false
+                        }
+                    }
+
+                    else -> {
+                        hitMin = false
+                        hitMax = false
+                    }
+                }
+
+                if (newVolume != lastVolumeSent && now - lastUpdateTime > 70) {
+                    audioManager.setStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        newVolume,
+                        0
+                    )
+                    lastVolumeSent = newVolume
+                    lastUpdateTime = now
+                }
+
+                onVolumeChanged(newVolume)
+            },
+
+            onDragEnd = {
+                onGestureEnd()
+            }
+        )
     }
 }
 
