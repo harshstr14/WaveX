@@ -271,8 +271,8 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(colorResource(R.color.background_color)),
+                .background(colorResource(R.color.background_color))
+                .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
             when {

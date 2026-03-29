@@ -800,11 +800,9 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val playlistName = htmlToText(realItem.name)
-
                 Text(
                     modifier = Modifier.padding(horizontal = 8.dp ),
-                    text = playlistName,
+                    text = htmlToText(realItem.name),
                     fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), maxLines = 2,
                     overflow = TextOverflow.Ellipsis

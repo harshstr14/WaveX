@@ -320,8 +320,8 @@ fun Setting_Activity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(colorResource(R.color.background_color))
+                .padding(paddingValues)
         ) {
             Column(
                 modifier = Modifier
@@ -949,9 +949,8 @@ fun Setting_Activity() {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
                     .padding(bottom = 20.dp)
-                    .background(colorResource(R.color.background_color)),
+                    .background(Color.Unspecified),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {

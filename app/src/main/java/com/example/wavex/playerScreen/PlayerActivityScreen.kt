@@ -29,6 +29,8 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -265,7 +267,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
 
     var showVolumeUI by remember { mutableStateOf(false) }
     var currentVolume by remember {
-        mutableStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+        mutableIntStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
     }
     val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
@@ -655,32 +657,68 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
 
                     AnimatedVisibility(
                         visible = showVolumeUI,
+                        enter = fadeIn(animationSpec = tween(200)) +
+                                slideInHorizontally(
+                                    initialOffsetX = { it }
+                                ),
+
+                        exit = fadeOut(animationSpec = tween(200)) +
+                                slideOutHorizontally(
+                                    targetOffsetX = { it }
+                                ),
                         modifier = Modifier.constrainAs(volume) {
                             top.linkTo(songImage.top)
                             bottom.linkTo(songImage.bottom)
                             end.linkTo(parent.end)
-                        }.padding(end = 16.dp)
+                        }.padding(end = 18.dp)
                     ) {
-                        Box(
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
-                                .width(35.dp)
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(colorResource(R.color.primary_text_color)),
-                            contentAlignment = Alignment.BottomCenter
                         ) {
-                            val animatedProgress by animateFloatAsState(
-                                targetValue = currentVolume / maxVolume.toFloat(),
-                                animationSpec = tween(100),
-                                label = ""
-                            )
-
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(animatedProgress)
-                                    .background(colorResource(R.color.theme_color))
-                            )
+                                    .width(30.dp)
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(Color(0xFF3a3a3a)),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                val animatedProgress by animateFloatAsState(
+                                    targetValue = currentVolume / maxVolume.toFloat(),
+                                    animationSpec = tween(100),
+                                    label = ""
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(animatedProgress)
+                                        .background(Color(0xFF48b164))
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val icon = when {
+                                currentVolume == 0 -> R.drawable.volume_off_icon
+                                currentVolume < maxVolume * 0.5f -> R.drawable.volume_low_icon
+                                else -> R.drawable.volume_high_icon
+                            }
+
+                            Box(
+                                modifier = Modifier.size(35.dp)
+                                    .clip(RoundedCornerShape(15.dp))
+                                    .background(Color(0xFF3a3a3a)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = icon),
+                                    contentDescription = "Volume",
+                                    tint = colorResource(R.color.off_white),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
 
@@ -1084,13 +1122,13 @@ fun Modifier.volumeGesture(
         audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
     }
 
-    var startY by remember { mutableStateOf(0f) }
-    var startProgress by remember { mutableStateOf(0f) }
+    var startY by remember { mutableFloatStateOf(0f) }
+    var startProgress by remember { mutableFloatStateOf(0f) }
 
-    var uiProgress by remember { mutableStateOf(0f) }
+    var uiProgress by remember { mutableFloatStateOf(0f) }
 
-    var lastVolumeSent by remember { mutableStateOf(-1) }
-    var lastUpdateTime by remember { mutableStateOf(0L) }
+    var lastVolumeSent by remember { mutableIntStateOf(-1) }
+    var lastUpdateTime by remember { mutableLongStateOf(0L) }
 
     var hitMin by remember { mutableStateOf(false) }
     var hitMax by remember { mutableStateOf(false) }

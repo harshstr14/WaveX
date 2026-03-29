@@ -301,7 +301,7 @@ fun Downloaded_Song_Activity(
                     .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
@@ -346,8 +346,8 @@ fun Downloaded_Song_Activity(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(colorResource(R.color.background_color))
+                .padding(paddingValues)
                 .graphicsLayer {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
                         renderEffect = RenderEffect

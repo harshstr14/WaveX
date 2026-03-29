@@ -1021,10 +1021,16 @@ class  MusicPlayerService : LifecycleService() {
         queue.add(song)
         _queue.value = queue.toList()
 
-        if (playlist.isEmpty() && _currentSong.value == null) {
+        if (_currentSong.value == null) {
             queuePointer = 0
             isQueueOnlyMode = true
-            next()
+
+            val firstSong = queue[0]
+            _currentSong.value = firstSong
+            prepareAndPlay(firstSong)
+
+            updateUpNext()
+            return
         }
 
         updateUpNext()

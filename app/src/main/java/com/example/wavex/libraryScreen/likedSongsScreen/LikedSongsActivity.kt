@@ -313,44 +313,55 @@ fun Liked_Songs_Activity(
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
-                Snackbar(
-                    modifier = Modifier.fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF2C2C2C),
-                            spotColor = Color(0xFF2C2C2C)
-                        ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = if (isLandscape) Alignment.CenterEnd else Alignment.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    Snackbar(
+                        modifier = Modifier
+                            .then(
+                                if (isLandscape)
+                                    Modifier.fillMaxWidth(0.68f)
+                                else
+                                    Modifier.fillMaxWidth()
+                            )
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                ambientColor = Color(0xFF2C2C2C),
+                                spotColor = Color(0xFF2C2C2C)
+                            ),
+                        containerColor = Color(0xFF2C2C2C),
+                        shape = RoundedCornerShape(9.dp)
                     ) {
-                        Icon(painter = painterResource(when {
-                            data.visuals.message.contains("Favourite") ||
-                                data.visuals.message.contains("favourites") -> R.drawable.heart_outline
-                            data.visuals.message.contains("downloads") ||
-                                    data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
-                            data.visuals.message.contains("failed") -> R.drawable.alert_icon
-                            else -> {
-                                R.drawable.alert_icon
-                            }
-                        } ), contentDescription = "Icons",
-                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(painter = painterResource(when {
+                                data.visuals.message.contains("Favourite") ||
+                                        data.visuals.message.contains("favourites") -> R.drawable.heart_outline
+                                data.visuals.message.contains("downloads") ||
+                                        data.visuals.message.contains("Downloading") -> R.drawable.download_icon
+                                data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                                data.visuals.message.contains("failed") -> R.drawable.alert_icon
+                                else -> {
+                                    R.drawable.alert_icon
+                                }
+                            } ), contentDescription = "Icons",
+                                tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
+                            )
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                        Text(
-                            text = data.visuals.message,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            fontSize = 13.sp,
-                            color = colorResource(R.color.off_white)
-                        )
+                            Text(
+                                text = data.visuals.message,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                fontSize = 13.sp,
+                                color = colorResource(R.color.off_white)
+                            )
+                        }
                     }
                 }
             }
