@@ -893,7 +893,7 @@ private fun Artist_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 
@@ -1481,7 +1481,7 @@ private fun Artist_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 

@@ -876,7 +876,9 @@ fun RecentlyPlayedSongs(
                         AsyncImage(
                             model = song.image.getOrNull(2)?.url,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
 

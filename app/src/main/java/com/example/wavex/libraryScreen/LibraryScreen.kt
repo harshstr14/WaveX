@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -544,8 +545,8 @@ fun LibraryScreen(
                                         painter = painterResource(R.drawable.liked),
                                         contentDescription = null,
                                         modifier = Modifier
-                                            .size(64.dp)
-                                            .clip(RoundedCornerShape(10.dp)),
+                                            .size(68.dp)
+                                            .clip(RoundedCornerShape(12.dp)),
                                         contentScale = ContentScale.Crop
                                     )
 
@@ -556,7 +557,8 @@ fun LibraryScreen(
                                     ) {
                                         Text(
                                             text = "Liked Songs",
-                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -565,7 +567,8 @@ fun LibraryScreen(
 
                                         Text(
                                             text = "${likedSongs.size} Songs",
-                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -589,15 +592,35 @@ fun LibraryScreen(
                                     },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    AsyncImage(
-                                        model = playlist.imageUrl,
-                                        contentDescription = null,
-                                        error = painterResource(R.drawable.default_image),
-                                        modifier = Modifier
-                                            .size(64.dp)
-                                            .clip(RoundedCornerShape(10.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
+                                    val songImages = playlist.songs
+                                        .mapNotNull { song ->
+                                            song.image.getOrNull(2)?.url
+                                        }
+                                        .filter { it.isNotBlank() }
+                                        .take(4)
+
+                                    val shouldShowGrid =
+                                        playlist.imageUrl.isBlank() ||
+                                                playlist.imageUrl.contains("default_image")
+
+                                    if (shouldShowGrid && songImages.size >= 4) {
+                                        PlaylistImageGrid(
+                                            images = songImages,
+                                            modifier = Modifier
+                                                .size(68.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                        )
+                                    } else {
+                                        AsyncImage(
+                                            model = playlist.imageUrl,
+                                            contentDescription = null,
+                                            error = painterResource(R.drawable.default_image),
+                                            modifier = Modifier
+                                                .size(68.dp)
+                                                .clip(RoundedCornerShape(12.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
 
                                     Spacer(modifier = Modifier.width(14.dp))
 
@@ -606,8 +629,9 @@ fun LibraryScreen(
                                     ) {
                                         Text(
                                             text = playlist.playlistName,
-                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                            fontSize = 15.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color), maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
@@ -615,7 +639,8 @@ fun LibraryScreen(
 
                                         Text(
                                             text = "${playlist.totalSongs} Songs",
-                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color), maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -847,6 +872,47 @@ fun LibraryScreen(
                 showDeleteDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun PlaylistImageGrid(images: List<String>, modifier: Modifier = Modifier) {
+    if (images.size < 4) {
+        AsyncImage(
+            model = images.firstOrNull(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+        return
+    }
+
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.weight(1f)) {
+            images.take(2).forEach { image ->
+                AsyncImage(
+                    model = image,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
+        Row(modifier = Modifier.weight(1f)) {
+            images.drop(2).take(2).forEach { image ->
+                AsyncImage(
+                    model = image,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
     }
 }
 
@@ -1517,7 +1583,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                                         playlistData["playlistName"] = titleName.trim()
                                         playlistData["description"] = description.trim()
                                         playlistData["imageUrl"] =
-                                            "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1771090319/default_image_hrsmd7.jpg"
+                                            "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1774857863/default_image_jypeb6.jpg"
                                         playlistData["totalSongs"] = 0
 
                                         favouriteReference.child(playlistId)

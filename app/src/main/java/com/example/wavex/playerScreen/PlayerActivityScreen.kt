@@ -1404,7 +1404,7 @@ fun UpNextSheetContent(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(60.dp)
-                                    .clip(RoundedCornerShape(10.dp)),
+                                    .clip(RoundedCornerShape(12.dp)),
                                 contentScale = ContentScale.Crop
                             )
 

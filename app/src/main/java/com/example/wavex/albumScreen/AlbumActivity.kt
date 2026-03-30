@@ -689,7 +689,8 @@ private fun Album_Activity(
                                     item {
                                         Text(
                                             modifier = Modifier.padding(top = 20.dp, start = 12.dp),
-                                            text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Artists", fontSize = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                         )
                                     }
@@ -745,7 +746,8 @@ private fun Album_Activity(
                                     item {
                                         Text(
                                             modifier = Modifier.padding(top = 15.dp, start = 15.dp, bottom = 10.dp),
-                                            text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Songs", fontSize = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                         )
                                     }
@@ -825,7 +827,7 @@ private fun Album_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 
@@ -1227,7 +1229,8 @@ private fun Album_Activity(
                                     item {
                                         Text(
                                             modifier = Modifier.padding(top = 20.dp, start = 24.dp),
-                                            text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Artists", fontSize = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 18.sp
                                         )
                                     }
@@ -1267,9 +1270,11 @@ private fun Album_Activity(
 
                                                     val artistName = htmlToText(artist.name)
 
-                                                    Text( modifier = Modifier.width(78.dp),
+                                                    Text(
+                                                        modifier = Modifier.width(78.dp),
                                                         text = artistName,
-                                                        fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                         color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                                                         overflow = TextOverflow.Ellipsis
                                                     )
@@ -1283,7 +1288,8 @@ private fun Album_Activity(
                                     item {
                                         Text(
                                             modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
-                                            text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Songs", fontSize = 18.sp, fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                         )
                                     }
@@ -1363,7 +1369,7 @@ private fun Album_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 

@@ -136,6 +136,7 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.libraryScreen.PlaylistImageGrid
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
@@ -752,7 +753,7 @@ private fun Playlist_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 
@@ -956,16 +957,35 @@ private fun Playlist_Activity(
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp, end = 24.dp)
                                     ) {
-                                        AsyncImage(
-                                            model = playlistData?.imageUrl,
-                                            contentDescription = "Playlist Image",
-                                            contentScale = ContentScale.Crop,
-                                            error = painterResource(R.drawable.default_image),
-                                            modifier = Modifier
-                                                .size((screenWidth * 0.4f).coerceAtMost(220.dp))
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .zIndex(10f)
-                                        )
+                                        val songImages = playlistData?.songs
+                                            ?.mapNotNull { it.image.lastOrNull()?.url }
+                                            ?.filter { it.isNotBlank() }
+                                            ?.take(4)
+                                            ?: emptyList()
+
+                                        val shouldShowGrid =
+                                            playlistData?.imageUrl.isNullOrBlank() || playlistData.imageUrl.contains("default_image")
+
+                                        if (shouldShowGrid && songImages.size >= 4) {
+                                            PlaylistImageGrid(
+                                                images = songImages,
+                                                modifier = Modifier
+                                                    .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                    .clip(RoundedCornerShape(16.dp))
+                                                    .zIndex(10f)
+                                            )
+                                        } else {
+                                            AsyncImage(
+                                                model = playlistData?.imageUrl,
+                                                contentDescription = "Playlist Image",
+                                                contentScale = ContentScale.Crop,
+                                                error = painterResource(R.drawable.default_image),
+                                                modifier = Modifier
+                                                    .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                    .clip(RoundedCornerShape(16.dp))
+                                                    .zIndex(10f)
+                                            )
+                                        }
 
                                         Column(
                                             modifier = Modifier.fillMaxWidth()
@@ -994,21 +1014,23 @@ private fun Playlist_Activity(
                                                 )
                                             }
 
-                                            playlistData?.description?.let {
-                                                Spacer(modifier = Modifier.height(8.dp))
+                                            playlistData?.description
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?.let { desc ->
+                                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                                Text(
-                                                    text = it,
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 3,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
+                                                    Text(
+                                                        text = desc,
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 3,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
 
                                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1156,7 +1178,8 @@ private fun Playlist_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 20.dp, start = 24.dp, bottom = 10.dp),
-                                        text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        text = "Songs", fontSize = 18.sp, fontFamily = fonts,
+                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 18.sp
                                     )
                                 }
@@ -1349,7 +1372,7 @@ private fun Playlist_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 

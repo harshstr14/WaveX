@@ -706,7 +706,7 @@ fun Liked_Songs_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 
@@ -1302,7 +1302,7 @@ fun Liked_Songs_Activity(
                                                     contentDescription = null,
                                                     modifier = Modifier
                                                         .size(64.dp)
-                                                        .clip(RoundedCornerShape(10.dp)),
+                                                        .clip(RoundedCornerShape(12.dp)),
                                                     contentScale = ContentScale.Crop
                                                 )
 
