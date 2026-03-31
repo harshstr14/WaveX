@@ -36,12 +36,15 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -49,7 +52,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +78,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.example.wavex.R
@@ -869,11 +875,11 @@ fun Setting_Activity() {
 
             when {
                 showLogOutDialog -> {
-                    ConfirmActionDialog(
+                    IOSStyleBottomDialog(
                         title = "Log Out",
                         message = "Are you sure you want to log out? You will need to log in again.",
                         confirmText = "Log Out",
-                        icon = R.drawable.logout_icon,
+                        //icon = R.drawable.logout_icon,
                         onConfirm = {
                             googleSignInManager.signOut {
                                 Toast.makeText(context, "Signed out!", Toast.LENGTH_SHORT).show()
@@ -899,11 +905,11 @@ fun Setting_Activity() {
                 }
 
                 showDeleteDialog -> {
-                    ConfirmActionDialog(
+                    IOSStyleBottomDialog(
                         title = "Delete Account",
                         message = "Deleting your account will remove all your data. Do you really want to proceed?",
                         confirmText = "Delete",
-                        icon = R.drawable.delete_account_icon,
+                        //icon = R.drawable.delete_account_icon,
                         onConfirm = {
                             deleteAccount(context) {
                                 showDeleteDialog = false
@@ -916,11 +922,11 @@ fun Setting_Activity() {
                 }
 
                 showResetDialog -> {
-                    ConfirmActionDialog(
+                    IOSStyleBottomDialog(
                         title = "Reset waveX App",
                         message = "Are you sure you want to clear all app data? This will reset the app completely.",
                         confirmText = "Reset",
-                        icon = R.drawable.delete_icon,
+                        //icon = R.drawable.delete_icon,
                         onConfirm = {
                             clearAppCache (
                                 context,
@@ -1095,37 +1101,33 @@ private fun deleteAccount(context: Context,onDone: () -> Unit) {
 }
 
 @Composable
-fun ConfirmActionDialog(
+fun IOSStyleBottomDialog(
     title: String,
     message: String,
-    confirmText: String = "Confirm",
+    confirmText: String = "Delete",
     dismissText: String = "Cancel",
-    icon: Int? = null,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = { onDismiss() }) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = colorResource(R.color.off_white)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 22.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth().padding(20.dp)
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = colorResource(R.color.off_white),
+                tonalElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    if (icon != null) {
-                        Icon(
-                            painter = painterResource(icon),
-                            contentDescription = null,
-                            tint = colorResource(R.color.theme_color),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
                     Text(
                         text = title,
                         fontFamily = fonts,
@@ -1133,57 +1135,61 @@ fun ConfirmActionDialog(
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    thickness = 1.2.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = message,
-                    fontFamily = fonts,
-                    fontSize = 14.sp, lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color)
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = dismissText,
-                        color = colorResource(R.color.theme_color),
-                        fontSize = 15.sp, lineHeight = 15.sp,
-                        fontFamily = fonts, fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Normal,
-                        modifier = Modifier.clickable { onDismiss() }
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = confirmText,
-                        fontSize = 15.sp, lineHeight = 15.sp,
-                        fontFamily = fonts, fontWeight = FontWeight.Bold,
+                        text = message,
+                        fontFamily = fonts,
+                        fontSize = 14.sp, lineHeight = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
                         fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .clickable { onConfirm() }
+                        color = colorResource(R.color.secondary_text_color)
                     )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                                .clickable { onDismiss() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = dismissText,
+                                color = colorResource(R.color.secondary_text_color),
+                                fontSize = 15.sp, lineHeight = 15.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(colorResource(R.color.theme_color))
+                                .clickable { onConfirm() }
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = confirmText,
+                                fontSize = 15.sp, lineHeight = 15.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.background_color)
+                            )
+                        }
+                    }
                 }
             }
         }

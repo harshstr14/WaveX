@@ -80,7 +80,7 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -360,11 +360,11 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
             }
 
             if (showDeleteDialog) {
-                ConfirmActionDialog(
+                IOSStyleBottomDialog(
                     title = "Delete All Albums",
                     message = "Do you want to delete all favourite albums?",
                     confirmText = "Delete",
-                    icon = R.drawable.delete_icon,
+                    //icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllAlbums()
                         showDeleteDialog = false

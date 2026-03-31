@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -81,7 +80,7 @@ import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playlistScreen.PlaylistActivity
-import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -353,11 +352,11 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
             }
 
             if (showDeleteDialog) {
-                ConfirmActionDialog(
+                IOSStyleBottomDialog(
                     title = "Delete All Playlists",
                     message = "Do you want to delete all favourite playlists?",
                     confirmText = "Delete",
-                    icon = R.drawable.delete_icon,
+                    //icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllPlaylists()
                         showDeleteDialog = false

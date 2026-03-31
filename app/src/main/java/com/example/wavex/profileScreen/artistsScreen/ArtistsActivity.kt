@@ -82,7 +82,7 @@ import com.example.wavex.R
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -298,7 +298,7 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
 
                         LazyVerticalGrid(
                             state = artistsGridState,
-                            columns = GridCells.Fixed(3),
+                            columns = GridCells.Adaptive(minSize = 110.dp),
                             modifier = Modifier.constrainAs(artistsGrid){
                                 top.linkTo(parent.top)
                                 start.linkTo(parent.start)
@@ -354,11 +354,11 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
             }
 
             if (showDeleteDialog) {
-                ConfirmActionDialog(
+                IOSStyleBottomDialog(
                     title = "Delete All Artists",
                     message = "Do you want to delete all favourite artists?",
                     confirmText = "Delete",
-                    icon = R.drawable.delete_icon,
+                    //icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllArtists()
                         showDeleteDialog = false

@@ -112,7 +112,7 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
-import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.NetworkMonitor
 import com.example.wavex.service.ServiceLocator
@@ -835,11 +835,11 @@ fun Downloaded_Song_Activity(
             }
 
             if (showDeleteDialog) {
-                ConfirmActionDialog(
+                IOSStyleBottomDialog(
                     title = "Delete All Songs",
                     message = "Do you want to delete all downloaded songs?",
                     confirmText = "Delete",
-                    icon = R.drawable.delete_icon,
+                    //icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllSongs()
                         showDeleteDialog = false

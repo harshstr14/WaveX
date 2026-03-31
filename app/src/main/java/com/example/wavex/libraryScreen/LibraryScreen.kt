@@ -99,7 +99,7 @@ import com.example.wavex.libraryScreen.importPlaylist.ImportPlaylistViewModel
 import com.example.wavex.libraryScreen.importPlaylist.ImportState
 import com.example.wavex.libraryScreen.likedSongsScreen.LikedSongsActivity
 import com.example.wavex.libraryScreen.playlistScreen.PlaylistActivity
-import com.example.wavex.profileScreen.settingScreen.ConfirmActionDialog
+import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -838,11 +838,11 @@ fun LibraryScreen(
     }
 
     if (showDeleteDialog && playlistToDelete != null) {
-        ConfirmActionDialog(
+        IOSStyleBottomDialog(
             title = "Delete Playlist",
             message = "Are you sure you want to delete \"${playlistToDelete!!.playlistName}\" ?",
             confirmText = "Delete",
-            icon = R.drawable.delete_icon,
+            //icon = R.drawable.delete_icon,
             onConfirm = {
                 viewModel.deletePlaylist(
                     playlistToDelete!!.playlistId
