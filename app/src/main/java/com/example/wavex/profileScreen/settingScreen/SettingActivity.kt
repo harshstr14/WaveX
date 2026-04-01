@@ -36,15 +36,11 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -52,9 +48,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -1131,7 +1125,7 @@ fun IOSStyleBottomDialog(
                     Text(
                         text = title,
                         fontFamily = fonts,
-                        fontSize = 18.sp, lineHeight = 20.sp,
+                        fontSize = 17.sp, lineHeight = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color),
@@ -1142,7 +1136,7 @@ fun IOSStyleBottomDialog(
                     Text(
                         text = message,
                         fontFamily = fonts,
-                        fontSize = 14.sp, lineHeight = 15.sp,
+                        fontSize = 13.sp, lineHeight = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color)
