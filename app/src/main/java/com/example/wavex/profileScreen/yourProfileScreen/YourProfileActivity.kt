@@ -1,8 +1,6 @@
 package com.example.wavex.profileScreen.yourProfileScreen
 
 import android.app.Activity
-import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
@@ -31,8 +29,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -90,7 +86,6 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
@@ -224,9 +219,6 @@ private fun YourProfileScreen(
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val (editInteraction, editScale) = pressScale()
-
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var name by remember { mutableStateOf("") }
     var phoneNo by remember { mutableStateOf("") }
@@ -407,16 +399,11 @@ private fun YourProfileScreen(
             ) { data ->
                 Box(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = if (isLandscape) Alignment.CenterEnd else Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Snackbar(
                         modifier = Modifier
-                            .then(
-                                if (isLandscape)
-                                    Modifier.fillMaxWidth(0.68f)
-                                else
-                                    Modifier.fillMaxWidth()
-                            )
+                            .fillMaxWidth()
                             .shadow(
                                 elevation = 8.dp,
                                 shape = RoundedCornerShape(10.dp),
@@ -472,962 +459,473 @@ private fun YourProfileScreen(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (isLandscape) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(colorResource(R.color.background_color))
+            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                val (formContainerRef, updateProfileButtonRef) = createRefs()
+
+                Column(modifier = Modifier
+                    .constrainAs(formContainerRef) {
+                        top.linkTo(parent.top)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
+                        height = Dimension.fillToConstraints
+                    }.verticalScroll(rememberScrollState())
+                    .padding(bottom = 25.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(0.3f)
-                            .fillMaxHeight()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(0.98f)
-                        ) {
-                            AsyncImage(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .drawBehind {
-                                        val glowRadius = (size.minDimension / 2) * shadowScale
-                                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                        val (genderLabelRef, genderDropdownRef, profileImageRef, editProfileImageRef,
+                            nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,
+                            emailLabelRef, emailFieldContainerRef
+                        ) = createRefs()
 
-                                        drawIntoCanvas { canvas ->
-                                            val paint = Paint().apply {
-                                                color = shadowColor.copy(alpha = shadowAlpha)
-                                                asFrameworkPaint().apply {
-                                                    isAntiAlias = true
-                                                    maskFilter = android.graphics.BlurMaskFilter(
-                                                        safeBlur,
-                                                        android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                    )
-                                                }
-                                            }
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(imageUrl)
+                                .allowHardware(false)
+                                .build(),
+                            contentDescription = "Profile Image",
+                            onSuccess = { result ->
+                                val drawable = result.result.drawable
+                                val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
 
-                                            canvas.drawCircle(center, glowRadius, paint)
-                                        }
+                                Palette.from(bitmap).generate { palette ->
+                                    palette?.dominantSwatch?.rgb?.let { colorInt ->
+                                        shadowColor = Color(colorInt)
                                     }
-                                    .clip(CircleShape),
-                                model = ImageRequest.Builder(context)
-                                    .data(imageUrl)
-                                    .allowHardware(false)
-                                    .build(),
-                                contentDescription = "Profile Image",
-                                onSuccess = { result ->
-                                    val drawable = result.result.drawable
-                                    val bitmap =
-                                        (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
-
-                                    Palette.from(bitmap).generate { palette ->
-                                        palette?.dominantSwatch?.rgb?.let { colorInt ->
-                                            shadowColor = Color(colorInt)
-                                        }
-                                    }
-                                },
-                                contentScale = ContentScale.Crop
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(end = 15.dp, bottom = 8.dp)
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(25.dp))
-                                    .background(colorResource(R.color.theme_color))
-                                    .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.background_color),
-                                        shape = RoundedCornerShape(20.dp)
-                                    )
-                                    .clickable(
-                                        interactionSource = editInteraction,
-                                        indication = null
-                                    ) {
-                                        val intent =
-                                            Intent(context, YourProfileActivity::class.java).apply {
-                                                flags =
-                                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                            }
-                                        context.startActivity(intent)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.edit_icon),
-                                    contentDescription = "Edit Icon",
-                                    tint = colorResource(R.color.background_color),
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .graphicsLayer {
-                                            scaleX = editScale
-                                            scaleY = editScale
-                                        }
-                                )
-                            }
-                        }
-                    }
-
-                    Column(modifier = Modifier
-                        .weight(0.6f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 25.dp)
-                    ) {
-                        ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                            val (genderLabelRef, genderDropdownRef,
-                                nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,
-                                emailLabelRef, emailFieldContainerRef, updateProfileButtonRef
-                            ) = createRefs()
-
-                            Text("Name", modifier = Modifier.constrainAs(nameLabelRef) {
+                                }
+                            },
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.constrainAs(profileImageRef) {
                                 top.linkTo(parent.top)
-                                start.linkTo(parent.start, margin = 34.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            Box(modifier = Modifier.constrainAs(nameFieldContainerRef) {
-                                top.linkTo(nameLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
                                 end.linkTo(parent.end)
-                            }.padding(horizontal = 30.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText) = createRefs()
+                                start.linkTo(parent.start)
+                            }.padding(top = 25.dp).size(162.dp)
+                                .drawBehind {
+                                    val glowRadius = (size.minDimension / 2) * shadowScale
+                                    val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
-                                    if (name.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(parent.end, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Name",
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
+                                    drawIntoCanvas { canvas ->
+                                        val paint = Paint().apply {
+                                            color = shadowColor.copy(alpha = shadowAlpha)
+                                            asFrameworkPaint().apply {
+                                                isAntiAlias = true
 
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
-                                    )
+                                                maskFilter = android.graphics.BlurMaskFilter(
+                                                    safeBlur,
+                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
+                                                )
+                                            }
+                                        }
 
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = name,
-                                            onValueChange = { name = it },
-                                            modifier = Modifier
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(parent.end, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                        canvas.drawCircle(
+                                            center,
+                                            glowRadius,
+                                            paint
                                         )
                                     }
                                 }
-                            }
+                                .clip(CircleShape)
+                        )
 
-                            Text("Phone Number", modifier = Modifier.constrainAs(phoneLabelRef) {
-                                top.linkTo(nameFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 34.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
+                        Box(
+                            modifier = Modifier.constrainAs(editProfileImageRef) {
+                                bottom.linkTo(profileImageRef.bottom)
+                                end.linkTo(profileImageRef.end, margin = 8.dp)
+                            }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                                .background(colorResource(R.color.theme_color))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = colorResource(R.color.background_color),
+                                    shape = RoundedCornerShape(20.dp)
+                                ).clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
+                                    imagePickerLauncher.launch("image/*")
+                                }, contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.edit_icon),
+                                contentDescription = "Edit Icon",
+                                tint = colorResource(R.color.background_color),
+                                modifier = Modifier.size(18.dp)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                    }
                             )
+                        }
 
-                            Box(modifier = Modifier.constrainAs(phoneFieldContainerRef) {
-                                top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 30.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText, text) = createRefs()
+                        Text("Name", modifier = Modifier.constrainAs(nameLabelRef) {
+                            top.linkTo(profileImageRef.bottom, margin = 30.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
 
-                                    if (phoneNo.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(text.start, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Phone Number",
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
+                        Box(modifier = Modifier.constrainAs(nameFieldContainerRef) {
+                            top.linkTo(nameLabelRef.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText) = createRefs()
 
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
-                                    )
-
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = phoneNo,
-                                            onValueChange = {
-                                                if (it.all { char -> char.isDigit() } && it.length <= 10) {
-                                                    phoneNo = it
-                                                }
-                                            },
-                                            enabled = isPhoneEditable,
-                                            modifier = Modifier
-                                                .focusRequester(focusRequester)
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(text.start, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C)),
-                                            keyboardOptions = KeyboardOptions(
-                                                keyboardType = KeyboardType.Number,
-                                                imeAction = ImeAction.Done
-                                            ),
-
-                                            keyboardActions = KeyboardActions(
-                                                onDone = {
-                                                    keyboardController?.hide()
-                                                    isPhoneEditable = false
-                                                }
-                                            )
-                                        )
-                                    }
-
-                                    Text(modifier = Modifier.constrainAs(text) {
+                                if (name.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
                                         top.linkTo(parent.top)
                                         bottom.linkTo(parent.bottom)
-                                        end.linkTo(parent.end, margin = 15.dp) }
-                                        .clickable {
-                                            isPhoneEditable = !isPhoneEditable
-                                        },
-                                        text = if (isPhoneEditable) "Done" else "Change",
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(parent.end, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Name",
                                         fontFamily = fonts,
                                         fontWeight = FontWeight.Normal,
                                         fontStyle = FontStyle.Normal,
                                         fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = colorResource(R.color.theme_color)
+                                        color = colorResource(R.color.secondary_text_color)
                                     )
                                 }
-                            }
 
-                            Text("Email", modifier = Modifier.constrainAs(emailLabelRef) {
-                                top.linkTo(phoneFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 34.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
 
-                            Box(modifier = Modifier.constrainAs(emailFieldContainerRef) {
-                                top.linkTo(emailLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 30.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText) = createRefs()
-
-                                    if (email.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(parent.end, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Email",
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = name,
+                                        onValueChange = { name = it },
+                                        modifier = Modifier
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             fontSize = 14.sp, lineHeight = 17.sp,
                                             color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
-
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
                                     )
+                                }
+                            }
+                        }
 
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = email,
-                                            onValueChange = { email = it },
-                                            enabled = false,
-                                            modifier = Modifier
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(parent.end, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
+                        Text("Phone Number", modifier = Modifier.constrainAs(phoneLabelRef) {
+                            top.linkTo(nameFieldContainerRef.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        Box(modifier = Modifier.constrainAs(phoneFieldContainerRef) {
+                            top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText, text) = createRefs()
+
+                                if (phoneNo.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                                        top.linkTo(parent.top)
+                                        bottom.linkTo(parent.bottom)
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(text.start, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Phone Number",
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                }
+
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
+
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = phoneNo,
+                                        onValueChange = {
+                                            if (it.all { char -> char.isDigit() } && it.length <= 10) {
+                                                phoneNo = it
+                                            }
+                                        },
+                                        enabled = isPhoneEditable,
+                                        modifier = Modifier
+                                            .focusRequester(focusRequester)
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(text.start, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            color = colorResource(R.color.secondary_text_color)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C)),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            imeAction = ImeAction.Done
+                                        ),
+
+                                        keyboardActions = KeyboardActions(
+                                            onDone = {
+                                                keyboardController?.hide()
+                                                isPhoneEditable = false
+                                            }
+                                        )
+                                    )
+                                }
+
+                                Text(modifier = Modifier.constrainAs(text) {
+                                    top.linkTo(parent.top)
+                                    bottom.linkTo(parent.bottom)
+                                    end.linkTo(parent.end, margin = 15.dp) }
+                                    .clickable {
+                                        isPhoneEditable = !isPhoneEditable
+                                    },
+                                    text = if (isPhoneEditable) "Done" else "Change",
+                                    fontFamily = fonts,
+                                    fontWeight = FontWeight.Normal,
+                                    fontStyle = FontStyle.Normal,
+                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    color = colorResource(R.color.theme_color)
+                                )
+                            }
+                        }
+
+                        Text("Email", modifier = Modifier.constrainAs(emailLabelRef) {
+                            top.linkTo(phoneFieldContainerRef.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        Box(modifier = Modifier.constrainAs(emailFieldContainerRef) {
+                            top.linkTo(emailLabelRef.bottom, margin = 10.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                                val (inputField, placeholderText) = createRefs()
+
+                                if (email.isEmpty()) {
+                                    Text(modifier = Modifier.constrainAs(placeholderText) {
+                                        top.linkTo(parent.top)
+                                        bottom.linkTo(parent.bottom)
+                                        start.linkTo(parent.start, margin = 15.dp)
+                                        end.linkTo(parent.end, margin = 15.dp)
+                                        width = Dimension.fillToConstraints },
+                                        text = "Enter Email",
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                }
+
+                                val selectionColors = TextSelectionColors(
+                                    handleColor = Color(0xFF1C1C1C),
+                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                )
+
+                                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                                    BasicTextField(
+                                        value = email,
+                                        onValueChange = { email = it },
+                                        enabled = false,
+                                        modifier = Modifier
+                                            .constrainAs(inputField) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
+                                        textStyle = TextStyle(
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            color = colorResource(R.color.secondary_text_color)
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                    )
+                                }
+                            }
+                        }
+
+                        Text("Gender", modifier = Modifier.constrainAs(genderLabelRef) {
+                            top.linkTo(emailFieldContainerRef.bottom, margin = 20.dp)
+                            start.linkTo(parent.start, margin = 28.dp)
+                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.primary_text_color)
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.constrainAs(genderDropdownRef) {
+                                top.linkTo(genderLabelRef.bottom, margin = 10.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            }.padding(horizontal = 25.dp)
+                                .fillMaxWidth().zIndex(1f)
+                        ) {
+                            TextField(
+                                value = gender.ifEmpty{ "" },
+                                onValueChange = {},
+                                readOnly = true,
+                                placeholder = {
+                                    Text(
+                                        "Select",
+                                        fontSize = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Normal,
+                                        lineHeight = 17.sp,
+                                        color = colorResource(R.color.secondary_text_color)
+                                    )
+                                },
+                                textStyle = TextStyle(
+                                    fontFamily = fonts,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontStyle = FontStyle.Normal,
+                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    color = colorResource(R.color.secondary_text_color)
+                                ),
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.arrow_down_icon),
+                                        contentDescription = null,
+                                        tint = colorResource(R.color.theme_color),
+                                        modifier = Modifier
+                                            .rotate(rotation)
+                                            .size(24.dp)
+                                    )
+                                },
+                                colors = ExposedDropdownMenuDefaults.textFieldColors(
+                                    focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                                    unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .height(52.dp)
+                                    .fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                containerColor = Color(0xFF3a3a3a),
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                genderOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = option,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
                                                 fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C))
-                                        )
-                                    }
+                                                color = colorResource(R.color.background_color)
+                                            ) },
+                                        onClick = {
+                                            gender = option
+                                            expanded = false
+                                        }
+                                    )
                                 }
-                            }
-
-                            Text("Gender", modifier = Modifier.constrainAs(genderLabelRef) {
-                                top.linkTo(emailFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 34.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            ExposedDropdownMenuBox(
-                                expanded = expanded,
-                                onExpandedChange = { expanded = !expanded },
-                                modifier = Modifier.constrainAs(genderDropdownRef) {
-                                    top.linkTo(genderLabelRef.bottom, margin = 10.dp)
-                                    start.linkTo(parent.start)
-                                    end.linkTo(parent.end)
-                                }.padding(horizontal = 30.dp)
-                                    .fillMaxWidth().zIndex(1f)
-                            ) {
-                                TextField(
-                                    value = gender.ifEmpty{ "" },
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    placeholder = {
-                                        Text(
-                                            "Select",
-                                            fontSize = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    },
-                                    textStyle = TextStyle(
-                                        fontFamily = fonts,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = colorResource(R.color.secondary_text_color)
-                                    ),
-                                    trailingIcon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.arrow_down_icon),
-                                            contentDescription = null,
-                                            tint = colorResource(R.color.theme_color),
-                                            modifier = Modifier
-                                                .rotate(rotation)
-                                                .size(24.dp)
-                                        )
-                                    },
-                                    colors = ExposedDropdownMenuDefaults.textFieldColors(
-                                        focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                        unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .height(52.dp)
-                                        .fillMaxWidth()
-                                )
-
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    containerColor = Color(0xFF3a3a3a),
-                                    tonalElevation = 0.dp,
-                                    shadowElevation = 0.dp,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    genderOptions.forEach { option ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = option,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    fontSize = 14.sp, lineHeight = 17.sp,
-                                                    color = colorResource(R.color.background_color)
-                                                ) },
-                                            onClick = {
-                                                gender = option
-                                                expanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
-                                top.linkTo(genderDropdownRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.fillMaxWidth().padding(horizontal = 30.dp).height(54.dp).shadow(
-                                elevation = 26.dp,
-                                shape = RoundedCornerShape(14.dp),
-                                ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                                spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-                            ),
-                                onClick = {
-                                    when {
-                                        phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
-                                            scope.launch {
-                                                snackBarHostState.showSnackbar(
-                                                    message = "Phone number must be 10 digits",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                            return@Button
-                                        }
-
-                                        name.isBlank() -> {
-                                            scope.launch {
-                                                snackBarHostState.showSnackbar(
-                                                    message = "Please enter your name",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                            return@Button
-                                        }
-                                    }
-
-                                    onUpdateClick(name, phoneNo, gender) { message ->
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = message,
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                    }
-                                }, colors = ButtonDefaults.buttonColors(
-                                    containerColor = colorResource(R.color.theme_color),
-                                    contentColor = colorResource(R.color.off_white)
-                                ) , shape = RoundedCornerShape(14.dp)) {
-
-                                Text(
-                                    text = "Update", fontSize = 17.sp,
-                                    lineHeight = 18.sp, fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.off_white)
-                                )
                             }
                         }
                     }
                 }
-            } else {
-                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                    val (formContainerRef, updateProfileButtonRef) = createRefs()
 
-                    Column(modifier = Modifier
-                        .constrainAs(formContainerRef) {
-                            top.linkTo(parent.top)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                            bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
-                            height = Dimension.fillToConstraints
-                        }.verticalScroll(rememberScrollState())
-                        .padding(bottom = 25.dp)
-                    ) {
-                        ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                            val (genderLabelRef, genderDropdownRef, profileImageRef, editProfileImageRef,
-                                nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,
-                                emailLabelRef, emailFieldContainerRef
-                            ) = createRefs()
-
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(imageUrl)
-                                    .allowHardware(false)
-                                    .build(),
-                                contentDescription = "Profile Image",
-                                onSuccess = { result ->
-                                    val drawable = result.result.drawable
-                                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
-
-                                    Palette.from(bitmap).generate { palette ->
-                                        palette?.dominantSwatch?.rgb?.let { colorInt ->
-                                            shadowColor = Color(colorInt)
-                                        }
-                                    }
-                                },
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.constrainAs(profileImageRef) {
-                                    top.linkTo(parent.top)
-                                    end.linkTo(parent.end)
-                                    start.linkTo(parent.start)
-                                }.padding(top = 25.dp).size(162.dp)
-                                    .drawBehind {
-                                        val glowRadius = (size.minDimension / 2) * shadowScale
-                                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
-
-                                        drawIntoCanvas { canvas ->
-                                            val paint = Paint().apply {
-                                                color = shadowColor.copy(alpha = shadowAlpha)
-                                                asFrameworkPaint().apply {
-                                                    isAntiAlias = true
-
-                                                    maskFilter = android.graphics.BlurMaskFilter(
-                                                        safeBlur,
-                                                        android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                    )
-                                                }
-                                            }
-
-                                            canvas.drawCircle(
-                                                center,
-                                                glowRadius,
-                                                paint
-                                            )
-                                        }
-                                    }
-                                    .clip(CircleShape)
-                            )
-
-                            Box(
-                                modifier = Modifier.constrainAs(editProfileImageRef) {
-                                    bottom.linkTo(profileImageRef.bottom)
-                                    end.linkTo(profileImageRef.end, margin = 8.dp)
-                                }.size(36.dp).clip(RoundedCornerShape(20.dp))
-                                    .background(colorResource(R.color.theme_color))
-                                    .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.background_color),
-                                        shape = RoundedCornerShape(20.dp)
-                                    ).clickable(
-                                        interactionSource = interactionSource,
-                                        indication = null
-                                    ) {
-                                        imagePickerLauncher.launch("image/*")
-                                    }, contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.edit_icon),
-                                    contentDescription = "Edit Icon",
-                                    tint = colorResource(R.color.background_color),
-                                    modifier = Modifier.size(18.dp)
-                                        .graphicsLayer {
-                                            scaleX = scale
-                                            scaleY = scale
-                                        }
-                                )
-                            }
-
-                            Text("Name", modifier = Modifier.constrainAs(nameLabelRef) {
-                                top.linkTo(profileImageRef.bottom, margin = 30.dp)
-                                start.linkTo(parent.start, margin = 28.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            Box(modifier = Modifier.constrainAs(nameFieldContainerRef) {
-                                top.linkTo(nameLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText) = createRefs()
-
-                                    if (name.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(parent.end, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Name",
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
-
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
-                                    )
-
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = name,
-                                            onValueChange = { name = it },
-                                            modifier = Modifier
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(parent.end, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C))
-                                        )
-                                    }
-                                }
-                            }
-
-                            Text("Phone Number", modifier = Modifier.constrainAs(phoneLabelRef) {
-                                top.linkTo(nameFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 28.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            Box(modifier = Modifier.constrainAs(phoneFieldContainerRef) {
-                                top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText, text) = createRefs()
-
-                                    if (phoneNo.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(text.start, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Phone Number",
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
-
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
-                                    )
-
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = phoneNo,
-                                            onValueChange = {
-                                                if (it.all { char -> char.isDigit() } && it.length <= 10) {
-                                                    phoneNo = it
-                                                }
-                                            },
-                                            enabled = isPhoneEditable,
-                                            modifier = Modifier
-                                                .focusRequester(focusRequester)
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(text.start, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C)),
-                                            keyboardOptions = KeyboardOptions(
-                                                keyboardType = KeyboardType.Number,
-                                                imeAction = ImeAction.Done
-                                            ),
-
-                                            keyboardActions = KeyboardActions(
-                                                onDone = {
-                                                    keyboardController?.hide()
-                                                    isPhoneEditable = false
-                                                }
-                                            )
-                                        )
-                                    }
-
-                                    Text(modifier = Modifier.constrainAs(text) {
-                                        top.linkTo(parent.top)
-                                        bottom.linkTo(parent.bottom)
-                                        end.linkTo(parent.end, margin = 15.dp) }
-                                        .clickable {
-                                            isPhoneEditable = !isPhoneEditable
-                                        },
-                                        text = if (isPhoneEditable) "Done" else "Change",
-                                        fontFamily = fonts,
-                                        fontWeight = FontWeight.Normal,
-                                        fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = colorResource(R.color.theme_color)
-                                    )
-                                }
-                            }
-
-                            Text("Email", modifier = Modifier.constrainAs(emailLabelRef) {
-                                top.linkTo(phoneFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 28.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            Box(modifier = Modifier.constrainAs(emailFieldContainerRef) {
-                                top.linkTo(emailLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    val (inputField, placeholderText) = createRefs()
-
-                                    if (email.isEmpty()) {
-                                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                                            top.linkTo(parent.top)
-                                            bottom.linkTo(parent.bottom)
-                                            start.linkTo(parent.start, margin = 15.dp)
-                                            end.linkTo(parent.end, margin = 15.dp)
-                                            width = Dimension.fillToConstraints },
-                                            text = "Enter Email",
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    }
-
-                                    val selectionColors = TextSelectionColors(
-                                        handleColor = Color(0xFF1C1C1C),
-                                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
-                                    )
-
-                                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
-                                        BasicTextField(
-                                            value = email,
-                                            onValueChange = { email = it },
-                                            enabled = false,
-                                            modifier = Modifier
-                                                .constrainAs(inputField) {
-                                                    top.linkTo(parent.top)
-                                                    bottom.linkTo(parent.bottom)
-                                                    start.linkTo(parent.start, margin = 15.dp)
-                                                    end.linkTo(parent.end, margin = 15.dp)
-                                                    width = Dimension.fillToConstraints
-                                                },
-                                            textStyle = TextStyle(
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
-                                                color = colorResource(R.color.secondary_text_color)
-                                            ),
-                                            singleLine = true,
-                                            cursorBrush = SolidColor(Color(0xFF1C1C1C))
-                                        )
-                                    }
-                                }
-                            }
-
-                            Text("Gender", modifier = Modifier.constrainAs(genderLabelRef) {
-                                top.linkTo(emailFieldContainerRef.bottom, margin = 20.dp)
-                                start.linkTo(parent.start, margin = 28.dp)
-                            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.primary_text_color)
-                            )
-
-                            ExposedDropdownMenuBox(
-                                expanded = expanded,
-                                onExpandedChange = { expanded = !expanded },
-                                modifier = Modifier.constrainAs(genderDropdownRef) {
-                                    top.linkTo(genderLabelRef.bottom, margin = 10.dp)
-                                    start.linkTo(parent.start)
-                                    end.linkTo(parent.end)
-                                }.padding(horizontal = 25.dp)
-                                    .fillMaxWidth().zIndex(1f)
-                            ) {
-                                TextField(
-                                    value = gender.ifEmpty{ "" },
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    placeholder = {
-                                        Text(
-                                            "Select",
-                                            fontSize = 14.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Normal,
-                                            fontStyle = FontStyle.Normal,
-                                            lineHeight = 17.sp,
-                                            color = colorResource(R.color.secondary_text_color)
-                                        )
-                                    },
-                                    textStyle = TextStyle(
-                                        fontFamily = fonts,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
-                                        color = colorResource(R.color.secondary_text_color)
-                                    ),
-                                    trailingIcon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.arrow_down_icon),
-                                            contentDescription = null,
-                                            tint = colorResource(R.color.theme_color),
-                                            modifier = Modifier
-                                                .rotate(rotation)
-                                                .size(24.dp)
-                                        )
-                                    },
-                                    colors = ExposedDropdownMenuDefaults.textFieldColors(
-                                        focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                        unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .height(52.dp)
-                                        .fillMaxWidth()
-                                )
-
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    containerColor = Color(0xFF3a3a3a),
-                                    tonalElevation = 0.dp,
-                                    shadowElevation = 0.dp,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    genderOptions.forEach { option ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = option,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    fontSize = 14.sp, lineHeight = 17.sp,
-                                                    color = colorResource(R.color.background_color)
-                                                ) },
-                                            onClick = {
-                                                gender = option
-                                                expanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
-                        bottom.linkTo(parent.bottom, margin = 25.dp)
-                    }.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp).shadow(
-                        elevation = 26.dp,
-                        shape = RoundedCornerShape(14.dp),
-                        ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                        spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-                    ),
-                        onClick = {
-                            when {
-                                phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            message = "Phone number must be 10 digits",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                    return@Button
-                                }
-
-                                name.isBlank() -> {
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            message = "Please enter your name",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                    return@Button
-                                }
-                            }
-
-                            onUpdateClick(name, phoneNo, gender) { message ->
+                Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
+                    bottom.linkTo(parent.bottom, margin = 25.dp)
+                }.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp).shadow(
+                    elevation = 26.dp,
+                    shape = RoundedCornerShape(14.dp),
+                    ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                    spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                ),
+                    onClick = {
+                        when {
+                            phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
                                 scope.launch {
                                     snackBarHostState.showSnackbar(
-                                        message = message,
+                                        message = "Phone number must be 10 digits",
                                         duration = SnackbarDuration.Short
                                     )
                                 }
+                                return@Button
                             }
-                        }, colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.theme_color),
-                            contentColor = colorResource(R.color.off_white)
-                        ) , shape = RoundedCornerShape(14.dp)) {
 
-                        Text(
-                            text = "Update", fontSize = 17.sp,
-                            lineHeight = 18.sp, fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.off_white)
-                        )
-                    }
+                            name.isBlank() -> {
+                                scope.launch {
+                                    snackBarHostState.showSnackbar(
+                                        message = "Please enter your name",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                                return@Button
+                            }
+                        }
+
+                        onUpdateClick(name, phoneNo, gender) { message ->
+                            scope.launch {
+                                snackBarHostState.showSnackbar(
+                                    message = message,
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    }, colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.theme_color),
+                        contentColor = colorResource(R.color.off_white)
+                    ) , shape = RoundedCornerShape(14.dp)) {
+
+                    Text(
+                        text = "Update", fontSize = 17.sp,
+                        lineHeight = 18.sp, fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.off_white)
+                    )
                 }
             }
         }
