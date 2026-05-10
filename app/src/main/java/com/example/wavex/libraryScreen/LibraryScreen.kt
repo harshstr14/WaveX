@@ -282,10 +282,9 @@ fun LibraryScreen(
 
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        )
-    {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
         ConstraintLayout(modifier = Modifier
             .fillMaxSize()
             .graphicsLayer {
@@ -772,7 +771,6 @@ fun LibraryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-
                         Text(
                             text = "Importing Playlist",
                             fontSize = 16.sp, lineHeight = 16.sp,
@@ -801,7 +799,6 @@ fun LibraryScreen(
                                 .padding(horizontal = 28.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
                             LinearProgressIndicator(
                                 progress = { progress.value },
                                 color = colorResource(R.color.theme_color),
@@ -950,7 +947,7 @@ private fun AddWaveXPlaylistBottomSheet(
                 .height(4.dp)
                 .align(alignment = Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -1159,7 +1156,7 @@ private fun AddSpotifyPlaylistBottomSheet(
                 .height(4.dp)
                 .align(alignment = Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -1363,7 +1360,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                 .height(4.dp)
                 .align(alignment = Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -1641,7 +1638,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                 .height(4.dp)
                 .align(alignment = Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
         )
 
         Spacer(modifier = Modifier.height(20.dp))

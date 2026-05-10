@@ -1357,7 +1357,7 @@ fun ShareContent(
                 .height(4.dp)
                 .align(alignment = Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
         )
 
         Spacer(modifier = Modifier.height(20.dp))

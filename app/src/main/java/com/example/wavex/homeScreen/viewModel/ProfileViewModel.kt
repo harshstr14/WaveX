@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 class ProfileViewModel(
     application: Application
 ) : AndroidViewModel(application) {
-
     private val appContext = application.applicationContext
 
     private val database: DatabaseReference =

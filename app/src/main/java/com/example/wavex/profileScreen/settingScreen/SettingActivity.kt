@@ -40,6 +40,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -325,100 +326,67 @@ fun Setting_Activity() {
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 60.dp)
-                    .background(colorResource(R.color.background_color))
+                    .padding(start = 16.dp, end = 16.dp, top = 15.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color(0xFFFEFEFE))
             ) {
-                Row(
+                SettingsItem(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 25.dp, end = 25.dp, top = 15.dp)
-                        .clickable(
-                            interactionSource = updateInteraction,
-                            indication = null
-                        ) {
-                            isCheckingUpdate = true
+                        .padding(top = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    icon = R.drawable.update_icon,
+                    title = "Updates",
+                    subtitle = "Check for New Updates",
+                    scale = updateScale,
+                    interactionSource = updateInteraction,
+                    onClick = {
+                        isCheckingUpdate = true
 
-                            scope.launch {
-                                snackBarHostState.showSnackbar(
-                                    message = "Checking for update",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
+                        scope.launch {
+                            snackBarHostState.showSnackbar(
+                                message = "Checking for update",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
 
-                            checkForUpdate(
-                                context,
-                                onShowMessage = { message ->
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            message = message,
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
+                        checkForUpdate(
+                            context,
+                            onShowMessage = { message ->
+                                scope.launch {
+                                    snackBarHostState.showSnackbar(
+                                        message = message,
+                                        duration = SnackbarDuration.Short
+                                    )
                                 }
-                            ) { info ->
-                                isCheckingUpdate = false
-
-                                val intent = Intent(context, UpdateAppActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-
-                                    putExtra("message", info.message)
-                                    putExtra("latestVersion", info.latestVersion)
-                                    putExtra("currentVersion", info.currentVersion)
-                                    putExtra("downloadUrl", info.downloadUrl)
-                                    putExtra("expectedSizeInBytes", info.expectedSizeInBytes)
-                                }
-                                context.startActivity(intent)
                             }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.update_icon),
-                        contentDescription = "Update Icon",
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .size(26.dp)
-                            .graphicsLayer {
-                                scaleX = updateScale
-                                scaleY = updateScale
+                        ) { info ->
+                            isCheckingUpdate = false
+
+                            val intent = Intent(context, UpdateAppActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+                                putExtra("message", info.message)
+                                putExtra("latestVersion", info.latestVersion)
+                                putExtra("currentVersion", info.currentVersion)
+                                putExtra("downloadUrl", info.downloadUrl)
+                                putExtra("expectedSizeInBytes", info.expectedSizeInBytes)
                             }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Updates",
-                            fontSize = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Check for New Updates",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp
-                        )
+                            context.startActivity(intent)
+                        }
                     }
-                }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 25.dp, top = 18.dp),
+                        .padding(start = 16.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -436,6 +404,7 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column(
+                        modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
@@ -451,7 +420,7 @@ fun Setting_Activity() {
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Quality of audio files streamed from \nonline sources",
+                            text = "Quality of audio files streamed from online sources",
                             fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
@@ -464,8 +433,6 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Box(
-                        modifier = Modifier
-                            .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
@@ -532,10 +499,16 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(18.dp))
                 }
 
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 25.dp, top = 18.dp),
+                        .padding(start = 16.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -553,6 +526,7 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column(
+                        modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
@@ -568,7 +542,7 @@ fun Setting_Activity() {
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Quality of audio files saved for offline\nlistening",
+                            text = "Quality of audio files saved for offline listening",
                             fontSize = 13.sp,
                             fontFamily = fonts,
                             fontWeight = FontWeight.SemiBold,
@@ -581,8 +555,6 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Box(
-                        modifier = Modifier
-                            .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
@@ -650,221 +622,86 @@ fun Setting_Activity() {
                     Spacer(modifier = Modifier.width(18.dp))
                 }
 
-                Row(
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
+
+                SettingsItem(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 25.dp, end = 25.dp, top = 18.dp)
-                        .clickable(
-                            interactionSource = resetInteraction,
-                            indication = null
-                        ) {
-                            showResetDialog = true
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.delete_icon),
-                        contentDescription = "Delete Icon",
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .size(26.dp)
-                            .graphicsLayer {
-                                scaleX = resetScale
-                                scaleY = resetScale
-                            }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Reset waveX App",
-                            fontSize = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Clear all your data and reset the app to its default state",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp
-                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    icon = R.drawable.delete_icon,
+                    title = "Delete Account",
+                    subtitle = "Clear all your data and reset the app to its default state",
+                    scale = resetScale,
+                    interactionSource = resetInteraction,
+                    onClick = {
+                        showResetDialog = true
                     }
-                }
+                )
 
-                Row(
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
+
+                SettingsItem(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 25.dp, end = 25.dp, top = 18.dp)
-                        .clickable(
-                            interactionSource = deleteInteraction,
-                            indication = null
-                        ) {
-                            showDeleteDialog = true
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.delete_account_icon),
-                        contentDescription = "User Icon",
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .size(26.dp)
-                            .graphicsLayer {
-                                scaleX = deleteScale
-                                scaleY = deleteScale
-                            }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Delete Account",
-                            fontSize = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Permanently delete your account from the \nwaveX app",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp
-                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    icon = R.drawable.delete_account_icon,
+                    title = "Reset waveX App",
+                    subtitle = "Permanently delete your account from the \nwaveX app",
+                    scale = deleteScale,
+                    interactionSource = deleteInteraction,
+                    onClick = {
+                        showDeleteDialog = true
                     }
-                }
+                )
 
-                Row(
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
+
+                SettingsItem(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 25.dp, end = 25.dp, top = 18.dp)
-                        .clickable(
-                            interactionSource = logoutInteraction,
-                            indication = null
-                        ) {
-                            showLogOutDialog = true
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.logout_icon),
-                        contentDescription = "LogOut Icon",
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .size(26.dp)
-                            .graphicsLayer {
-                                scaleX = logoutScale
-                                scaleY = logoutScale
-                            }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Log Out",
-                            fontSize = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Sign out of your WaveX account",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp
-                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    icon = R.drawable.logout_icon,
+                    title = "Log Out",
+                    subtitle = "Sign out of your WaveX account",
+                    scale = logoutScale,
+                    interactionSource = logoutInteraction,
+                    onClick = {
+                        showLogOutDialog = true
                     }
-                }
+                )
 
-                Row(
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
+                )
+
+                SettingsItem(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 25.dp, end = 25.dp, top = 18.dp)
-                        .clickable(
-                            interactionSource = githubInteraction,
-                            indication = null
-                        ) {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                "https://github.com/harshstr14".toUri()
-                            )
-                            context.startActivity(intent)
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.github_icon),
-                        contentDescription = "GitHub Icon",
-                        tint = colorResource(R.color.theme_color),
-                        modifier = Modifier
-                            .size(26.dp)
-                            .graphicsLayer {
-                                scaleX = githubScale
-                                scaleY = githubScale
-                            }
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Git Hub",
-                            fontSize = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            lineHeight = 18.sp
+                        .padding(bottom = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    icon = R.drawable.github_icon,
+                    title = "Git Hub",
+                    subtitle = "For more information about waveX app",
+                    scale = githubScale,
+                    interactionSource = githubInteraction,
+                    onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            "https://github.com/harshstr14".toUri()
                         )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "For more information about waveX app",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp
-                        )
+                        context.startActivity(intent)
                     }
-                }
+                )
             }
 
             when {
@@ -1035,6 +872,7 @@ private fun clearAppCache(
         onDone()
     }
 }
+
 private fun deleteDir(dir: File?): Boolean {
     if (dir != null && dir.isDirectory) {
         val children = dir.list()
@@ -1190,6 +1028,69 @@ fun IOSStyleBottomDialog(
     }
 }
 
+@Composable
+private fun SettingsItem(
+    modifier: Modifier = Modifier,
+    icon: Int,
+    title: String,
+    subtitle: String,
+    scale: Float,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                onClick()
+            },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = title,
+            tint = colorResource(R.color.theme_color),
+            modifier = Modifier
+                .size(26.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontFamily = fonts,
+                fontWeight = FontWeight.SemiBold,
+                fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.primary_text_color),
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = subtitle,
+                fontSize = 13.sp,
+                fontFamily = fonts,
+                fontWeight = FontWeight.SemiBold,
+                fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.secondary_text_color),
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
 fun checkForUpdate(
     context: Context,
     onShowMessage: (String) -> Unit,
@@ -1257,7 +1158,7 @@ private fun getCurrentVersion(context: Context): String {
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
         packageInfo.versionName ?: "1.0.0"
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         "1.0.0"
     }
 }
@@ -1283,7 +1184,7 @@ private fun pressScale(
 
 @Preview(showBackground = true)
 @Composable
-fun SettingActivityPreview() {
+private fun SettingActivityPreview() {
     WaveXTheme {
         Setting_Activity()
     }

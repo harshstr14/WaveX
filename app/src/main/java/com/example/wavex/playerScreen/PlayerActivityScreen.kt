@@ -405,7 +405,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
         sheetDragHandle = null,
         sheetPeekHeight = 85.dp,
         sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        sheetContainerColor = Color(0xFFFCFBFB),
+        sheetContainerColor = Color(0xFFFEFEFE),
         sheetContent = {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth()
@@ -1265,7 +1265,7 @@ fun UpNextSheetContent(
                     .height(4.dp)
                     .align(alignment = Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(50))
-                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.4f))
+                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
             )
 
             Spacer(modifier = Modifier.height(15.dp))

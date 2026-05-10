@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -69,6 +70,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
@@ -299,8 +301,7 @@ private fun PortraitMode(
                 .fillMaxWidth()
                 .wrapContentHeight()
         ) {
-            val (profileImageRef, yourProfileRowRef, userNameTextRef, favouriteSongsRowRef, artistsRowRef,
-                albumsRowRef, settingsRowRef, playlistsRowRef, profileEditIconRef, downloadedSongsRowRwf
+            val (profileImageRef, yourProfileRowRef, userNameTextRef, profileEditIconRef, downloadedSongsRowRwf
             ) = createRefs()
 
             AsyncImage(
@@ -402,383 +403,231 @@ private fun PortraitMode(
                 lineHeight = 22.sp
             )
 
-            Row(
-                modifier = Modifier.constrainAs(yourProfileRowRef) {
-                    top.linkTo(userNameTextRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp)
-                    .clickable(
-                        interactionSource = userInteraction,
-                        indication = null
-                    ) {
+            Column(
+                modifier = Modifier
+                    .constrainAs(yourProfileRowRef) {
+                        top.linkTo(userNameTextRef.bottom, margin = 30.dp)
+                        height = Dimension.fillToConstraints
+                    }
+                    .padding(start = 16.dp, end = 16.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color(0xFFfefefe))
+            ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.user_icon,
+                    title = "Your Profile",
+                    scale = userScale,
+                    interactionSource = userInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, YourProfileActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.user_icon),
-                    contentDescription = "User Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(20.dp)
-                        .graphicsLayer {
-                            scaleX = userScale
-                            scaleY = userScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(15.dp))
-
-                Text(
-                    text = "Your Profile",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = userScale
-                            scaleY = userScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(favouriteSongsRowRef) {
-                    top.linkTo(yourProfileRowRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp)
-                    .clickable(
-                        interactionSource = songInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.song_icon,
+                    title = "Favourite Songs",
+                    scale = songScale,
+                    interactionSource = songInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, FavouriteSongsActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.song_icon),
-                    contentDescription = "Song Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(22.dp)
-                        .graphicsLayer {
-                            scaleX = songScale
-                            scaleY = songScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "Favourite Songs",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = songScale
-                            scaleY = songScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(artistsRowRef) {
-                    top.linkTo(favouriteSongsRowRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp)
-                    .clickable(
-                        interactionSource = artistsInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.mic_icon,
+                    title = "Artists",
+                    scale = artistsScale,
+                    interactionSource = artistsInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, ArtistsActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.mic_icon),
-                    contentDescription = "Mic Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(22.dp)
-                        .graphicsLayer {
-                            scaleX = artistsScale
-                            scaleY = artistsScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "Artists",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = artistsScale
-                            scaleY = artistsScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(albumsRowRef) {
-                    top.linkTo(artistsRowRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp)
-                    .clickable(
-                        interactionSource = albumsInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.album_icon,
+                    title = "Albums",
+                    scale = albumsScale,
+                    interactionSource = albumsInteraction,
+                    onClick = {
                         val intent = Intent(context, AlbumsActivity::class.java).apply {
                             flags =
                                 Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.album_icon),
-                    contentDescription = "Album Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(22.dp)
-                        .graphicsLayer {
-                            scaleX = albumsScale
-                            scaleY = albumsScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "Albums",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = albumsScale
-                            scaleY = albumsScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(playlistsRowRef) {
-                    top.linkTo(albumsRowRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(horizontal = 25.dp)
-                    .clickable(
-                        interactionSource = playlistsInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.playlist_icon,
+                    title = "Playlists",
+                    scale = playlistsScale,
+                    interactionSource = playlistsInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, PlaylistsActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.playlist_icon),
-                    contentDescription = "Playlist Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(22.dp)
-                        .graphicsLayer {
-                            scaleX = playlistsScale
-                            scaleY = playlistsScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "Playlists",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = playlistsScale
-                            scaleY = playlistsScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(downloadedSongsRowRwf) {
-                    top.linkTo(playlistsRowRef.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(start = 25.dp, end = 25.dp)
-                    .clickable(
-                        interactionSource = downloadedInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.downloaded_icon,
+                    title = "Downloaded Songs",
+                    scale = downloadedScale,
+                    interactionSource = downloadedInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, DownloadedSongActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.downloaded_icon),
-                    contentDescription = "Downloaded Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = downloadedScale
-                            scaleY = downloadedScale
-                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = "Downloaded Songs",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    thickness = 1.dp,
+                    color = colorResource(R.color.background_color)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = downloadedScale
-                            scaleY = downloadedScale
-                        }
-                )
-            }
-
-            Row(
-                modifier = Modifier.constrainAs(settingsRowRef) {
-                    top.linkTo(downloadedSongsRowRwf.bottom, margin = 30.dp)
-                }.fillMaxWidth().padding(start = 25.dp, end = 25.dp, bottom = 30.dp)
-                    .clickable(
-                        interactionSource = settingInteraction,
-                        indication = null
-                    ) {
+                ProfileItem(
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    icon = R.drawable.setting_icon,
+                    title = "Settings",
+                    scale = settingScale,
+                    interactionSource = settingInteraction,
+                    onClick = {
                         val intent =
                             Intent(context, SettingActivity::class.java).apply {
                                 flags =
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                         context.startActivity(intent)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.setting_icon),
-                    contentDescription = "Setting Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = settingScale
-                            scaleY = settingScale
-                        }
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = "Settings",
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color),
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Icon(
-                    painter = painterResource(R.drawable.right_arrow_icon),
-                    contentDescription = "Right Arrow Icon",
-                    tint = colorResource(R.color.theme_color),
-                    modifier = Modifier.size(24.dp)
-                        .graphicsLayer {
-                            scaleX = settingScale
-                            scaleY = settingScale
-                        }
+                    }
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileItem(
+    modifier: Modifier = Modifier,
+    icon: Int,
+    title: String,
+    scale: Float,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                onClick()
+            },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = title,
+            tint = colorResource(R.color.theme_color),
+            modifier = Modifier.size(24.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold,
+            fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.primary_text_color),
+            lineHeight = 18.sp
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Icon(
+            painter = painterResource(R.drawable.right_arrow_icon),
+            contentDescription = "Right Arrow Icon",
+            tint = colorResource(R.color.theme_color),
+            modifier = Modifier.size(24.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+        )
     }
 }
 
