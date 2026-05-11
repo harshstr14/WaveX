@@ -24,8 +24,4 @@ class DownloadRepository(
     suspend fun getSongById(id: String): DownloadedSong? {
         return dao.getSongById(id)
     }
-
-    fun isDownloaded(id: String): Flow<Boolean> {
-        return dao.isDownloaded(id)
-    }
 }

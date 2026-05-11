@@ -110,6 +110,7 @@ import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.ProfileActivity
+import com.example.wavex.recommendation.MusicHistoryRepository
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
@@ -120,6 +121,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
@@ -302,31 +304,47 @@ object RecentlyPlayedManager {
 }
 
 object ProfilePrefs {
-    val Context.dataStore by preferencesDataStore("profile")
-    val PROFILE_URL = stringPreferencesKey("profile_url")
-    val USER_NAME = stringPreferencesKey("user_name")
+    private const val DATASTORE_NAME = "profile"
 
-    suspend fun saveProfileUrl(context: Context, url: String) {
-        context.dataStore.edit {
-            it[PROFILE_URL] = url
+    val Context.dataStore by preferencesDataStore(
+        name = DATASTORE_NAME
+    )
+
+    private val PROFILE_URL =
+        stringPreferencesKey("profile_url")
+
+    private val USER_NAME =
+        stringPreferencesKey("user_name")
+
+    suspend fun saveProfileUrl(
+        context: Context,
+        url: String
+    ) {
+        context.dataStore.edit { prefs ->
+            prefs[PROFILE_URL] = url
         }
     }
 
-    suspend fun saveUserName(context: Context, name: String) {
-        context.dataStore.edit {
-            it[USER_NAME] = name
+    suspend fun saveUserName(
+        context: Context,
+        name: String
+    ) {
+        context.dataStore.edit { prefs ->
+            prefs[USER_NAME] = name
         }
     }
 
-    fun getProfileUrl(context: Context) =
-        context.dataStore.data.map {
-            it[PROFILE_URL]
+    fun getProfileUrl(context: Context): Flow<String?> {
+        return context.dataStore.data.map { prefs ->
+            prefs[PROFILE_URL]
         }
+    }
 
-    fun getUserName(context: Context) =
-        context.dataStore.data.map {
-            it[USER_NAME]
+    fun getUserName(context: Context): Flow<String?> {
+        return context.dataStore.data.map { prefs ->
+            prefs[USER_NAME]
         }
+    }
 
     suspend fun clear(context: Context) {
         context.dataStore.edit { prefs ->
@@ -347,6 +365,15 @@ fun HomeScreen (
     }
     val userID = auth?.currentUser?.uid
 
+    val repository = MusicHistoryRepository()
+
+    repository.getUserHistory { history ->
+        Log.d(
+            "HISTORY",
+            history.toString()
+        )
+    }
+
     val scrollState = rememberScrollState()
     var isRefreshing by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -359,7 +386,7 @@ fun HomeScreen (
     val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
 
     LaunchedEffect(userID) {
-        userID?.let { viewModel.silentRefresh(it) }
+        userID?.let { viewModel.refreshUserData(it) }
     }
 
     var isScrollingDown by remember { mutableStateOf(false) }
@@ -447,7 +474,7 @@ fun HomeScreen (
             albumsVM.fetchAlbumByQuery("latest","results")
             artistsVM.fetchArtistsByQuery("top artists","results")
 
-            userID?.let { viewModel.silentRefresh(it) }
+            userID?.let { viewModel.refreshUserData(it) }
 
             delay(1000)
 

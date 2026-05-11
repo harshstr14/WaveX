@@ -49,7 +49,7 @@ class DownloadViewModel(
                     onResult(false, "Song not found")
                 }
 
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 onResult(false, "Failed to remove song")
             }
         }
@@ -71,9 +71,5 @@ class DownloadViewModel(
 
             repository.deleteAll()
         }
-    }
-
-    fun isDownloaded(id: String): Flow<Boolean> {
-        return repository.isDownloaded(id)
     }
 }

@@ -8,8 +8,14 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Binder
@@ -21,10 +27,12 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Html
 import android.util.Log
+import android.util.LruCache
 import androidx.annotation.OptIn
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.LifecycleService
 import androidx.media.app.NotificationCompat.MediaStyle
@@ -38,7 +46,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.wavex.R
 import com.example.wavex.downloadSong.data.DownloadedSong
 import com.example.wavex.homeScreen.AppContainer
@@ -46,7 +57,10 @@ import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playerScreen.PlayerActivityScreen
+import com.example.wavex.recommendation.MusicHistoryRepository
+import com.example.wavex.recommendation.dataClass.PlayedSong
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -56,18 +70,14 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -116,7 +126,23 @@ class  MusicPlayerService : LifecycleService() {
 
     private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val imageLoader by lazy { ImageLoader(this) }
+    private val imageLoader by lazy {
+        ImageLoader.Builder(this)
+            .crossfade(true)
+            .respectCacheHeaders(false)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("album_art_cache"))
+                    .maxSizeBytes(100L * 1024 * 1024)
+                    .build()
+            }
+            .build()
+    }
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -132,6 +158,11 @@ class  MusicPlayerService : LifecycleService() {
     private var playlist: MutableList<SongItem> = mutableListOf()
     private var currentQueuedSong: SongItem? = null
     private var currentIndex = -1
+    private var playJob: Job? = null
+    private var artLoadJob: Job? = null
+    private val artCache = LruCache<String, Bitmap>(30)
+    private val historyRepository = MusicHistoryRepository()
+    private var isHistorySaved = false
 
     private val _currentSong = MutableStateFlow<SongItem?>(null)
     val currentSong: StateFlow<SongItem?> = _currentSong.asStateFlow()
@@ -184,24 +215,24 @@ class  MusicPlayerService : LifecycleService() {
     private var isRetrying = false
     private var shouldFetchSuggestions = false
 
-    @kotlin.OptIn(FlowPreview::class)
-    val playerUiState = combine(
-        _isOnline,
-        _isBuffering,
-        _isPlaying
-    ) { isOnline, isBuffering, isPlaying ->
-
-        when {
-            !isOnline -> "RECONNECTING"
-            isBuffering -> "BUFFERING"
-            isPlaying -> "PLAYING"
-            else -> "PAUSED"
-        }
-    }.debounce(250).stateIn(
-        serviceScope,
-        SharingStarted.WhileSubscribed(5000),
-        "PAUSED"
-    )
+//    @kotlin.OptIn(FlowPreview::class)
+//    val playerUiState = combine(
+//        _isOnline,
+//        _isBuffering,
+//        _isPlaying
+//    ) { isOnline, isBuffering, isPlaying ->
+//
+//        when {
+//            !isOnline -> "RECONNECTING"
+//            isBuffering -> "BUFFERING"
+//            isPlaying -> "PLAYING"
+//            else -> "PAUSED"
+//        }
+//    }.debounce(250).stateIn(
+//        serviceScope,
+//        SharingStarted.WhileSubscribed(5000),
+//        "PAUSED"
+//    )
 
     override fun onCreate() {
         super.onCreate()
@@ -347,7 +378,7 @@ class  MusicPlayerService : LifecycleService() {
                             _duration.value = duration.toInt()
                             _buffer.value = player.bufferedPosition.toInt()
 
-                            val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
+                            val bitmap = currentAlbumArt ?: placeholderBitmap
                             updateMetadata(song, bitmap)
 
                             serviceScope.launch {
@@ -358,17 +389,6 @@ class  MusicPlayerService : LifecycleService() {
 
                     Player.STATE_ENDED -> {
                         _isBuffering.value = false
-
-                        if (!isQueueOnlyMode) {
-                            currentQueuedSong?.let { queuedSong ->
-                                queue.removeAll { it.id == queuedSong.id }
-                                _queue.value = queue.toList()
-                                currentQueuedSong = null
-
-                                updateUpNext()
-                            }
-                        }
-
                         next()
                     }
 
@@ -691,47 +711,70 @@ class  MusicPlayerService : LifecycleService() {
     private fun playIndex(index: Int) {
         if (index !in playlist.indices) return
 
+        isHistorySaved = false
         currentIndex = index
         _currentIndexFlow.value = index
 
         val song = playlist[index]
+
+        currentAlbumArt = null
+        currentArtSongId = null
+
         _currentSong.value = song
 
         updateUpNext()
+        updateNotification()
         prepareAndPlay(song)
     }
 
     private fun prepareAndPlay(song: SongItem) {
-        currentAlbumArt = null
-        currentArtSongId = null
+        playJob?.cancel()
 
-        val uri = song.getBestUri(_isOnline.value)
+        playJob = serviceScope.launch {
+            val downloadedSong = downloadRepository.getSongById(song.id)
 
-        if (uri == Uri.EMPTY) {
-            _isBuffering.value = false
-            return
+            val uri = if (
+                downloadedSong != null &&
+                File(downloadedSong.localPath).exists()
+            ) {
+                Uri.fromFile(File(downloadedSong.localPath))
+            } else {
+                song.getBestUri(_isOnline.value)
+            }
+
+            if (uri == Uri.EMPTY) {
+                _isBuffering.value = false
+                return@launch
+            }
+
+            val mediaItem = MediaItem.Builder()
+                .setUri(uri)
+                .setMediaId(song.id)
+                .build()
+
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.playWhenReady = true
+
+            updatePlaybackState()
         }
-
-        val mediaItem = MediaItem.fromUri(uri)
-        player.setMediaItem(mediaItem)
-        player.prepare()
-        player.playWhenReady = true
-
-        startForegroundWithNotification(song)
-        updatePlaybackState()
     }
 
     fun getCurrentPosition(): Int {
         return player.currentPosition.toInt()
     }
 
-    fun getDuration(): Int {
-        return player.duration.toInt()
-    }
+//    fun getDuration(): Int {
+//        return player.duration.toInt()
+//    }
 
     fun togglePlayPause() {
         if (::player.isInitialized) {
-            player.playWhenReady = !player.playWhenReady
+            if (player.isPlaying) {
+                player.pause()
+            } else {
+                player.play()
+            }
         }
     }
 
@@ -1010,7 +1053,6 @@ class  MusicPlayerService : LifecycleService() {
 
         player.setMediaItem(mediaItem, currentPosition)
         player.prepare()
-        player.seekTo(currentPosition)
 
         if (wasPlaying) player.play()
     }
@@ -1036,18 +1078,18 @@ class  MusicPlayerService : LifecycleService() {
         updateUpNext()
     }
 
-    fun isInQueue(songId: String): Boolean {
-        return queue.any { it.id == songId }
-    }
+//    fun isInQueue(songId: String): Boolean {
+//        return queue.any { it.id == songId }
+//    }
 
-    fun playNext(song: SongItem) {
-        if (!queue.any { it.id == song.id }) {
-            queue.add(0, song)
-            _queue.value = queue.toList()
-        }
-
-        updateUpNext()
-    }
+//    fun playNext(song: SongItem) {
+//        if (!queue.any { it.id == song.id }) {
+//            queue.add(0, song)
+//            _queue.value = queue.toList()
+//        }
+//
+//        updateUpNext()
+//    }
 
     fun removeFromQueue(songId: String) {
         queue.removeAll { it.id == songId }
@@ -1064,7 +1106,7 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun addToHistory(song: SongItem?) {
-        song?.let {
+        song?.let { it ->
             history.removeAll { it.id == song.id }
             history.add(it)
 
@@ -1087,7 +1129,7 @@ class  MusicPlayerService : LifecycleService() {
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
-        } catch (t: Throwable) { /* ignore */ }
+        } catch (_: Throwable) { /* ignore */ }
     }
 
     override fun onDestroy() {
@@ -1095,7 +1137,7 @@ class  MusicPlayerService : LifecycleService() {
         handler.removeCallbacks(progressRunnable)
         if (::player.isInitialized) player.release()
         if (::mediaSession.isInitialized) mediaSession.release()
-        try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (e: Exception) {}
+        try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Exception) {}
         serviceScope.cancel()
         ServiceLocator.musicService = null
         val prefs = getSharedPreferences("player_settings", MODE_PRIVATE)
@@ -1104,128 +1146,86 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private val placeholderBitmap by lazy {
-        BitmapFactory.decodeResource(resources, R.drawable.playlist)
+        BitmapFactory.decodeResource(resources, R.drawable.default_image)
     }
 
     private fun startForegroundWithNotification(song: SongItem) {
-        val placeholder = placeholderBitmap
-        val notif = buildNotification(song, placeholder)
-
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            startForeground(NOTIFICATION_ID, notif)
-        }
-
-        if (song.id == currentArtSongId && currentAlbumArt != null) {
-            val notif = buildNotification(song, currentAlbumArt!!)
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notif)
-            }
-            return
-        }
-
-        serviceScope.launch(Dispatchers.IO) {
-            val bitmap = try {
-                if (song.image.size > 2 && song.image[2].url.isNotBlank()) {
-
-                    val request = ImageRequest.Builder(this@MusicPlayerService)
-                        .data(song.image[2].url)
-                        .size(512, 512)
-                        .allowHardware(false)   // REQUIRED to get Bitmap
-                        .build()
-
-                    val result = imageLoader.execute(request)
-
-                    (result.drawable as BitmapDrawable).bitmap
-                } else {
-                    placeholder
-                }
-            } catch (e: Exception) {
-                Log.e("AlbumArt", "Error loading album art", e)
-                placeholder
-            }
-
-            // 🔁 Back to main thread
-            withContext(Dispatchers.Main) {
-                currentAlbumArt = bitmap
-                currentArtSongId = song.id
-
-                updateMetadata(song, bitmap)
-                val updatedNotif = buildNotification(song, bitmap)
-
-                val notificationManager =
-                    getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                notificationManager.notify(NOTIFICATION_ID, updatedNotif)
-            }
-        }
+        updateNotification()
     }
 
     fun updateNotification() {
         val song = _currentSong.value ?: return
 
-        if (song.id == currentArtSongId && currentAlbumArt != null) {
-            val notif = buildNotification(song, currentAlbumArt!!)
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                NotificationManagerCompat.from(this)
-                    .notify(NOTIFICATION_ID, notif)
+        val cachedBitmap = artCache.get(song.id)
+
+        val bitmap = when {
+            currentArtSongId == song.id && currentAlbumArt != null -> {
+                currentAlbumArt!!
             }
+
+            cachedBitmap != null -> {
+                currentAlbumArt = cachedBitmap
+                currentArtSongId = song.id
+                cachedBitmap
+            }
+
+            else -> {
+                placeholderBitmap
+            }
+        }
+
+        if (
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
 
-        serviceScope.launch(Dispatchers.IO) {
+        val notification = buildNotification(song, bitmap)
 
-            val placeholder = placeholderBitmap
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
 
-            val bitmap = try {
-                if (song.image.size > 2 && song.image[2].url.isNotBlank()) {
+        if (cachedBitmap == null) {
+            artLoadJob?.cancel()
 
-                    val request = ImageRequest.Builder(this@MusicPlayerService)
-                        .data(song.image[2].url)
-                        .size(512)
-                        .allowHardware(false) // REQUIRED for notifications
-                        .build()
+            artLoadJob = serviceScope.launch {
 
-                    val result = imageLoader.execute(request)
-                    val drawable = result.drawable
-
-                    if (drawable is BitmapDrawable) drawable.bitmap else placeholder
-                } else {
-                    placeholder
+                val loadedBitmap = withContext(Dispatchers.IO) {
+                    loadAlbumArt(song)
                 }
-            } catch (e: Exception) {
-                Log.e("AlbumArt", "Error loading image", e)
-                placeholder
-            }
 
-            withContext(Dispatchers.Main) {
-                currentAlbumArt = bitmap
+                if (_currentSong.value?.id != song.id) {
+                    return@launch
+                }
+
+                currentAlbumArt = loadedBitmap
                 currentArtSongId = song.id
 
-                updateMetadata(song, bitmap)
+                updateMetadata(song, loadedBitmap)
 
-                val notif = buildNotification(song, bitmap)
-                if (ActivityCompat.checkSelfPermission(
-                        this@MusicPlayerService,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    NotificationManagerCompat.from(this@MusicPlayerService)
-                        .notify(NOTIFICATION_ID, notif)
+                val updatedNotification =
+                    buildNotification(song, loadedBitmap)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        updatedNotification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                    )
                 } else {
-                    Log.w(
-                        "MusicPlayerService",
-                        "Notification permission denied, cannot show notification"
+                    startForeground(
+                        NOTIFICATION_ID,
+                        updatedNotification
                     )
                 }
             }
@@ -1292,7 +1292,6 @@ class  MusicPlayerService : LifecycleService() {
             ?.joinToString(", ") { it.name } // join all artist names
             ?: "Unknown Artist"
         val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
-        updateMetadata(song, bitmap)
 
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
@@ -1370,9 +1369,32 @@ class  MusicPlayerService : LifecycleService() {
 
         val duration = player.duration.coerceAtLeast(song.duration.toLong())
         val position = player.currentPosition
+
+        if (!isHistorySaved) {
+            val playedPercentage = (position * 100) / duration
+
+            if (
+                position > 10000 &&
+                playedPercentage >= 30
+            ) {
+                isHistorySaved = true
+
+                historyRepository.savePlayedSong(
+                    PlayedSong(
+                        id = song.id,
+                        name = htmlToText(song.name),
+                        artist = song.artist,
+                        album = song.album,
+                        image = song.image,
+                        duration = song.duration,
+                        downloadUrl = song.downloadUrl,
+                    )
+                )
+            }
+        }
+
         val buffered = player.bufferedPosition
 
-        // Update LiveData
         _duration.value = duration.toInt()
         _progress.value = position.toInt()
         _buffer.value = buffered.toInt()
@@ -1407,5 +1429,81 @@ class  MusicPlayerService : LifecycleService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private suspend fun loadAlbumArt(song: SongItem): Bitmap {
+        artCache.get(song.id)?.let {
+            return it
+        }
+
+        val placeholder = placeholderBitmap
+
+        return try {
+            val imageUrl = song.image
+                .lastOrNull { it.url.isNotBlank() }
+                ?.url
+                ?.replace("150x150", "500x500")
+                ?.replace("50x50", "500x500")
+
+            if (imageUrl.isNullOrBlank()) {
+                return placeholder
+            }
+
+            val request = ImageRequest.Builder(this)
+                .data(imageUrl)
+                .size(512, 512)
+                .allowHardware(false)
+                .memoryCacheKey(song.id)
+                .diskCacheKey(song.id)
+                .crossfade(false)
+                .build()
+
+            val bitmap = when (val result = imageLoader.execute(request)) {
+                is SuccessResult -> {
+                    when (val drawable = result.drawable) {
+                        is BitmapDrawable -> drawable.bitmap
+                        else -> drawable.toBitmap()
+                    }
+                }
+
+                else -> placeholder
+            }
+
+            val rounded = bitmap.roundCorners(32f)
+
+            artCache.put(song.id, rounded)
+
+            rounded
+
+        } catch (e: Exception) {
+            Log.e("AlbumArt", "Load failed for ${song.name}", e)
+
+            placeholder
+        }
+    }
+
+    private fun Bitmap.roundCorners(radius: Float): Bitmap {
+        val output = createBitmap(width, height)
+
+        val canvas = Canvas(output)
+
+        val paint = Paint().apply {
+            isAntiAlias = true
+        }
+
+        val rect = RectF(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat()
+        )
+
+        canvas.drawRoundRect(rect, radius, radius, paint)
+
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+
+        canvas.drawBitmap(this, 0f, 0f, paint)
+
+        return output
     }
 }

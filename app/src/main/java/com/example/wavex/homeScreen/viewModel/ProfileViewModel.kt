@@ -26,62 +26,18 @@ class ProfileViewModel(
 
     val profileImageUrl = getProfileUrl(appContext)
         .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            null
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null
         )
 
     val userName = getUserName(appContext)
         .map { it ?: "Your Name" }
         .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            "Your Name"
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = "Your Name"
         )
-
-    fun silentRefresh(uid: String) {
-        database.child(uid).get().addOnSuccessListener { snapshot ->
-
-            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
-            val newName = snapshot.child("name").getValue(String::class.java)
-
-            viewModelScope.launch {
-
-                if (!newUrl.isNullOrEmpty()) {
-                    saveProfileUrl(appContext, newUrl)
-                }
-
-                if (!newName.isNullOrEmpty()) {
-                    saveUserName(appContext, newName)
-                }
-            }
-        }
-    }
-
-    fun refreshProfileImage(uid: String) {
-        database.child(uid).get().addOnSuccessListener { snapshot ->
-            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
-            viewModelScope.launch {
-                if (!newUrl.isNullOrEmpty()) {
-                    saveProfileUrl(getApplication(), newUrl)
-                }
-            }
-        }
-    }
-
-    fun reloadProfileFromFirebase(uid: String) {
-        database.child(uid).get().addOnSuccessListener { snapshot ->
-            val newUrl = snapshot.child("photoUrl").getValue(String::class.java)
-            val newName = snapshot.child("name").getValue(String::class.java)
-
-            viewModelScope.launch {
-                if (!newUrl.isNullOrEmpty()) saveProfileUrl(getApplication(), newUrl)
-                if (!newName.isNullOrEmpty()) saveUserName(getApplication(), newName)
-            }
-        }.addOnFailureListener { e ->
-            e.printStackTrace()
-        }
-    }
 
     private val _isUploading = MutableStateFlow(false)
     val isUploading = _isUploading.asStateFlow()
@@ -99,5 +55,30 @@ class ProfileViewModel(
 
     fun setUploading(value: Boolean) {
         _isUploading.value = value
+    }
+
+    fun refreshUserData(uid: String) {
+        database.child(uid).get()
+            .addOnSuccessListener { snapshot ->
+                val newUrl =
+                    snapshot.child("photoUrl").getValue(String::class.java)
+
+                val newName =
+                    snapshot.child("name").getValue(String::class.java)
+
+                viewModelScope.launch {
+
+                    newUrl?.takeIf { it.isNotEmpty() }?.let {
+                        saveProfileUrl(appContext, it)
+                    }
+
+                    newName?.takeIf { it.isNotEmpty() }?.let {
+                        saveUserName(appContext, it)
+                    }
+                }
+            }
+            .addOnFailureListener {
+                it.printStackTrace()
+            }
     }
 }

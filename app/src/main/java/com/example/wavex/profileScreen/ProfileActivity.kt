@@ -121,7 +121,7 @@ private fun Profile_Activity() {
     val uid = FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(uid) {
-        uid?.let { viewModel.silentRefresh(it) }
+        uid?.let { viewModel.refreshUserData(it) }
     }
 
     ProfileScreen(

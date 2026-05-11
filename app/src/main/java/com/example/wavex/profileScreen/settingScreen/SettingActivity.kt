@@ -772,7 +772,7 @@ fun Setting_Activity() {
                                 },
                                 onReloadProfile = { uid ->
                                     val profileVM = ProfileViewModel(context.applicationContext as Application)
-                                    profileVM.reloadProfileFromFirebase(uid)
+                                    profileVM.refreshUserData(uid)
                                 }
                             )
                         },

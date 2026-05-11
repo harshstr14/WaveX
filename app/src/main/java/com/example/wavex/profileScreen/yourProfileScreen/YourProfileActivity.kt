@@ -167,6 +167,8 @@ fun Your_Profile_Activity() {
                 phoneNo = snapshot.child("phoneNo").getValue(String::class.java) ?: ""
                 gender = snapshot.child("gender").getValue(String::class.java) ?: ""
             }
+
+            viewModel.refreshUserData(it)
         }
     }
 
@@ -538,7 +540,7 @@ private fun YourProfileScreen(
                                     color = colorResource(R.color.background_color),
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
-                                    interactionSource = interactionSource,
+                                    interactionSource = editInteraction,
                                     indication = null
                                 ) {
                                     imagePickerLauncher.launch("image/*")
@@ -550,8 +552,8 @@ private fun YourProfileScreen(
                                 tint = colorResource(R.color.background_color),
                                 modifier = Modifier.size(18.dp)
                                     .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
+                                        scaleX = editScale
+                                        scaleY = editScale
                                     }
                             )
                         }
@@ -1036,14 +1038,15 @@ private fun uploadToCloudinary(
 
                 val finalUrl = "$secureUrl?v=$version"
 
-                // Save URL in Firebase Realtime Database
                 database.child(userId).child("photoUrl").setValue(finalUrl)
                     .addOnSuccessListener {
                         onShowMessage("Profile photo updated")
 
-                        profileViewModel.refreshProfileImage(userId)
+                        profileViewModel.refreshUserData(userId)
+                        profileViewModel.resetProgress()
                     }
                     .addOnFailureListener { e ->
+                        profileViewModel.resetProgress()
                         onShowMessage("Failed to update profile: ${e.message}")
                     }
             }
