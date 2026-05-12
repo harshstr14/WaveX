@@ -17,9 +17,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,7 +40,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,12 +75,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -100,12 +103,10 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
-import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
@@ -131,6 +132,8 @@ import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
+import com.example.wavex.shareComponent.ShareAlbum_Playlist
+import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -142,6 +145,7 @@ import kotlinx.coroutines.launch
 data class ShareItem(
     val title: String,
     val subtitle: String,
+    val artists: String,
     val image: String?,
     val id: String,
     val type: ShareType
@@ -1239,12 +1243,15 @@ private fun Album_Activity(
             }
 
             if (showShareSheet) {
-                ShareBottomSheet(
-                    item = ShareItem(
-                        title = htmlToText(albums.albumName),
-                        subtitle = albums.primaryArtists.joinToString(", ") { htmlToText(it.name) },
-                        image = imageToLoad,
+                ShareAlbum_Playlist(
+                    album = ShareAlbumPlaylistItem(
                         id = albums.albumId,
+                        title = albums.albumName,
+                        artists = albums.primaryArtists.joinToString(", ") { htmlToText(it.name) },
+                        songs = albums.songs,
+                        songCount = albums.songCount,
+                        totalDuration = formatTotalDuration(albums.totalDuration),
+                        image = imageToLoad,
                         type = ShareType.ALBUM
                     ),
                     onDismiss = { showShareSheet = false }
@@ -1347,8 +1354,6 @@ fun ShareContent(
     context: Context,
     onShowSnackBar: (String) -> Unit
 ) {
-    var dominantColor by remember { mutableStateOf(Color(0xFFD32F2F)) }
-
     val (copyLinkInteraction, copyLinkScale) = pressScale()
     val (whatsAppInteraction, whatsAppScale) = pressScale()
     val (messageInteraction, messageScale) = pressScale()
@@ -1356,44 +1361,25 @@ fun ShareContent(
 
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    var startAnimation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(item.image) {
-        item.image?.let { imageUrl ->
-            val loader = ImageLoader(context)
-            val request = ImageRequest.Builder(context)
-                .data(imageUrl)
-                .allowHardware(false)
-                .build()
-
-            val result = loader.execute(request)
-            val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-
-            bitmap?.let {
-                val palette = Palette.from(it).generate()
-
-                val lightColor = palette.lightVibrantSwatch?.rgb
-                    ?: palette.lightMutedSwatch?.rgb
-                    ?: palette.vibrantSwatch?.rgb
-                    ?: palette.dominantSwatch?.rgb
-                    ?: "#F5F5F5".toColorInt()
-
-                val composeColor = Color(lightColor)
-
-                dominantColor = slightlyDarken(composeColor, 0.35f)
-            }
-        }
-    }
-
-    val darkColor = remember(dominantColor) {
-        darkenColor(dominantColor, 0.65f)
-    }
-
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            dominantColor,
-            darkColor
-        )
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (startAnimation) 0.8f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
     )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (startAnimation) 60f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
+    )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+    }
+
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
     Column(
         modifier = Modifier
@@ -1414,78 +1400,109 @@ fun ShareContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 34.dp)
-                .height(420.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(gradientBrush),
-            contentAlignment = Alignment.Center
         ) {
-            Column(
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.image)
+                    .allowHardware(false)
+                    .build(),
+                contentDescription = null,
+                onSuccess = { result ->
+                    val drawable = result.result.drawable
+                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+
+                    Palette.from(bitmap).generate { palette ->
+                        palette?.dominantSwatch?.rgb?.let { colorInt ->
+                            shadowColor = Color(colorInt)
+                        }
+                    }
+                },
                 modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
-                    .padding(10.dp)
-            ) {
-                AsyncImage(
-                    model = item.image,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(6.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                    .size(120.dp)
+                    .drawBehind {
+                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+                        val cornerRadius = 18.dp.toPx()
 
-                Spacer(modifier = Modifier.height(12.dp))
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = shadowColor.copy(alpha = shadowAlpha)
+                                asFrameworkPaint().apply {
+                                    isAntiAlias = true
 
-                Text(
-                    text = htmlToText(item.title),
-                    color = colorResource(R.color.off_white),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontSize = 16.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    lineHeight = 20.sp
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = item.subtitle,
-                    color = colorResource(R.color.off_white).copy(alpha = 0.7f),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    fontSize = 12.sp,
-                    fontFamily = fonts,
-                    fontWeight = FontWeight.Normal,
-                    fontStyle = FontStyle.Normal,
-                    lineHeight = 14.sp
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(width = 90.dp, height = 20.dp)
-                        .offset(x = (-18).dp)
-                        .clip(RectangleShape)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.wavex_logo_light),
-                        contentDescription = "Logo Icon",
-                        tint = Color.Unspecified,
-                        modifier = Modifier
-                            .size(width = 90.dp, height = 20.dp)
-                            .graphicsLayer {
-                                scaleX = 1.4f
-                                scaleY = 1.4f
+                                    maskFilter = if (shadowBlur > 0f) {
+                                        android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
                             }
-                    )
-                }
+
+                            canvas.drawRoundRect(
+                                0f,
+                                0f,
+                                size.width,
+                                size.height,
+                                cornerRadius,
+                                cornerRadius,
+                                paint
+                            )                        }
+                    }
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            Column {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = htmlToText(item.title), maxLines = 1,overflow = TextOverflow.Ellipsis,
+                    fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Album • ${htmlToText(item.subtitle)}", overflow = TextOverflow.Ellipsis,
+                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Artists • ${htmlToText(item.artists)}", overflow = TextOverflow.Ellipsis,
+                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
+                )
+//
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Icon(
+//                        painter = painterResource(R.drawable.headset_icon),
+//                        contentDescription = "Headset Icon",
+//                        tint = colorResource(R.color.primary_text_color),
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//
+//                    Spacer(modifier = Modifier.width(4.dp))
+//
+//                    Text(
+//                        text = "PlayCount • ${formatCount(song.playCount.toLong())}", overflow = TextOverflow.Ellipsis,
+//                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+//                        color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
+//                    )
+//                }
             }
         }
 

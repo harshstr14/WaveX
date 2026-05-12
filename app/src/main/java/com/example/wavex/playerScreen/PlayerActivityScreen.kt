@@ -132,8 +132,6 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
-import com.example.wavex.albumScreen.ShareBottomSheet
-import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
@@ -149,6 +147,8 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
+import com.example.wavex.shareComponent.ShareSong
+import com.example.wavex.shareComponent.ShareSongItem
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -994,10 +994,11 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
 
 
                 if (showShareSheet) {
-                    ShareBottomSheet(
-                        item = ShareItem(
+                    ShareSong(
+                        song = ShareSongItem(
                             title = htmlToText(currentSong?.name ?: ""),
-                            subtitle = currentSong?.artist?.joinToString(", ") { htmlToText(it.name) } ?: "",
+                            subtitle = currentSong?.album?.name ?: "Unknown",
+                            artists = currentSong?.artist?.joinToString(", ") { htmlToText(it.name) } ?: "Unknown",
                             image = currentSong?.image?.getOrNull(2)?.url,
                             id = currentSong?.id ?: "",
                             type = ShareType.SONG

@@ -1138,6 +1138,7 @@ fun Liked_Songs_Activity(
                     item = ShareItem(
                         title = "Liked Songs",
                         subtitle = "${songsList.songs.size} Songs in Playlist",
+                        artists = "",
                         image = "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1774366845/liked_c0skc4.jpg",
                         id = "",
                         type = ShareType.PLAYLIST

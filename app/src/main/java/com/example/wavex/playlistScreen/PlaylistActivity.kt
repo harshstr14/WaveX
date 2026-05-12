@@ -122,8 +122,6 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
-import com.example.wavex.albumScreen.ShareBottomSheet
-import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.downloadSong.downloadedSongScreen.rememberNetworkState
@@ -141,6 +139,10 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
+import com.example.wavex.shareComponent.ShareAlbum_Playlist
+import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
+import com.example.wavex.shareComponent.ShareSong
+import com.example.wavex.shareComponent.ShareSongItem
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -1132,12 +1134,15 @@ fun Playlist_Activity(
             }
 
             if (showShareSheet) {
-                ShareBottomSheet(
-                    item = ShareItem(
-                        title = htmlToText(playlists.name),
-                        subtitle = playlists.artists.joinToString(", ") {htmlToText(it.name)},
-                        image = imageToLoad,
+                ShareAlbum_Playlist(
+                    album = ShareAlbumPlaylistItem(
                         id = playlists.id,
+                        title = playlists.name,
+                        artists = playlists.artists.joinToString(", ") { htmlToText(it.name) },
+                        songs = playlists.songs,
+                        songCount = playlists.songCount,
+                        totalDuration = formatTotalDuration(playlists.totalDuration),
+                        image = imageToLoad,
                         type = ShareType.PLAYLIST
                     ),
                     onDismiss = { showShareSheet = false }
@@ -1475,10 +1480,11 @@ fun SongOptionsBottomSheet(
     }
 
     if (showShareSheet) {
-        ShareBottomSheet(
-            item = ShareItem(
+        ShareSong(
+            song = ShareSongItem(
                 title = htmlToText(song.name),
-                subtitle = song.artist.joinToString(", ") { htmlToText(it.name) },
+                subtitle = song.album?.name ?: "Unknown",
+                artists = song.artist.joinToString(", ") { htmlToText(it.name) },
                 image = song.image.getOrNull(2)?.url,
                 id = song.id,
                 type = ShareType.SONG
@@ -1640,8 +1646,8 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
@@ -1699,18 +1705,16 @@ private fun BottomSheetContent(
             Spacer(modifier = Modifier.width(18.dp))
 
             Column {
-                Spacer(modifier = Modifier.height(14.dp))
-
                 Text(
-                    text = htmlToText(song.name), maxLines = 1,overflow = TextOverflow.Ellipsis,
-                    fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    text = htmlToText(song.name), maxLines = 1,
+                    fontSize = 19.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}", overflow = TextOverflow.Ellipsis,
+                    text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}",
                     fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
                 )
@@ -1731,7 +1735,7 @@ private fun BottomSheetContent(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = "PlayCount • ${formatCount(song.playCount.toLong())}", overflow = TextOverflow.Ellipsis,
+                        text = "PlayCount • ${formatCount(song.playCount.toLong())}",
                         fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
                     )

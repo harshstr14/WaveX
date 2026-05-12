@@ -992,7 +992,7 @@ fun NewReleasesSongs(
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+        itemsIndexed(songs, key = { _, song -> song.id }) { _, song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)
@@ -1145,7 +1145,7 @@ fun TrendingSongs(
     LazyRow(modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+        itemsIndexed(songs, key = { _, song -> song.id }) { _, song ->
             Column(
                 modifier = Modifier
                     .width(110.dp)

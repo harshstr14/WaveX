@@ -1187,6 +1187,7 @@ private fun Playlist_Activity(
                     item = ShareItem(
                         title = htmlToText(playlistData?.playlistName),
                         subtitle = "${playlistData?.songs?.size} Songs in Playlist",
+                        artists = "",
                         image = playlistData?.imageUrl,
                         id = playlistId.toString(),
                         type = ShareType.PLAYLIST

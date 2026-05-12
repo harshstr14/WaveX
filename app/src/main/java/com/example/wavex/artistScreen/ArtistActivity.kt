@@ -142,6 +142,8 @@ import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
+import com.example.wavex.shareComponent.ShareArtist
+import com.example.wavex.shareComponent.ShareArtistItem
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -1295,15 +1297,17 @@ private fun Artist_Activity(
             }
 
             if (showShareSheet) {
-                ShareBottomSheetArtists(
-                    item = ShareItem(
-                        title = htmlToText(artists.name),
-                        subtitle = "Artists",
-                        image = imageToLoad,
+                ShareArtist(
+                    artist = ShareArtistItem(
                         id = artists.id,
+                        name = artists.name,
+                        followerCount = formatCount(artists.followerCount.toLong()),
+                        fanCount = formatCount(artists.fanCount.toLongOrNull() ?: 0L),
+                        isVerified = artists.isVerified,
+                        topSongs = artists.topSongs,
+                        image = imageToLoad,
                         type = ShareType.ARTIST
                     ),
-                    isVerified = artists.isVerified,
                     onDismiss = { showShareSheet = false }
                 )
             }
