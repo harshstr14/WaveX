@@ -103,27 +103,24 @@ fun ShareAlbum_Playlist(
     val (moreInteraction, moreScale) = pressScale()
 
     val clipboardManager = LocalClipboard.current
-    var startAnimation by remember { mutableStateOf(false) }
+    val startAnimation = remember { mutableStateOf(false) }
 
     val shadowAlpha by animateFloatAsState(
-        targetValue = if (startAnimation) 0.8f else 0f,
+        targetValue = if (startAnimation.value) 0.8f else 0f,
         animationSpec = tween(900, easing = FastOutSlowInEasing),
         label = "shadowAlpha"
     )
 
     val shadowBlur by animateFloatAsState(
-        targetValue = if (startAnimation) 60f else 0f,
+        targetValue = if (startAnimation.value) 60f else 0f,
         animationSpec = tween(900, easing = FastOutSlowInEasing),
         label = "shadowBlur"
     )
 
-    LaunchedEffect(Unit) {
-        startAnimation = true
-    }
-
     var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
     LaunchedEffect(Unit) {
+        startAnimation.value = true
         sheetState.expand()
     }
 
@@ -228,51 +225,39 @@ fun ShareAlbum_Playlist(
                             maxLines = 1,
                             fontSize = 19.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
                             lineHeight = 22.sp
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.mic_icon),
-                                contentDescription = "Mic Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            Text(
-                                text = htmlToText(album.artists).takeIf { it.isNotBlank() }
-                                    ?: "Unknown Title",
-                                fontSize = 14.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color),
-                                lineHeight = 16.sp,
-                                maxLines = 2,
-                            )
-                        }
+                        Text(
+                            text = "Artists • ${htmlToText(album.artists).takeIf { it.isNotBlank() }
+                                ?: "Unknown Title"}",
+                            fontSize = 13.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color),
+                            lineHeight = 16.sp,
+                            maxLines = 2,
+                        )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Spacer(modifier = Modifier.width(2.dp))
+
                             Text(
                                 text = "${album.songCount.takeIf { it.isNotBlank() }
                                     ?: "0"} Tracks",
                                 fontSize = 12.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Normal,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -299,7 +284,7 @@ fun ShareAlbum_Playlist(
                                         ?: "0",
                                     fontSize = 12.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.secondary_text_color),
                                     lineHeight = 16.sp,
@@ -334,7 +319,7 @@ fun ShareAlbum_Playlist(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = String.format("%02d", index + 1),
+                                    text = (index + 1).toString().padStart(2, '0'),
                                     color = colorResource(R.color.theme_color),
                                     fontSize = 14.sp,
                                     lineHeight = 16.sp,
@@ -413,6 +398,10 @@ fun ShareAlbum_Playlist(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
+                        .graphicsLayer(
+                            scaleX = copyLinkScale,
+                            scaleY = copyLinkScale
+                        )
                         .background(
                             color = Color(0xFF48b164),
                             shape = RoundedCornerShape(18.dp)
@@ -480,7 +469,11 @@ fun ShareAlbum_Playlist(
                         icon = R.drawable.whatsapp_icon,
                         iconBackground = Color(0xFF123A24),
                         iconTint = Color(0xFF25D366),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
+                            .graphicsLayer(
+                                scaleX = whatsAppScale,
+                                scaleY = whatsAppScale
+                            ),
                         interactionSource = whatsAppInteraction,
                         onClick = {
                             val link = generateShareLink(album)
@@ -506,7 +499,11 @@ fun ShareAlbum_Playlist(
                         icon = R.drawable.message_icon,
                         iconBackground = Color(0xFF132B4A),
                         iconTint = Color(0xFF3B82F6),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
+                            .graphicsLayer(
+                                scaleX = messageScale,
+                                scaleY = messageScale
+                            ),
                         interactionSource = messageInteraction,
                         onClick = {
                             val link = generateShareLink(album)

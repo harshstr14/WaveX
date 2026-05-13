@@ -583,7 +583,7 @@ fun Playlist_Activity(
                                             fontSize = 20.sp,
                                             lineHeight = 22.sp,
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color),
                                             maxLines = 1,
@@ -602,10 +602,10 @@ fun Playlist_Activity(
                                                     )
                                                 ),
                                             text = description,
-                                            fontSize = 12.sp,
+                                            fontSize = 13.sp,
                                             lineHeight = 16.sp,
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color),
                                             maxLines = 3,
@@ -629,9 +629,9 @@ fun Playlist_Activity(
                                             Text(
                                                 text = "${playlists.songCount} Songs",
                                                 fontSize = 12.sp,
-                                                lineHeight = 12.sp,
+                                                lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -656,9 +656,9 @@ fun Playlist_Activity(
                                             Text(
                                                 text = formatTotalDuration(playlists.totalDuration),
                                                 fontSize = 12.sp,
-                                                lineHeight = 12.sp,
+                                                lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -1707,7 +1707,7 @@ private fun BottomSheetContent(
             Column {
                 Text(
                     text = htmlToText(song.name), maxLines = 1,
-                    fontSize = 19.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    fontSize = 19.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
                 )
 
@@ -1715,7 +1715,7 @@ private fun BottomSheetContent(
 
                 Text(
                     text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}",
-                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                    fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
                 )
 
@@ -1736,7 +1736,7 @@ private fun BottomSheetContent(
 
                     Text(
                         text = "PlayCount • ${formatCount(song.playCount.toLong())}",
-                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
                     )
                 }

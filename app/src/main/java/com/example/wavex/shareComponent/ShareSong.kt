@@ -222,7 +222,7 @@ fun ShareSong(
                             maxLines = 1,
                             fontSize = 19.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
                             lineHeight = 22.sp
@@ -230,59 +230,31 @@ fun ShareSong(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.album_icon),
-                                contentDescription = "Album Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(16.dp)
-                            )
+                        Text(
+                            text = "Album • ${htmlToText(song.subtitle).takeIf { it.isNotBlank() }
+                                ?: "Unknown Title"}",
+                            fontSize = 13.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color),
+                            lineHeight = 16.sp,
+                            maxLines = 2,
+                        )
 
-                            Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                            Text(
-                                text = htmlToText(song.subtitle).takeIf { it.isNotBlank() }
-                                    ?: "Unknown Title",
-                                fontSize = 14.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color),
-                                lineHeight = 16.sp,
-                                maxLines = 2,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.mic_icon),
-                                contentDescription = "Mic Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            Text(
-                                text = htmlToText(song.artists).takeIf { it.isNotBlank() }
-                                    ?: "Unknown Title",
-                                fontSize = 14.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                color = colorResource(R.color.secondary_text_color),
-                                lineHeight = 16.sp,
-                                maxLines = 2,
-                            )
-                        }
+                        Text(
+                            text = "Artists • ${htmlToText(song.artists).takeIf { it.isNotBlank() }
+                                ?: "Unknown Title"}",
+                            fontSize = 13.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            color = colorResource(R.color.secondary_text_color),
+                            lineHeight = 16.sp,
+                            maxLines = 2,
+                        )
                     }
                 }
 

@@ -103,7 +103,6 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
-import com.example.wavex.albumScreen.ShareItem
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
 import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
@@ -116,12 +115,13 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.libraryScreen.playlistScreen.ShareBottomSheet
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
+import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
+import com.example.wavex.shareComponent.ShareAlbum_Playlist
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -1134,13 +1134,15 @@ fun Liked_Songs_Activity(
             }
 
             if (showShareSheet) {
-                ShareBottomSheet(
-                    item = ShareItem(
-                        title = "Liked Songs",
-                        subtitle = "${songsList.songs.size} Songs in Playlist",
-                        artists = "",
-                        image = "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1774366845/liked_c0skc4.jpg",
+                ShareAlbum_Playlist(
+                    album = ShareAlbumPlaylistItem(
                         id = "",
+                        title = "Liked Songs",
+                        artists = "Various artists",
+                        songs = songsList.songs,
+                        songCount = songsList.songs.size.toString(),
+                        totalDuration = formatTotalDuration(totalDuration),
+                        image = "https://res.cloudinary.com/dcdg3s1pf/image/upload/v1774366845/liked_c0skc4.jpg",
                         type = ShareType.PLAYLIST
                     ),
                     onDismiss = { showShareSheet = false }

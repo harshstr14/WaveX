@@ -131,19 +131,33 @@ fun ShareArtist(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(artist.image?.takeIf { it.isNotBlank() })
-                            .allowHardware(false)
-                            .build(),
-                        contentDescription = null,
-                        placeholder = painterResource(R.drawable.default_artist),
-                        error = painterResource(R.drawable.default_artist),
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(artist.image?.takeIf { it.isNotBlank() })
+                                .allowHardware(false)
+                                .build(),
+                            contentDescription = null,
+                            placeholder = painterResource(R.drawable.default_artist),
+                            error = painterResource(R.drawable.default_artist),
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        if (artist.isVerified) {
+                            Icon(
+                                painter = painterResource(R.drawable.verified_icon),
+                                contentDescription = "Verified Icon",
+                                tint = Color.Unspecified,
+                                modifier = Modifier
+                                    .padding(end = 6.dp, bottom = 4.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .size(26.dp)
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.width(18.dp))
 
@@ -157,7 +171,7 @@ fun ShareArtist(
                             maxLines = 1,
                             fontSize = 19.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
                             lineHeight = 22.sp
@@ -180,17 +194,17 @@ fun ShareArtist(
 
                             Text(
                                 text = "Followers : ${artist.followerCount}",
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontFamily = fonts,
                                 fontWeight = FontWeight.SemiBold,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
-                                maxLines = 2,
+                                maxLines = 1,
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -207,7 +221,7 @@ fun ShareArtist(
 
                             Text(
                                 text = "Listeners : ${artist.fanCount}",
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontFamily = fonts,
                                 fontWeight = FontWeight.SemiBold,
                                 fontStyle = FontStyle.Normal,

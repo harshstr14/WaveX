@@ -8,24 +8,19 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -252,50 +247,6 @@ private fun Artist_Activity(
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
 
-    val rawProgress by remember {
-        derivedStateOf {
-            val offset = listState.firstVisibleItemScrollOffset
-            (offset / 600f).coerceIn(0f, 1f)
-        }
-    }
-
-    val smoothProgress by animateFloatAsState(
-        targetValue = rawProgress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "ImageCollapseSpring"
-    )
-
-    val titleVisible by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 ||
-                    listState.firstVisibleItemScrollOffset > 180
-        }
-    }
-
-    val startSize = 120.dp
-    val startOffsetX = 25.dp
-    val startOffsetY = 0.dp
-
-    val endSize = 48.dp
-    val endOffsetX = 12.dp
-    val endOffsetY = 0.dp
-
-    val size = lerpDp(startSize, endSize, smoothProgress)
-    val offsetX = lerpDp(startOffsetX, endOffsetX, smoothProgress)
-    val offsetY = lerpDp(startOffsetY, endOffsetY, smoothProgress)
-
-    val cornerRadius = lerpDp(60.dp, 60.dp, smoothProgress)
-    val showMetaInfo = smoothProgress < 0.3f
-    val metaAlpha = (1f - smoothProgress * 1.3f).coerceIn(0f, 1f)
-    val titleTopPadding = lerpDp(15.dp, 0.dp, smoothProgress)
-    val titleStartPadding = lerpDp(25.dp, 8.dp, smoothProgress)
-    val titleFontSize = lerpDp(20.dp, 18.dp, smoothProgress)
-    val iconScale = lerpDp(1.dp, 0.95.dp, smoothProgress).value
-    val titleOffsetY = lerpDp((-12).dp, 0.dp, smoothProgress)
-
     val isTitleVisible = !isLoading && !artists.isError
 
     var showSongSheet by remember { mutableStateOf(false) }
@@ -367,83 +318,7 @@ private fun Artist_Activity(
                         }
                     },
                     title = {
-                        AnimatedVisibility(
-                            visible = titleVisible,
-                            enter = fadeIn(
-                                animationSpec = tween(
-                                    durationMillis = 220,
-                                    easing = FastOutSlowInEasing
-                                )
-                            ) + scaleIn(
-                                initialScale = 0.95f,
-                                animationSpec = tween(
-                                    durationMillis = 260,
-                                    easing = FastOutSlowInEasing
-                                )
-                            ),
 
-                            exit = fadeOut(
-                                animationSpec = tween(
-                                    durationMillis = 160,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(
-                                    durationMillis = 160,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = imageToLoad,
-                                    contentDescription = "Artist Image",
-                                    contentScale = ContentScale.Crop,
-                                    modifier =  Modifier.padding(start = 8.dp)
-                                        .size(48.dp)
-                                        .clip(RoundedCornerShape(cornerRadius))
-                                        .graphicsLayer {
-                                            shadowElevation = 8f * (1f - smoothProgress)
-                                        }
-                                        .zIndex(10f)
-                                )
-
-                                Row(
-                                    modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = artists.name,
-                                        fontSize = 18.sp,
-                                        lineHeight = 20.sp,
-                                        fontFamily = fonts,
-                                        fontWeight = FontWeight.Bold,
-                                        fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    if (artists.isVerified) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.verified_icon),
-                                            contentDescription = "Verified Icon",
-                                            tint = Color.Unspecified,
-                                            modifier = Modifier.size(20.dp)
-                                                .graphicsLayer {
-                                                    scaleX = iconScale
-                                                    scaleY = iconScale
-                                                }
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     },
                     actions = {
                         Row(modifier = Modifier.padding(end = 20.dp),
@@ -670,121 +545,99 @@ private fun Artist_Activity(
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    AsyncImage(
-                                        model = imageToLoad,
-                                        contentDescription = "Artist Image",
-                                        contentScale = ContentScale.Crop,
-                                        modifier =  Modifier
-                                            .offset(x = offsetX, y = offsetY)
-                                            .size(size)
-                                            .clip(RoundedCornerShape(cornerRadius))
-                                            .graphicsLayer {
-                                                alpha = metaAlpha
-                                            }
-                                            .zIndex(10f)
-                                    )
+                                    Box {
+                                        AsyncImage(
+                                            model = imageToLoad,
+                                            contentDescription = "Artist Image",
+                                            contentScale = ContentScale.Crop,
+                                            modifier =  Modifier
+                                                .size(120.dp)
+                                                .clip(CircleShape)
+                                        )
 
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp)
-                                            .offset(y = titleOffsetY).animateContentSize()
+                                        if (artists.isVerified) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.verified_icon),
+                                                contentDescription = "Verified Icon",
+                                                tint = Color.Unspecified,
+                                                modifier = Modifier
+                                                    .padding(end = 6.dp, bottom = 4.dp)
+                                                    .align(Alignment.BottomEnd)
+                                                    .size(26.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Column (
+                                        modifier = Modifier.padding(horizontal = 15.dp),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
+                                        Text(
+                                            text = htmlToText(artists.name),
+                                            maxLines = 1,
+                                            fontSize = 22.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            lineHeight = 24.sp
+                                        )
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
                                         Row(
-                                            modifier = Modifier
-                                                .padding(top = titleTopPadding, start = titleStartPadding),
+                                            modifier = Modifier.fillMaxWidth(),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = htmlToText(artists.name),
-                                                fontSize = titleFontSize.value.sp,
-                                                lineHeight = 22.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.primary_text_color),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                            Icon(
+                                                painter = painterResource(R.drawable.followers_icon),
+                                                contentDescription = "Followers Icon",
+                                                tint = colorResource(R.color.primary_text_color),
+                                                modifier = Modifier.size(16.dp)
                                             )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
 
-                                            if (artists.isVerified) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.verified_icon),
-                                                    contentDescription = "Verified Icon",
-                                                    tint = Color.Unspecified,
-                                                    modifier = Modifier.size(20.dp)
-                                                        .graphicsLayer {
-                                                            scaleX = iconScale
-                                                            scaleY = iconScale
-                                                        }
-                                                )
-                                            }
+                                            Text(
+                                                text = "Followers : ${formatCount(artists.followerCount.toLong())}",
+                                                fontSize = 13.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                lineHeight = 16.sp,
+                                                maxLines = 1,
+                                            )
                                         }
 
-                                        if (showMetaInfo) {
-                                            Row(
-                                                modifier = Modifier.padding(top = 12.dp, start = 25.dp)
-                                                    .graphicsLayer {
-                                                        alpha = metaAlpha
-                                                        scaleX = 1f - smoothProgress * 0.04f
-                                                        scaleY = 1f - smoothProgress * 0.04f
-                                                    },
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.followers_icon),
-                                                    contentDescription = "Followers Icon",
-                                                    tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
+                                        Spacer(modifier = Modifier.height(6.dp))
 
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.headset_icon),
+                                                contentDescription = "Headset Icon",
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(16.dp)
+                                            )
 
-                                                Text(
-                                                    text = "Followers : ${
-                                                        formatCount(artists.followerCount.toLong())
-                                                    }",
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 12.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
+                                            Spacer(modifier = Modifier.width(4.dp))
 
-                                            Row(
-                                                modifier = Modifier.padding(top = 4.dp, start = 25.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.headset_icon),
-                                                    contentDescription = "Headset Icon",
-                                                    tint = colorResource(R.color.primary_text_color),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-
-                                                Spacer(modifier = Modifier.width(6.dp))
-
-                                                Text(
-                                                    text = "Listeners : ${
-                                                        formatCount(artists.fanCount.toLongOrNull() ?: 0L)
-                                                    }",
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 12.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
+                                            Text(
+                                                text = "Listeners : ${formatCount(artists.fanCount.toLongOrNull() ?: 0L)}",
+                                                fontSize = 13.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                lineHeight = 16.sp,
+                                                maxLines = 1,
+                                            )
                                         }
                                     }
                                 }
@@ -1316,6 +1169,7 @@ private fun Artist_Activity(
                 val song = selectedSong!!
                 val isFavourite = likedSongs.contains(song.id)
                 val isDownloaded = downloadedIds.contains(song.id)
+                Log.d("Song", "${song.playCount}")
 
                 SongOptionsBottomSheet(
                     song = song,
