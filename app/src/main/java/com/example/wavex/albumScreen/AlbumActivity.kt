@@ -1,12 +1,9 @@
 package com.example.wavex.albumScreen
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.Context
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -17,11 +14,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,7 +48,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -62,7 +56,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -75,19 +68,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -103,12 +90,9 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -130,6 +114,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.playlistScreen.formatTotalDuration
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareAlbum_Playlist
@@ -569,7 +554,10 @@ private fun Album_Activity(
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp, end = 24.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
                                         model = imageToLoad,
@@ -584,25 +572,34 @@ private fun Album_Activity(
                                     Column(
                                         modifier = Modifier.fillMaxWidth()
                                             .padding(start = 15.dp)
-                                            .animateContentSize()
+                                            .animateContentSize(),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        val albumName = htmlToText(albums.albumName)
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
                                         Text(
-                                            text = albumName,
-                                            fontSize = 20.sp,
-                                            lineHeight = 22.sp,
+                                            text = "ALBUM • ${albums.year}",
+                                            fontSize = 12.sp,
+                                            lineHeight = 14.sp,
+                                            letterSpacing = 1.5.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            color = colorResource(R.color.theme_color),
+                                            maxLines = 1
                                         )
 
-                                        val description = htmlToText(albums.description)
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = htmlToText(albums.albumName),
+                                            fontSize = 24.sp,
+                                            lineHeight = 26.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -613,14 +610,14 @@ private fun Album_Activity(
                                                         stiffness = Spring.StiffnessLow
                                                     )
                                                 ),
-                                            text = description,
+                                            text = htmlToText(albums.description),
                                             fontSize = 13.sp,
                                             lineHeight = 16.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 3,
+                                            maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
@@ -632,45 +629,53 @@ private fun Album_Activity(
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "${albums.songCount} Songs",
+                                                text = albums.songCount,
                                                 fontSize = 12.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                        }
 
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.airpods_icon),
-                                                contentDescription = "Airpods Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(1.8.dp)
+                                                    .height(10.dp)
+                                                    .background(
+                                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
                                             )
 
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Icon(
+                                                painter = painterResource(R.drawable.clock_icon),
+                                                contentDescription = "Clock Icon",
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
                                                 text = formatTotalDuration(albums.totalDuration),
                                                 fontSize = 12.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -683,13 +688,63 @@ private fun Album_Activity(
 
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 25.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
+                                        modifier = Modifier
+                                            .weight(1.2f)
+                                            .height(60.dp)
+                                            .shadow(
+                                                elevation = 25.dp,
+                                                shape = RoundedCornerShape(22.dp),
+                                                ambientColor = colorResource(R.color.theme_color),
+                                                spotColor = colorResource(R.color.theme_color)
+                                            )
+                                            .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.theme_color))
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                PlayerManager.currentPlaylist = albums.songs
+                                                ServiceLocator.musicService?.setPlaylist(albums.songs, 0)
+                                            }
+                                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.notificationplaybutton),
+                                                contentDescription = "Play Icon",
+                                                tint = colorResource(R.color.background_color),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Text(
+                                                text = "Play album",
+                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.background_color)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(0.9f)
+                                            .height(60.dp)
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                             .clickable(
                                                 interactionSource = interactionSource,
                                                 indication = null
@@ -713,51 +768,15 @@ private fun Album_Activity(
                                                 painter = painterResource(R.drawable.shuffle_icon),
                                                 contentDescription = "Shuffle Icon",
                                                 tint = colorResource(R.color.background_color),
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(22.dp)
                                             )
 
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
                                             Text(
                                                 text = "Shuffle",
                                                 fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.background_color)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(18.dp))
-
-                                    Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
-                                            .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
-                                            .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                PlayerManager.currentPlaylist = albums.songs
-                                                ServiceLocator.musicService?.setPlaylist(albums.songs, 0)
-                                            }
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.play_icon),
-                                                contentDescription = "Play Icon",
-                                                tint = Color.Unspecified,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(6.dp))
-
-                                            Text(
-                                                text = "Play",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.theme_color)
                                             )
                                         }
                                     }
@@ -768,20 +787,26 @@ private fun Album_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 20.dp, start = 24.dp),
-                                        text = "Artists", fontSize = 18.sp, fontFamily = fonts,
-                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        text = "Featured Artists", fontSize = 17.sp, fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                        letterSpacing = 1.5.sp,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 18.sp
                                     )
                                 }
 
                                 item {
-                                    LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
+                                    LazyRow(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 13.dp),
                                         contentPadding = PaddingValues(horizontal = 24.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(albums.primaryArtists) { artist ->
-                                            Column(
+                                            Box(
                                                 modifier = Modifier
+                                                    .clip(RoundedCornerShape(30.dp))
+                                                    .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                                     .clickable(
                                                         interactionSource = interactionSource,
                                                         indication = null
@@ -792,31 +817,34 @@ private fun Album_Activity(
                                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
-                                                    },
-                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                    }
+                                                    .padding(horizontal = 8.dp, vertical = 8.dp)
                                             ) {
-                                                AsyncImage(
-                                                    model = artist.image.takeIf { it.isNotBlank() },
-                                                    contentDescription = artist.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    error = painterResource(R.drawable.default_artist),
-                                                    modifier = Modifier
-                                                        .size(78.dp)
-                                                        .clip(CircleShape)
-                                                )
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    AsyncImage(
+                                                        model = artist.image.takeIf { it.isNotBlank() },
+                                                        contentDescription = artist.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_artist),
+                                                        placeholder = painterResource(R.drawable.default_artist),
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .clip(CircleShape)
+                                                    )
 
-                                                Spacer(modifier = Modifier.height(8.dp))
+                                                    Spacer(modifier = Modifier.width(10.dp))
 
-                                                val artistName = htmlToText(artist.name)
-
-                                                Text(
-                                                    modifier = Modifier.width(78.dp),
-                                                    text = artistName,
-                                                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts,
-                                                    fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                    Text(
+                                                        modifier = Modifier.padding(end = 8.dp),
+                                                        text = htmlToText(artist.name),
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.background_color), maxLines = 2, textAlign = TextAlign.Center,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -827,8 +855,9 @@ private fun Album_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
-                                        text = "Songs", fontSize = 18.sp, fontFamily = fonts,
-                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        text = "Tracks", fontSize = 18.sp, fontFamily = fonts,
+                                        letterSpacing = 1.5.sp,
+                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
                                 }
@@ -1261,467 +1290,6 @@ private fun Album_Activity(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ShareBottomSheet(
-    item: ShareItem,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-    val snackBarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        sheetState.expand()
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = colorResource(R.color.off_white),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = null
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            ShareContent(
-                item = item,
-                context = context,
-                onShowSnackBar = { message ->
-                    scope.launch {
-                        snackBarHostState.showSnackbar(message)
-                    }
-                }
-            )
-
-            SnackbarHost(
-                hostState = snackBarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
-            ) { data ->
-                Snackbar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(10.dp)
-                        ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
-                ) {
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-
-                        Icon(
-                            painter = painterResource(
-                                when {
-                                    data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                                    data.visuals.message.contains("Link") -> R.drawable.link_icon
-                                    else -> R.drawable.alert_icon
-                                }
-                            ),
-                            contentDescription = null,
-                            tint = colorResource(R.color.theme_color),
-                            modifier = Modifier.size(24.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = data.visuals.message,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            fontSize = 13.sp,
-                            color = colorResource(R.color.off_white)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ShareContent(
-    item: ShareItem,
-    context: Context,
-    onShowSnackBar: (String) -> Unit
-) {
-    val (copyLinkInteraction, copyLinkScale) = pressScale()
-    val (whatsAppInteraction, whatsAppScale) = pressScale()
-    val (messageInteraction, messageScale) = pressScale()
-    val (moreInteraction, moreScale) = pressScale()
-
-    val clipboardManager = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    var startAnimation by remember { mutableStateOf(false) }
-
-    val shadowAlpha by animateFloatAsState(
-        targetValue = if (startAnimation) 0.8f else 0f,
-        animationSpec = tween(900, easing = FastOutSlowInEasing),
-        label = "shadowAlpha"
-    )
-
-    val shadowBlur by animateFloatAsState(
-        targetValue = if (startAnimation) 60f else 0f,
-        animationSpec = tween(900, easing = FastOutSlowInEasing),
-        label = "shadowBlur"
-    )
-
-    LaunchedEffect(Unit) {
-        startAnimation = true
-    }
-
-    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Box(
-            modifier = Modifier
-                .width(58.dp)
-                .height(4.dp)
-                .align(alignment = Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(item.image)
-                    .allowHardware(false)
-                    .build(),
-                contentDescription = null,
-                onSuccess = { result ->
-                    val drawable = result.result.drawable
-                    val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
-
-                    Palette.from(bitmap).generate { palette ->
-                        palette?.dominantSwatch?.rgb?.let { colorInt ->
-                            shadowColor = Color(colorInt)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .size(120.dp)
-                    .drawBehind {
-                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
-                        val cornerRadius = 18.dp.toPx()
-
-                        drawIntoCanvas { canvas ->
-                            val paint = Paint().apply {
-                                color = shadowColor.copy(alpha = shadowAlpha)
-                                asFrameworkPaint().apply {
-                                    isAntiAlias = true
-
-                                    maskFilter = if (shadowBlur > 0f) {
-                                        android.graphics.BlurMaskFilter(
-                                            safeBlur,
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    } else {
-                                        null
-                                    }
-                                }
-                            }
-
-                            canvas.drawRoundRect(
-                                0f,
-                                0f,
-                                size.width,
-                                size.height,
-                                cornerRadius,
-                                cornerRadius,
-                                paint
-                            )                        }
-                    }
-                    .clip(RoundedCornerShape(18.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(modifier = Modifier.width(18.dp))
-
-            Column {
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = htmlToText(item.title), maxLines = 1,overflow = TextOverflow.Ellipsis,
-                    fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Album • ${htmlToText(item.subtitle)}", overflow = TextOverflow.Ellipsis,
-                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Artists • ${htmlToText(item.artists)}", overflow = TextOverflow.Ellipsis,
-                    fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
-                )
-//
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Icon(
-//                        painter = painterResource(R.drawable.headset_icon),
-//                        contentDescription = "Headset Icon",
-//                        tint = colorResource(R.color.primary_text_color),
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//
-//                    Spacer(modifier = Modifier.width(4.dp))
-//
-//                    Text(
-//                        text = "PlayCount • ${formatCount(song.playCount.toLong())}", overflow = TextOverflow.Ellipsis,
-//                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-//                        color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
-//                    )
-//                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
-                        .clickable(
-                            interactionSource = copyLinkInteraction,
-                            indication = null
-                        ) {
-                            scope.launch {
-                                val link = generateShareLink(item)
-
-                                val clipData = ClipData.newPlainText("link", link)
-                                val clipEntry = ClipEntry(clipData)
-
-                                clipboardManager.setClipEntry(clipEntry)
-                            }
-
-                            onShowSnackBar("Link copied")
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.link_icon),
-                        contentDescription = "Link Icon",
-                        tint = colorResource(R.color.off_white),
-                        modifier = Modifier.size(26.dp)
-                            .graphicsLayer {
-                                scaleX = copyLinkScale
-                                scaleY = copyLinkScale
-                            }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Copy link",
-                    fontSize = 12.sp, lineHeight = 14.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(15.dp))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
-                        .clickable(
-                            interactionSource = whatsAppInteraction,
-                            indication = null
-                        ) {
-                            val link = generateShareLink(item)
-
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                this.type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, link)
-                                setPackage("com.whatsapp")
-                            }
-
-                            try {
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                onShowSnackBar("WhatsApp not installed")
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.whatsapp_icon),
-                        contentDescription = "WhatsApp Icon",
-                        tint = colorResource(R.color.off_white),
-                        modifier = Modifier.size(32.dp)
-                            .graphicsLayer {
-                                scaleX = whatsAppScale
-                                scaleY = whatsAppScale
-                            }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "WhatsApp",
-                    fontSize = 12.sp, lineHeight = 14.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(15.dp))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
-                        .clickable(
-                            interactionSource = messageInteraction,
-                            indication = null
-                        ) {
-                            val link = generateShareLink(item)
-
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = "smsto:".toUri()
-                                putExtra("sms_body", link)
-                            }
-
-                            context.startActivity(intent)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.message_icon),
-                        contentDescription = "Message Icon",
-                        tint = colorResource(R.color.off_white),
-                        modifier = Modifier.size(24.dp)
-                            .graphicsLayer {
-                                scaleX = messageScale
-                                scaleY = messageScale
-                            }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Text\nMessage",
-                    fontSize = 12.sp, lineHeight = 14.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    textAlign = TextAlign.Center,
-                    color = colorResource(R.color.primary_text_color)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(20.dp))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colorResource(R.color.primary_text_color).copy(alpha = 0.8f))
-                        .clickable(
-                            interactionSource = moreInteraction,
-                            indication = null
-                        ) {
-                            val link = generateShareLink(item)
-
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                this.type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, link)
-                            }
-
-                            context.startActivity(
-                                Intent.createChooser(shareIntent, "Share via")
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.three_dots_icon),
-                        contentDescription = "More Icon",
-                        tint = colorResource(R.color.off_white),
-                        modifier = Modifier.size(22.dp)
-                            .rotate(90f)
-                            .graphicsLayer {
-                                scaleX = moreScale
-                                scaleY = moreScale
-                            }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "More",
-                    fontSize = 12.sp, lineHeight = 14.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-    }
-}
-
 fun generateShareLink(item: ShareItem): String {
     return when (item.type) {
         ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.id}"
@@ -1801,19 +1369,6 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             )
         }
     }
-}
-
-private fun formatTotalDuration(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-
-    return buildString {
-        if (hours > 0) append("$hours h ")
-        if (minutes > 0) append("$minutes min  ")
-        if (seconds > 0) append("$seconds s")
-        if (isEmpty()) append("0s") // handle 0 case
-    }.trim()
 }
 
 @Composable

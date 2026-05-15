@@ -22,13 +22,16 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -274,7 +277,6 @@ fun SearchScreen(
                 selectedIndex = index
                 showSongSheet = true
             },
-            downloadViewModel = downloadViewModel,
             snackBarHostState = snackBarHostState
         )
 
@@ -400,12 +402,15 @@ private fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: (TextFieldValue) -> Unit) {
     val selectionColors = TextSelectionColors(
         handleColor = Color(0xFF1C1C1C),
         backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
     )
+
+    val isKeyboardVisible = WindowInsets.isImeVisible
 
     CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
         TextField(
@@ -443,7 +448,15 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
                     )
                 }
             },
-            modifier = modifier,
+            modifier = modifier
+                .border(
+                    width = if (isKeyboardVisible) 1.3.dp else 0.dp,
+                    color = if (isKeyboardVisible)
+                        colorResource(R.color.secondary_text_color)
+                    else
+                        Color.Transparent,
+                    shape = RoundedCornerShape(16.dp)
+                ),
             shape = RoundedCornerShape(16.dp),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
@@ -451,7 +464,8 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 cursorColor = Color(0xFF121212)
-            ),textStyle = TextStyle(
+            ),
+            textStyle = TextStyle(
                 fontFamily = fonts,
                 fontWeight = FontWeight.Normal,
                 fontStyle = FontStyle.Normal,
@@ -467,7 +481,6 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
 private fun SearchTabs(
     modifier: Modifier, searchText: String, downloadedIds: Set<String>,
     onSongMoreClick: (song: SongItem, songs: List<SongItem>, index: Int) -> Unit,
-    downloadViewModel: DownloadViewModel,
     snackBarHostState: SnackbarHostState
 ) {
     val focusManager = LocalFocusManager.current

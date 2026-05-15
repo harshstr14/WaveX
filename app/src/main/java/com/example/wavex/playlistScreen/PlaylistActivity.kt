@@ -7,6 +7,7 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -86,11 +87,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -139,8 +141,8 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
-import com.example.wavex.shareComponent.ShareAlbum_Playlist
 import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
+import com.example.wavex.shareComponent.ShareAlbum_Playlist
 import com.example.wavex.shareComponent.ShareSong
 import com.example.wavex.shareComponent.ShareSongItem
 import com.example.wavex.ui.theme.WaveXTheme
@@ -168,6 +170,7 @@ class PlaylistActivity : ComponentActivity() {
 
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
+        Log.d("PlaylistID", "$playlistId")
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -556,7 +559,10 @@ fun Playlist_Activity(
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp, end = 24.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
                                         model = imageToLoad,
@@ -572,25 +578,34 @@ fun Playlist_Activity(
                                     Column(
                                         modifier = Modifier.fillMaxWidth()
                                             .padding(start = 15.dp)
-                                            .animateContentSize()
+                                            .animateContentSize(),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        val playlistName = htmlToText(playlists.name)
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
                                         Text(
-                                            text = playlistName,
-                                            fontSize = 20.sp,
-                                            lineHeight = 22.sp,
+                                            text = "PLAYLIST",
+                                            fontSize = 12.sp,
+                                            lineHeight = 14.sp,
+                                            letterSpacing = 1.5.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            color = colorResource(R.color.theme_color),
+                                            maxLines = 1
                                         )
 
-                                        val description = htmlToText(playlists.description)
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = htmlToText(playlists.name),
+                                            fontSize = 25.sp,
+                                            lineHeight = 26.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.Bold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.primary_text_color),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -601,14 +616,14 @@ fun Playlist_Activity(
                                                         stiffness = Spring.StiffnessLow
                                                     )
                                                 ),
-                                            text = description,
+                                            text = htmlToText(playlists.description),
                                             fontSize = 13.sp,
                                             lineHeight = 16.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.SemiBold,
                                             fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 3,
+                                            maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
@@ -620,45 +635,53 @@ fun Playlist_Activity(
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "${playlists.songCount} Songs",
+                                                text = playlists.songCount,
                                                 fontSize = 12.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                        }
 
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.airpods_icon),
-                                                contentDescription = "Airpods Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(1.8.dp)
+                                                    .height(10.dp)
+                                                    .background(
+                                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
                                             )
 
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Icon(
+                                                painter = painterResource(R.drawable.clock_icon),
+                                                contentDescription = "Clock Icon",
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
                                                 text = formatTotalDuration(playlists.totalDuration),
                                                 fontSize = 12.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -671,13 +694,63 @@ fun Playlist_Activity(
 
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 25.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
+                                        modifier = Modifier
+                                            .weight(1.2f)
+                                            .height(60.dp)
+                                            .shadow(
+                                                elevation = 25.dp,
+                                                shape = RoundedCornerShape(22.dp),
+                                                ambientColor = colorResource(R.color.theme_color),
+                                                spotColor = colorResource(R.color.theme_color)
+                                            )
+                                            .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.theme_color))
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                PlayerManager.currentPlaylist = playlists.songs
+                                                ServiceLocator.musicService?.setPlaylist(playlists.songs, 0)
+                                            }
+                                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.notificationplaybutton),
+                                                contentDescription = "Play Icon",
+                                                tint = colorResource(R.color.background_color),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Text(
+                                                text = "Play playlist",
+                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.background_color)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(0.9f)
+                                            .height(60.dp)
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                             .clickable(
                                                 interactionSource = interactionSource,
                                                 indication = null
@@ -701,51 +774,15 @@ fun Playlist_Activity(
                                                 painter = painterResource(R.drawable.shuffle_icon),
                                                 contentDescription = "Shuffle Icon",
                                                 tint = colorResource(R.color.background_color),
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(22.dp)
                                             )
 
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
                                             Text(
                                                 text = "Shuffle",
                                                 fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.background_color)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(18.dp))
-
-                                    Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
-                                            .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
-                                            .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                PlayerManager.currentPlaylist = playlists.songs
-                                                ServiceLocator.musicService?.setPlaylist(playlists.songs, 0)
-                                            }
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.play_icon),
-                                                contentDescription = "Play Icon",
-                                                tint = Color.Unspecified,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(6.dp))
-
-                                            Text(
-                                                text = "Play",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.theme_color)
                                             )
                                         }
                                     }
@@ -756,7 +793,9 @@ fun Playlist_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 20.dp, start = 24.dp),
-                                        text = "Artists", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        text = "Featured Artists", fontSize = 17.sp, fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                        letterSpacing = 1.5.sp,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 18.sp
                                     )
                                 }
@@ -764,13 +803,18 @@ fun Playlist_Activity(
                                 val uniqueArtists = playlists.artists.distinctBy { it.id }
 
                                 item {
-                                    LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
+                                    LazyRow(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 13.dp),
                                         contentPadding = PaddingValues(horizontal = 24.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(uniqueArtists) { artist ->
-                                            Column(
+                                            Box(
                                                 modifier = Modifier
+                                                    .clip(RoundedCornerShape(30.dp))
+                                                    .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                                     .clickable(
                                                         interactionSource = interactionSource,
                                                         indication = null
@@ -781,30 +825,34 @@ fun Playlist_Activity(
                                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
-                                                    },
-                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                    }
+                                                    .padding(horizontal = 8.dp, vertical = 8.dp)
                                             ) {
-                                                AsyncImage(
-                                                    model = artist.image.takeIf { it.isNotBlank() },
-                                                    contentDescription = artist.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    error = painterResource(R.drawable.default_artist),
-                                                    modifier = Modifier
-                                                        .size(78.dp)
-                                                        .clip(CircleShape)
-                                                )
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    AsyncImage(
+                                                        model = artist.image.takeIf { it.isNotBlank() },
+                                                        contentDescription = artist.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        error = painterResource(R.drawable.default_artist),
+                                                        placeholder = painterResource(R.drawable.default_artist),
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .clip(CircleShape)
+                                                    )
 
-                                                Spacer(modifier = Modifier.height(8.dp))
+                                                    Spacer(modifier = Modifier.width(10.dp))
 
-                                                val artistName = htmlToText(artist.name)
-
-                                                Text(
-                                                    modifier = Modifier.width(78.dp),
-                                                    text = artistName,
-                                                    fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                    Text(
+                                                        modifier = Modifier.padding(end = 8.dp),
+                                                        text = htmlToText(artist.name),
+                                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.background_color), maxLines = 2, textAlign = TextAlign.Center,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -815,7 +863,9 @@ fun Playlist_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
-                                        text = "Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        text = "Tracks", fontSize = 18.sp, fontFamily = fonts,
+                                        letterSpacing = 1.5.sp,
+                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
                                 }
@@ -1672,31 +1722,30 @@ private fun BottomSheetContent(
                         val cornerRadius = 18.dp.toPx()
 
                         drawIntoCanvas { canvas ->
-                            val paint = Paint().apply {
-                                color = shadowColor.copy(alpha = shadowAlpha)
-                                asFrameworkPaint().apply {
-                                    isAntiAlias = true
+                            val frameworkPaint = android.graphics.Paint().apply {
+                                isAntiAlias = true
+                                color = shadowColor.copy(alpha = shadowAlpha).toArgb()
 
-                                    maskFilter = if (shadowBlur > 0f) {
-                                        android.graphics.BlurMaskFilter(
-                                            safeBlur,
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    } else {
-                                        null
-                                    }
+                                maskFilter = if (shadowBlur > 0f) {
+                                    android.graphics.BlurMaskFilter(
+                                        safeBlur,
+                                        android.graphics.BlurMaskFilter.Blur.NORMAL
+                                    )
+                                } else {
+                                    null
                                 }
                             }
 
-                            canvas.drawRoundRect(
+                            canvas.nativeCanvas.drawRoundRect(
                                 0f,
                                 0f,
                                 size.width,
                                 size.height,
                                 cornerRadius,
                                 cornerRadius,
-                                paint
-                            )                        }
+                                frameworkPaint
+                            )
+                        }
                     }
                     .clip(RoundedCornerShape(18.dp)),
                 contentScale = ContentScale.Crop
@@ -1706,17 +1755,9 @@ private fun BottomSheetContent(
 
             Column {
                 Text(
-                    text = htmlToText(song.name), maxLines = 1,
-                    fontSize = 19.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}",
-                    fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 2,
+                    text = htmlToText(song.name), maxLines = 2,
+                    fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.primary_text_color), lineHeight = 24.sp
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1726,18 +1767,40 @@ private fun BottomSheetContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
+                        painter = painterResource(R.drawable.album_icon),
+                        contentDescription = "Album Icon",
+                        tint = colorResource(R.color.secondary_text_color),
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Text(
+                        text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}",
+                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 1,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
                         painter = painterResource(R.drawable.headset_icon),
                         contentDescription = "Headset Icon",
-                        tint = colorResource(R.color.primary_text_color),
-                        modifier = Modifier.size(16.dp)
+                        tint = colorResource(R.color.secondary_text_color),
+                        modifier = Modifier.size(18.dp)
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
                         text = "PlayCount • ${formatCount(song.playCount.toLong())}",
-                        fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.secondary_text_color), lineHeight = 14.sp, maxLines = 2,
+                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 1,
                     )
                 }
             }
@@ -1999,15 +2062,13 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
     }
 }
 
-private fun formatTotalDuration(totalSeconds: Int): String {
+fun formatTotalDuration(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
 
     return buildString {
         if (hours > 0) append("$hours h ")
-        if (minutes > 0) append("$minutes min  ")
-        if (seconds > 0) append("$seconds s")
+        if (minutes > 0) append("$minutes min")
         if (isEmpty()) append("0s") // handle 0 case
     }.trim()
 }

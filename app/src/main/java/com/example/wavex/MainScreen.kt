@@ -66,11 +66,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -818,29 +819,27 @@ fun MiniPlayer(
                         val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
                         drawIntoCanvas { canvas ->
-                            val paint = Paint().apply {
-                                color = shadowColorButton.copy(alpha = shadowAlpha)
-                                asFrameworkPaint().apply {
-                                    isAntiAlias = true
+                            val frameworkPaint = android.graphics.Paint().apply {
+                                isAntiAlias = true
+                                color = shadowColorButton.copy(alpha = shadowAlpha).toArgb()
 
-                                    maskFilter = if (shadowBlur > 0f) {
-                                        android.graphics.BlurMaskFilter(
-                                            safeBlur,
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    } else {
-                                        null
-                                    }
+                                maskFilter = if (shadowBlur > 0f) {
+                                    android.graphics.BlurMaskFilter(
+                                        safeBlur,
+                                        android.graphics.BlurMaskFilter.Blur.NORMAL
+                                    )
+                                } else {
+                                    null
                                 }
                             }
 
-                            canvas.drawCircle(
-                                center,
+                            canvas.nativeCanvas.drawCircle(
+                                center.x,
+                                center.y,
                                 glowRadius,
-                                paint
+                                frameworkPaint
                             )
-                        }
-                    }
+                        }                    }
                 , contentAlignment = Alignment.Center
             ) {
                 Box(

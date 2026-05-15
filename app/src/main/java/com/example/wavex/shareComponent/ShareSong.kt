@@ -219,42 +219,70 @@ fun ShareSong(
                             text = htmlToText(song.title)
                                 .takeIf { it.isNotBlank() }
                                 ?: "Unknown Title",
-                            maxLines = 1,
-                            fontSize = 19.sp,
+                            maxLines = 2,
+                            fontSize = 22.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
-                            lineHeight = 22.sp
+                            lineHeight = 24.sp
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Album • ${htmlToText(song.subtitle).takeIf { it.isNotBlank() }
-                                ?: "Unknown Title"}",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp,
-                            maxLines = 2,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.album_icon),
+                                contentDescription = "Album Icon",
+                                tint = colorResource(R.color.secondary_text_color),
+                                modifier = Modifier.size(18.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            Text(
+                                text = "Album • ${htmlToText(song.subtitle).takeIf { it.isNotBlank() }
+                                    ?: "Unknown Title"}",
+                                fontSize = 13.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        Text(
-                            text = "Artists • ${htmlToText(song.artists).takeIf { it.isNotBlank() }
-                                ?: "Unknown Title"}",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp,
-                            maxLines = 2,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.mic_icon),
+                                contentDescription = "Artist Icon",
+                                tint = colorResource(R.color.secondary_text_color),
+                                modifier = Modifier.size(18.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            Text(
+                                text = "Artists • ${htmlToText(song.artists).takeIf { it.isNotBlank() }
+                                    ?: "Unknown Title"}",
+                                fontSize = 13.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
 
@@ -265,7 +293,7 @@ fun ShareSong(
                         .fillMaxWidth()
                         .height(54.dp)
                         .background(
-                            color = Color(0xFF48b164),
+                            color = colorResource(R.color.theme_color),
                             shape = RoundedCornerShape(18.dp)
                         )
                         .clickable(
@@ -293,7 +321,7 @@ fun ShareSong(
                         fontFamily = fonts,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color),
+                        color = colorResource(R.color.background_color),
                         lineHeight = 18.sp
                     )
 
@@ -312,7 +340,7 @@ fun ShareSong(
                     Icon(
                         painter = painterResource(R.drawable.link_icon),
                         contentDescription = "Link Icon",
-                        tint = colorResource(R.color.primary_text_color),
+                        tint = colorResource(R.color.background_color),
                         modifier = Modifier
                             .padding(end = 18.dp, start = 13.dp)
                             .size(24.dp)
@@ -491,7 +519,7 @@ fun ShareAppItem(
         modifier = modifier
             .height(120.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.95f))
+            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.90f))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null

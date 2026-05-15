@@ -65,6 +65,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -544,26 +546,21 @@ fun HomeScreen (
                         val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
                         drawIntoCanvas { canvas ->
-                            val paint = Paint().apply {
-                                color = shadowColor.copy(alpha = shadowAlpha)
-                                asFrameworkPaint().apply {
-                                    isAntiAlias = true
+                            val frameworkPaint = android.graphics.Paint().apply {
+                                isAntiAlias = true
+                                color = shadowColor.copy(alpha = shadowAlpha).toArgb()
 
-                                    maskFilter = if (shadowBlur > 0f) {
-                                        android.graphics.BlurMaskFilter(
-                                            safeBlur,
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    } else {
-                                        null
-                                    }
-                                }
+                                maskFilter = android.graphics.BlurMaskFilter(
+                                    safeBlur,
+                                    android.graphics.BlurMaskFilter.Blur.NORMAL
+                                )
                             }
 
-                            canvas.drawCircle(
-                                center,
+                            canvas.nativeCanvas.drawCircle(
+                                center.x,
+                                center.y,
                                 glowRadius,
-                                paint
+                                frameworkPaint
                             )
                         }
                     }.zIndex(20f)

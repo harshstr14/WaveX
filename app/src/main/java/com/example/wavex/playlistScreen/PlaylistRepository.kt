@@ -11,7 +11,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class PlaylistRepository {
-
     suspend fun fetchPlaylistById(playlistId: String): PlaylistDetailUiState  =
         withContext(Dispatchers.IO) {
             val response = requestWithFallback("/playlists?id=$playlistId&limit=40")

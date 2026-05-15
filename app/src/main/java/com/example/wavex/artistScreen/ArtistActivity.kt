@@ -595,8 +595,8 @@ private fun Artist_Activity(
                                             Icon(
                                                 painter = painterResource(R.drawable.followers_icon),
                                                 contentDescription = "Followers Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(4.dp))
@@ -623,7 +623,7 @@ private fun Artist_Activity(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
                                                 tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(4.dp))

@@ -9,6 +9,8 @@ data class AlbumDetailUiState(
     val albumName: String = "",
     val description: String = "",
     val songCount: String = "",
+    val type: String = "",
+    val year: Int = 0,
     val albumImages: List<Image> = emptyList(),
     val primaryArtists: List<Artists> = emptyList(),
     val songs: List<SongItem> = emptyList(),

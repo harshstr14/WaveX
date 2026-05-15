@@ -222,30 +222,44 @@ fun ShareAlbum_Playlist(
                             text = htmlToText(album.title)
                                 .takeIf { it.isNotBlank() }
                                 ?: "Unknown Title",
-                            maxLines = 1,
-                            fontSize = 19.sp,
+                            maxLines = 2,
+                            fontSize = 22.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
-                            lineHeight = 22.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = "Artists • ${htmlToText(album.artists).takeIf { it.isNotBlank() }
-                                ?: "Unknown Title"}",
-                            fontSize = 13.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color),
-                            lineHeight = 16.sp,
-                            maxLines = 2,
+                            lineHeight = 24.sp
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.mic_icon),
+                                contentDescription = "Artist Icon",
+                                tint = colorResource(R.color.secondary_text_color),
+                                modifier = Modifier.size(18.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            Text(
+                                text = "Artists • ${htmlToText(album.artists).takeIf { it.isNotBlank() }
+                                    ?: "Unknown Title"}",
+                                fontSize = 13.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.SemiBold,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -257,7 +271,7 @@ fun ShareAlbum_Playlist(
                                     ?: "0"} Tracks",
                                 fontSize = 12.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.Normal,
+                                fontWeight = FontWeight.SemiBold,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -272,9 +286,9 @@ fun ShareAlbum_Playlist(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.clock_icon),
-                                    contentDescription = "Time Icon",
+                                    contentDescription = "Clock Icon",
                                     tint = colorResource(R.color.secondary_text_color),
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
 
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -284,7 +298,7 @@ fun ShareAlbum_Playlist(
                                         ?: "0",
                                     fontSize = 12.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.secondary_text_color),
                                     lineHeight = 16.sp,
@@ -301,7 +315,7 @@ fun ShareAlbum_Playlist(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = colorResource(R.color.primary_text_color).copy(alpha = 0.95f)
+                        containerColor = colorResource(R.color.primary_text_color).copy(alpha = 0.90f)
                     ),
                     border = BorderStroke(
                         1.dp,
@@ -375,7 +389,7 @@ fun ShareAlbum_Playlist(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 14.dp),
+                                    .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -403,7 +417,7 @@ fun ShareAlbum_Playlist(
                             scaleY = copyLinkScale
                         )
                         .background(
-                            color = Color(0xFF48b164),
+                            color = colorResource(R.color.theme_color),
                             shape = RoundedCornerShape(18.dp)
                         )
                         .clickable(
@@ -431,7 +445,7 @@ fun ShareAlbum_Playlist(
                         fontFamily = fonts,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color),
+                        color = colorResource(R.color.background_color),
                         lineHeight = 18.sp
                     )
 
@@ -450,7 +464,7 @@ fun ShareAlbum_Playlist(
                     Icon(
                         painter = painterResource(R.drawable.link_icon),
                         contentDescription = "Link Icon",
-                        tint = colorResource(R.color.primary_text_color),
+                        tint = colorResource(R.color.background_color),
                         modifier = Modifier
                             .padding(end = 18.dp, start = 13.dp)
                             .size(22.dp)

@@ -93,13 +93,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -629,29 +630,26 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                 val cornerRadius = 20.dp.toPx()
 
                                 drawIntoCanvas { canvas ->
-                                    val paint = Paint().apply {
-                                        color = shadowColor.copy(alpha = shadowAlphaImage)
-                                        asFrameworkPaint().apply {
-                                            isAntiAlias = true
+                                    val frameworkPaint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        color = shadowColor.copy(alpha = shadowAlphaImage).toArgb()
 
-                                            maskFilter = android.graphics.BlurMaskFilter(
-                                                safeBlur,
-                                                android.graphics.BlurMaskFilter.Blur.NORMAL
-                                            )
-                                        }
+                                        maskFilter = android.graphics.BlurMaskFilter(
+                                            safeBlur,
+                                            android.graphics.BlurMaskFilter.Blur.NORMAL
+                                        )
                                     }
 
-                                    canvas.drawRoundRect(
+                                    canvas.nativeCanvas.drawRoundRect(
                                         0f,
                                         0f,
                                         size.width,
                                         size.height,
                                         cornerRadius,
                                         cornerRadius,
-                                        paint
+                                        frameworkPaint
                                     )
-                                }
-                            }
+                                }                            }
                             .clip(RoundedCornerShape(20.dp))
                     )
 
@@ -874,22 +872,23 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                                     val safeBlur = shadowBlur.coerceAtLeast(0.1f)
 
                                     drawIntoCanvas { canvas ->
-                                        val paint = Paint().apply {
-                                            color = shadowColorButton.copy(alpha = maxOf(shadowAlpha, 0.35f))
-                                            asFrameworkPaint().apply {
-                                                isAntiAlias = true
+                                        val frameworkPaint = android.graphics.Paint().apply {
+                                            isAntiAlias = true
+                                            color = shadowColorButton
+                                                .copy(alpha = maxOf(shadowAlpha, 0.35f))
+                                                .toArgb()
 
-                                                maskFilter = android.graphics.BlurMaskFilter(
-                                                    safeBlur,
-                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                )
-                                            }
+                                            maskFilter = android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
                                         }
 
-                                        canvas.drawCircle(
-                                            center,
+                                        canvas.nativeCanvas.drawCircle(
+                                            center.x,
+                                            center.y,
                                             glowRadius,
-                                            paint
+                                            frameworkPaint
                                         )
                                     }
                                 }

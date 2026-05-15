@@ -78,6 +78,8 @@ class AlbumRepository {
             albumName = data.optString("name"),
             description = data.optString("description"),
             songCount = data.optString("songCount"),
+            type = data.optString("type"),
+            year = data.optInt("year"),
             albumImages = albumImages.toMutableList(),
             primaryArtists = primaryArtists.toMutableList(),
             songs = songs,

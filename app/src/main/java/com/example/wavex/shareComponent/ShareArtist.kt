@@ -186,8 +186,8 @@ fun ShareArtist(
                             Icon(
                                 painter = painterResource(R.drawable.followers_icon),
                                 contentDescription = "Followers Icon",
-                                tint = colorResource(R.color.primary_text_color),
-                                modifier = Modifier.size(16.dp)
+                                tint = colorResource(R.color.secondary_text_color),
+                                modifier = Modifier.size(18.dp)
                             )
 
                             Spacer(modifier = Modifier.width(4.dp))
@@ -214,7 +214,7 @@ fun ShareArtist(
                                 painter = painterResource(R.drawable.headset_icon),
                                 contentDescription = "Headset Icon",
                                 tint = colorResource(R.color.secondary_text_color),
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
 
                             Spacer(modifier = Modifier.width(4.dp))
@@ -239,16 +239,56 @@ fun ShareArtist(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = colorResource(R.color.primary_text_color).copy(alpha = 0.95f)
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        Color.White.copy(alpha = 0.08f)
+                        containerColor = colorResource(R.color.primary_text_color).copy(alpha = 0.90f)
                     )
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 2.dp)
                     ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                modifier = Modifier.weight(1f),
+                                text = "TOP TRACKS",
+                                color = colorResource(R.color.secondary_text_color),
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Normal,
+                                fontStyle = FontStyle.Normal,
+                            )
+
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_up),
+                                contentDescription = "Arrow Icon",
+                                tint = colorResource(R.color.theme_color),
+                                modifier = Modifier.size(16.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(2.dp))
+
+                            Text(
+                                text = "TRENDING",
+                                color = colorResource(R.color.theme_color),
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp,
+                                fontFamily = fonts,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Normal,
+                                fontStyle = FontStyle.Normal,
+                            )
+                        }
+
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.7f),
+                        )
+
                         artist.topSongs.take(3).forEachIndexed { index, song ->
                             Row(
                                 modifier = Modifier
@@ -313,7 +353,7 @@ fun ShareArtist(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 14.dp),
+                                    .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -337,7 +377,7 @@ fun ShareArtist(
                         .fillMaxWidth()
                         .height(54.dp)
                         .background(
-                            color = Color(0xFF48b164),
+                            color = colorResource(R.color.theme_color),
                             shape = RoundedCornerShape(18.dp)
                         )
                         .clickable(
@@ -365,7 +405,7 @@ fun ShareArtist(
                         fontFamily = fonts,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.primary_text_color),
+                        color = colorResource(R.color.background_color),
                         lineHeight = 18.sp
                     )
 
@@ -384,7 +424,7 @@ fun ShareArtist(
                     Icon(
                         painter = painterResource(R.drawable.link_icon),
                         contentDescription = "Link Icon",
-                        tint = colorResource(R.color.primary_text_color),
+                        tint = colorResource(R.color.background_color),
                         modifier = Modifier
                             .padding(end = 18.dp, start = 13.dp)
                             .size(22.dp)

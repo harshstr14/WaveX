@@ -117,6 +117,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.playlistScreen.formatTotalDuration
 import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
@@ -407,7 +408,10 @@ fun Liked_Songs_Activity(
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp, end = 24.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
                                         model = R.drawable.liked,
@@ -423,14 +427,27 @@ fun Liked_Songs_Activity(
                                     Column(
                                         modifier = Modifier.fillMaxWidth()
                                             .padding(start = 15.dp)
-                                            .animateContentSize()
+                                            .animateContentSize(),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Spacer(modifier = Modifier.height(14.dp))
+                                        Text(
+                                            text = "PLAYLIST",
+                                            fontSize = 12.sp,
+                                            lineHeight = 14.sp,
+                                            letterSpacing = 1.5.sp,
+                                            fontFamily = fonts,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontStyle = FontStyle.Normal,
+                                            color = colorResource(R.color.theme_color),
+                                            maxLines = 1
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
 
                                         Text(
                                             text = "Liked Songs",
-                                            fontSize = 20.sp,
-                                            lineHeight = 22.sp,
+                                            fontSize = 25.sp,
+                                            lineHeight = 26.sp,
                                             fontFamily = fonts,
                                             fontWeight = FontWeight.Bold,
                                             fontStyle = FontStyle.Normal,
@@ -447,16 +464,16 @@ fun Liked_Songs_Activity(
                                             Icon(
                                                 painter = painterResource(R.drawable.headset_icon),
                                                 contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
-                                                text = "${likedSongs.size} Songs",
+                                                text = "${likedSongs.size}",
                                                 fontSize = 12.sp,
-                                                lineHeight = 12.sp,
+                                                lineHeight = 14.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
@@ -464,26 +481,34 @@ fun Liked_Songs_Activity(
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                        }
 
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.airpods_icon),
-                                                contentDescription = "Airpods Icon",
-                                                tint = colorResource(R.color.primary_text_color),
-                                                modifier = Modifier.size(16.dp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(1.8.dp)
+                                                    .height(10.dp)
+                                                    .background(
+                                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
                                             )
 
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Icon(
+                                                painter = painterResource(R.drawable.clock_icon),
+                                                contentDescription = "Clock Icon",
+                                                tint = colorResource(R.color.secondary_text_color),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(6.dp))
 
                                             Text(
                                                 text = formatTotalDuration(totalDuration),
                                                 fontSize = 12.sp,
-                                                lineHeight = 12.sp,
+                                                lineHeight = 14.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
@@ -498,13 +523,65 @@ fun Liked_Songs_Activity(
 
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 25.dp, start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
+                                        modifier = Modifier
+                                            .weight(1.2f)
+                                            .height(60.dp)
+                                            .shadow(
+                                                elevation = 25.dp,
+                                                shape = RoundedCornerShape(22.dp),
+                                                ambientColor = colorResource(R.color.theme_color),
+                                                spotColor = colorResource(R.color.theme_color)
+                                            )
+                                            .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.theme_color))
+                                            .clickable(
+                                                interactionSource = interactionSource,
+                                                indication = null
+                                            ) {
+                                                if (songsList.songs.isNotEmpty()) {
+                                                    PlayerManager.currentPlaylist = songsList.songs
+                                                    ServiceLocator.musicService?.setPlaylist(songsList.songs, 0)
+                                                }
+                                            }
+                                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.notificationplaybutton),
+                                                contentDescription = "Play Icon",
+                                                tint = colorResource(R.color.background_color),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Text(
+                                                text = "Play playlist",
+                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.background_color)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(0.9f)
+                                            .height(60.dp)
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                             .clickable(
                                                 interactionSource = interactionSource,
                                                 indication = null
@@ -530,65 +607,15 @@ fun Liked_Songs_Activity(
                                                 painter = painterResource(R.drawable.shuffle_icon),
                                                 contentDescription = "Shuffle Icon",
                                                 tint = colorResource(R.color.background_color),
-                                                modifier = Modifier.size(24.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(6.dp))
-
-                                            Text(
-                                                text = "Shuffle",
-                                                fontSize = 16.sp,
-                                                lineHeight = 18.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.background_color)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(18.dp))
-
-                                    Box(
-                                        modifier = Modifier.width(158.dp).padding(top = 25.dp)
-                                            .clip(RoundedCornerShape(28.dp))
-                                            .background(
-                                                colorResource(R.color.secondary_text_color).copy(
-                                                    alpha = 0.2f
-                                                )
-                                            )
-                                            .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                if (songsList.songs.isNotEmpty()) {
-                                                    PlayerManager.currentPlaylist = songsList.songs
-                                                    ServiceLocator.musicService?.setPlaylist(songsList.songs, 0)
-                                                }
-                                            }
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.play_icon),
-                                                contentDescription = "Play Icon",
-                                                tint = Color.Unspecified,
                                                 modifier = Modifier.size(22.dp)
                                             )
 
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
 
                                             Text(
-                                                text = "Play",
-                                                fontSize = 16.sp,
-                                                lineHeight = 18.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.theme_color)
+                                                text = "Shuffle",
+                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.background_color)
                                             )
                                         }
                                     }
@@ -597,14 +624,11 @@ fun Liked_Songs_Activity(
 
                             item {
                                 Text(
-                                    modifier = Modifier.padding(top = 20.dp, start = 24.dp, bottom = 10.dp),
-                                    text = "Songs",
-                                    fontSize = 18.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.Bold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color),
-                                    lineHeight = 18.sp
+                                    modifier = Modifier.padding(top = 18.dp, start = 24.dp, bottom = 10.dp),
+                                    text = "Tracks", fontSize = 18.sp, fontFamily = fonts,
+                                    letterSpacing = 1.5.sp,
+                                    fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                    color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                 )
                             }
 
@@ -1150,22 +1174,6 @@ fun Liked_Songs_Activity(
             }
         }
     }
-}
-
-private fun formatTotalDuration(totalSeconds: Int?): String {
-
-    val safeSeconds = totalSeconds ?: 0
-
-    val hours = safeSeconds / 3600
-    val minutes = (safeSeconds % 3600) / 60
-    val seconds = safeSeconds % 60
-
-    return buildString {
-        if (hours > 0) append("$hours h ")
-        if (minutes > 0) append("$minutes min ")
-        if (seconds > 0) append("$seconds s")
-        if (isEmpty()) append("0 s")
-    }.trim()
 }
 
 @Composable
