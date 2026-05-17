@@ -21,6 +21,8 @@ val spotifyApiUrl = localProps.getProperty("SPOTIFY_API_BASE_URL")
 val waveXApiUrl = localProps.getProperty("WAVEX_API_URL")
     ?: error("WAVEX_API_URL missing in local.properties")
 
+val ytApiUrl = localProps.getProperty("YT_API_BASE_URL")
+    ?: error("YT_API_BASE_URL missing in local.properties")
 
 android {
     namespace = "com.example.wavex"
@@ -46,6 +48,8 @@ android {
         buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"$spotifyApiUrl\"")
 
         buildConfigField("String", "WAVEX_API_URL", "\"$waveXApiUrl\"")
+
+        buildConfigField("String", "YT_API_BASE_URL", "\"$ytApiUrl\"")
     }
 
     buildTypes {

@@ -7,7 +7,6 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -170,7 +169,7 @@ class PlaylistActivity : ComponentActivity() {
 
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
-        Log.d("PlaylistID", "$playlistId")
+        val playlistSource = intent.getStringExtra("playlist_source")
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -178,7 +177,7 @@ class PlaylistActivity : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                Playlist_Activity(downloadViewModel, playlistId, playlistImageUrl)
+                Playlist_Activity(downloadViewModel, playlistId, playlistImageUrl, playlistSource)
             }
         }
     }
@@ -189,6 +188,7 @@ class PlaylistActivity : ComponentActivity() {
 fun Playlist_Activity(
     downloadViewModel: DownloadViewModel,
     playlistId: String?, playlistImageUrl: String?,
+    playlistSource: String?,
     viewModel: PlaylistViewModel = viewModel()
 )  {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -227,9 +227,21 @@ fun Playlist_Activity(
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
         .child(userID!!).child("Favourites").child("Playlists").child(playlistId.toString())
 
-    LaunchedEffect(playlistId) {
-        playlistId?.let {
-            viewModel.loadPlaylist(it)
+    LaunchedEffect(playlistId, playlistSource) {
+        if (playlistId.isNullOrBlank()) return@LaunchedEffect
+
+        when (playlistSource) {
+            "jiosaavn" -> {
+                viewModel.loadPlaylist(playlistId)
+            }
+
+            "ytmusic" -> {
+                viewModel.loadYTPlaylist(playlistId)
+            }
+
+            else -> {
+                viewModel.loadPlaylist(playlistId)
+            }
         }
     }
 
@@ -941,7 +953,8 @@ fun Playlist_Activity(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             AsyncImage(
-                                                model = song.image.getOrNull(2)?.url,
+                                                model = if (song.searchSource == "jiosaavn") song.image.getOrNull(2)?.url
+                                                else song.image.getOrNull(0)?.url,
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(64.dp)
@@ -1535,7 +1548,8 @@ fun SongOptionsBottomSheet(
                 title = htmlToText(song.name),
                 subtitle = song.album?.name ?: "Unknown",
                 artists = song.artist.joinToString(", ") { htmlToText(it.name) },
-                image = song.image.getOrNull(2)?.url,
+                image = if (song.searchSource == "ytmusic") song.image.getOrNull(0)?.url
+                        else song.image.getOrNull(2)?.url,
                 id = song.id,
                 type = ShareType.SONG
             ),
@@ -1701,7 +1715,10 @@ private fun BottomSheetContent(
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(song.image.getOrNull(2)?.url)
+                    .data(
+                        if (song.searchSource == "ytmusic") song.image.getOrNull(0)?.url
+                            else song.image.getOrNull(2)?.url
+                    )
                     .allowHardware(false)
                     .build(),
                 contentDescription = null,

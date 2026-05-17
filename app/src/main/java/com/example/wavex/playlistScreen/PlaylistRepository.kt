@@ -1,5 +1,6 @@
 package com.example.wavex.playlistScreen
 
+import com.example.wavex.HttpClientProvider
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
@@ -7,7 +8,9 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
 import com.example.wavex.songData.Album
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONObject
 
 class PlaylistRepository {
@@ -64,7 +67,8 @@ class PlaylistRepository {
                         image = parseImages(song.optJSONArray("image")).toMutableList(),
                         duration = duration,
                         playCount = song.optInt("playCount"),
-                        downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
+                        downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList(),
+                        searchSource = "jiosaavn"
                     )
                 )
             }
@@ -136,6 +140,170 @@ class PlaylistRepository {
             Download(
                 quality = obj.optString("quality"),
                 url = obj.optString("url")
+            )
+        }
+    }
+
+    suspend fun fetchYTMusicPlaylist(
+        playlistId: String,
+        baseUrl: String
+    ): PlaylistDetailUiState = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/playlists/$playlistId")
+                .get()
+                .build()
+
+            val call = HttpClientProvider.client.newCall(request)
+
+            coroutineContext.job.invokeOnCompletion {
+                call.cancel()
+            }
+
+            val response = call.execute()
+
+            if (!response.isSuccessful) {
+                return@withContext PlaylistDetailUiState(
+                    isError = true,
+                    errorMessage = "Network error. Please try again."
+                )
+            }
+
+            val body = response.body?.string().orEmpty()
+
+            if (body.isEmpty()) {
+                return@withContext PlaylistDetailUiState(
+                    isError = true,
+                    errorMessage = "Empty response received."
+                )
+            }
+
+            parseYTMusicPlaylist(body)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            PlaylistDetailUiState(
+                isError = true,
+                errorMessage = e.message ?: "Something went wrong."
+            )
+        }
+    }
+
+    fun parseYTMusicPlaylist(jsonString: String): PlaylistDetailUiState {
+        try {
+            val json = JSONObject(jsonString)
+
+            val playlistId = json.optString("playlistId")
+            val title = json.optString("title")
+            val description = json.optString("description")
+            val thumbnail = json.optString("thumbnail")
+            val trackCount = json.optInt("trackCount", 0)
+
+            val images = listOf(
+                Image(
+                    quality = "high",
+                    url = thumbnail
+                )
+            )
+
+            val artists = mutableListOf<Artists>()
+            val author = json.optString("author")
+
+            if (author.isNotBlank()) {
+                artists.add(
+                    Artists(
+                        id = "",
+                        name = author,
+                        role = "Creator",
+                        image = ""
+                    )
+                )
+            }
+
+            val songs = mutableListOf<SongItem>()
+            val tracksArray = json.optJSONArray("tracks")
+            var totalDuration = 0
+
+            if (tracksArray != null) {
+                for (i in 0 until tracksArray.length()) {
+                    val item = tracksArray.getJSONObject(i)
+
+                    val durationText = item.optString("duration")
+
+                    val durationSeconds = durationText
+                        .split(":")
+                        .let {
+
+                            val minutes = it.getOrNull(0)?.toIntOrNull() ?: 0
+                            val seconds = it.getOrNull(1)?.toIntOrNull() ?: 0
+
+                            (minutes * 60) + seconds
+                        }
+
+                    totalDuration += durationSeconds
+
+
+                    val songImages = mutableListOf<Image>()
+                    val thumbnailsArray = item.optJSONArray("thumbnails")
+
+                    if (thumbnailsArray != null) {
+                        for (j in 0 until thumbnailsArray.length()) {
+                            val thumb = thumbnailsArray.getJSONObject(j)
+
+                            songImages.add(
+                                Image(
+                                    quality = "high",
+                                    url = thumb.optString("url")
+                                )
+                            )
+                        }
+                    }
+
+                    val songArtists = mutableListOf<Artists>()
+                    val artistsArray = item.optJSONArray("artists")
+
+                    if (artistsArray != null) {
+                        for (j in 0 until artistsArray.length()) {
+                            val artist = artistsArray.getJSONObject(j)
+
+                            songArtists.add(
+                                Artists(
+                                    id = artist.optString("id"),
+                                    name = artist.optString("name"),
+                                    role = "Artist",
+                                    image = ""
+                                )
+                            )
+                        }
+                    }
+
+                    songs.add(
+                        SongItem(
+                            id = item.optString("videoId"),
+                            name = item.optString("title"),
+                            duration = durationSeconds,
+                            image = songImages,
+                            artist = songArtists,
+                            searchSource = "ytmusic"
+                        )
+                    )
+                }
+            }
+
+            return PlaylistDetailUiState(
+                id = playlistId,
+                name = title,
+                description = description,
+                songCount = trackCount.toString(),
+                images = images,
+                artists = artists,
+                songs = songs,
+                totalDuration = totalDuration
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return PlaylistDetailUiState(
+                isError = true,
+                errorMessage = e.message ?: "Something went wrong."
             )
         }
     }

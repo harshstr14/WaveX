@@ -1,13 +1,16 @@
 package com.example.wavex.albumScreen
 
-import com.example.wavex.songData.Artists
-import com.example.wavex.songData.Download
-import com.example.wavex.songData.Image
+import com.example.wavex.HttpClientProvider
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
 import com.example.wavex.songData.Album
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Download
+import com.example.wavex.songData.Image
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONObject
 
 class AlbumRepository {
@@ -67,7 +70,8 @@ class AlbumRepository {
                         image = images,
                         duration = song.optInt("duration"),
                         playCount = song.optInt("playCount"),
-                        downloadUrl = downloads
+                        downloadUrl = downloads,
+                        searchSource = "jiosaavn"
                     )
                 )
             }
@@ -120,6 +124,156 @@ class AlbumRepository {
             Download(
                 quality = obj.optString("quality"),
                 url = obj.optString("url")
+            )
+        }
+    }
+
+    suspend fun fetchYTMusicAlbum(
+        albumId: String,
+        baseUrl: String
+    ): AlbumDetailUiState = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/albums/$albumId")
+                .get()
+                .build()
+
+            val call = HttpClientProvider.client.newCall(request)
+
+            coroutineContext.job.invokeOnCompletion {
+                call.cancel()
+            }
+
+            val response = call.execute()
+
+            if (!response.isSuccessful) {
+                return@withContext AlbumDetailUiState(
+                    isError = true,
+                    errorMessage = "Network error. Please try again."
+                )
+            }
+
+            val body = response.body?.string().orEmpty()
+
+            if (body.isEmpty()) {
+                return@withContext AlbumDetailUiState(
+                    isError = true,
+                    errorMessage = "Empty response received."
+                )
+            }
+
+            parseYTMusicAlbum(body)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AlbumDetailUiState(
+                isError = true,
+                errorMessage = e.message ?: "Something went wrong."
+            )
+        }
+    }
+
+    fun parseYTMusicAlbum(jsonString: String): AlbumDetailUiState {
+        try {
+            val json = JSONObject(jsonString)
+
+            val success = json.optBoolean("success", false)
+
+            if (!success) {
+                return AlbumDetailUiState(
+                    isError = true,
+                    errorMessage = "Failed to load album."
+                )
+            }
+
+            val albumObject = json.optJSONObject("album")
+
+            val albumId = albumObject?.optString("browseId").orEmpty()
+            val albumName = albumObject?.optString("title").orEmpty()
+
+            val year = albumObject
+                ?.optString("year")
+                ?.toIntOrNull() ?: 0
+
+            val thumbnail = albumObject
+                ?.optString("thumbnail")
+                ?.replace(Regex("w\\d+-h\\d+"), "w520-h520")
+                .orEmpty()
+
+            val songCount = albumObject
+                ?.optInt("trackCount", 0)
+                ?.toString()
+                .orEmpty()
+
+            val albumImages = listOf(
+                Image(
+                    quality = "high",
+                    url = thumbnail
+                )
+            )
+
+            val artistObject = json.optJSONObject("artist")
+
+            val primaryArtists = mutableListOf(
+                Artists(
+                    id = artistObject?.optString("browseId").orEmpty(),
+                    name = artistObject?.optString("name").orEmpty(),
+                    role = "Artist",
+                    image = ""
+                )
+            )
+
+            val songs = mutableListOf<SongItem>()
+            val tracksArray = json.optJSONArray("tracks")
+
+            var totalDuration = 0
+
+            if (tracksArray != null) {
+                for (i in 0 until tracksArray.length()) {
+                    val item = tracksArray.getJSONObject(i)
+
+                    val durationText = item.optString("duration")
+
+                    val durationSeconds = durationText.split(":").let {
+
+                        val minutes = it.getOrNull(0)?.toIntOrNull() ?: 0
+                        val seconds = it.getOrNull(1)?.toIntOrNull() ?: 0
+
+                        (minutes * 60) + seconds
+                    }
+
+                    totalDuration += durationSeconds
+
+                    songs.add(
+                        SongItem(
+                            id = item.optString("videoId"),
+                            name = item.optString("title"),
+                            duration = durationSeconds,
+                            image = albumImages.toMutableList(),
+                            artist = primaryArtists,
+                            searchSource = "ytmusic"
+                        )
+                    )
+                }
+            }
+
+            return AlbumDetailUiState(
+                albumId = albumId,
+                albumName = albumName,
+                description = "",
+                songCount = songCount,
+                type = "Album",
+                year = year,
+                albumImages = albumImages,
+                primaryArtists = primaryArtists,
+                songs = songs,
+                totalDuration = totalDuration
+            )
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return AlbumDetailUiState(
+                isError = true,
+                errorMessage = e.message ?: "Something went wrong."
             )
         }
     }

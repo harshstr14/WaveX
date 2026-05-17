@@ -19,5 +19,6 @@ data class SongItem(
     var downloadUrl: MutableList<Download> = mutableListOf(),
     var isFav: Boolean = false,
     var localPath: String? = null,
-    val source: String? = null
+    val source: String? = null,
+    val searchSource: String ?= null
 ) : Parcelable

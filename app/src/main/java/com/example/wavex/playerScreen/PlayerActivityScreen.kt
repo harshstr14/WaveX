@@ -732,7 +732,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             )
                         ),
                         text = htmlToText(currentSong?.name),
-                        fontSize = 18.sp, lineHeight = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        fontSize = 20.sp, lineHeight = 24.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -745,7 +745,7 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             width = Dimension.fillToConstraints
                         },
                         text = "Album • ${htmlToText(currentSong?.album?.name)}",
-                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), maxLines = 1, textAlign = TextAlign.Center,
                         overflow = TextOverflow.Ellipsis
                     )

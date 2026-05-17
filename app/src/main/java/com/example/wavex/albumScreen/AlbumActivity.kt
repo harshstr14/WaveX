@@ -127,15 +127,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 
-data class ShareItem(
-    val title: String,
-    val subtitle: String,
-    val artists: String,
-    val image: String?,
-    val id: String,
-    val type: ShareType
-)
-
 enum class ShareType {
     SONG,
     ALBUM,
@@ -159,6 +150,7 @@ class AlbumActivity : ComponentActivity() {
 
         val albumId = intent.getStringExtra("album_id")
         val albumImageUrl = intent.getStringExtra("album_imageUrl")
+        val albumSource = intent.getStringExtra("album_source")
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -166,7 +158,7 @@ class AlbumActivity : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                Album_Activity(downloadViewModel, albumId, albumImageUrl)
+                Album_Activity(downloadViewModel, albumId, albumImageUrl, albumSource)
             }
         }
     }
@@ -177,6 +169,7 @@ class AlbumActivity : ComponentActivity() {
 private fun Album_Activity(
     downloadViewModel: DownloadViewModel,
     albumId: String?, albumImageUrl: String?,
+    albumSource: String?,
     viewModel: AlbumViewModel = viewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -216,9 +209,21 @@ private fun Album_Activity(
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
         .child(userID!!).child("Favourites").child("Albums").child(albumId.toString())
 
-    LaunchedEffect(albumId) {
-        albumId?.let {
-            viewModel.loadAlbum(it)
+    LaunchedEffect(albumId, albumSource) {
+        if (albumId.isNullOrBlank()) return@LaunchedEffect
+
+        when (albumSource) {
+            "jiosaavn" -> {
+                viewModel.loadAlbum(albumId)
+            }
+
+            "ytmusic" -> {
+                viewModel.loadYTAlbum(albumId)
+            }
+
+            else -> {
+                viewModel.loadAlbum(albumId)
+            }
         }
     }
 
@@ -933,7 +938,8 @@ private fun Album_Activity(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             AsyncImage(
-                                                model = song.image.getOrNull(2)?.url,
+                                                model = if (song.searchSource == "jiosaavn") song.image.getOrNull(2)?.url
+                                                else song.image.getOrNull(0)?.url,
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(64.dp)
@@ -1288,33 +1294,6 @@ private fun Album_Activity(
             }
         }
     }
-}
-
-fun generateShareLink(item: ShareItem): String {
-    return when (item.type) {
-        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.id}"
-        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.id}"
-        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.id}"
-        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.id}"
-    }
-}
-
-fun slightlyDarken(color: Color, factor: Float = 0.2f): Color {
-    return Color(
-        red = (color.red * (1 - factor)).coerceIn(0f, 1f),
-        green = (color.green * (1 - factor)).coerceIn(0f, 1f),
-        blue = (color.blue * (1 - factor)).coerceIn(0f, 1f),
-        alpha = 1f
-    )
-}
-
-fun darkenColor(color: Color, factor: Float = 0.35f): Color {
-    return Color(
-        red = (color.red * (1 - factor)).coerceIn(0f, 1f),
-        green = (color.green * (1 - factor)).coerceIn(0f, 1f),
-        blue = (color.blue * (1 - factor)).coerceIn(0f, 1f),
-        alpha = 1f
-    )
 }
 
 @Composable

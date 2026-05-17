@@ -38,7 +38,8 @@ class ExploreAlbumsRepository {
                     id = album.optString("id"),
                     name = album.optString("name"),
                     artist = artists.toMutableList(),
-                    image = images.toMutableList()
+                    image = images.toMutableList(),
+                    source = "jiosaavn"
                 )
             )
         }

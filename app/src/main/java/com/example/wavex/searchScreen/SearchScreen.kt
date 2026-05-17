@@ -5,9 +5,11 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
@@ -17,12 +19,14 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,8 +53,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Icon
@@ -93,6 +100,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -127,6 +135,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.searchScreen.seachHistory.SearchHistoryViewModel
 import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
 import com.example.wavex.searchScreen.uiState.SearchArtistsUiState
 import com.example.wavex.searchScreen.uiState.SearchPlaylistUiState
@@ -141,7 +150,14 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+
+enum class SearchSource {
+    JIOSAAVN,
+    YTVIDEO,
+    YTMUSIC
+}
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -150,14 +166,22 @@ fun SearchScreen(
     qualityIndex: Int?,
     navController: NavController,
     snackBarHostState: SnackbarHostState,
-    showSheet: Boolean
+    showSheet: Boolean,
+    viewModel: SearchHistoryViewModel = viewModel(),
 ) {
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val recentSearches by viewModel.recentSearches.collectAsState()
+    Log.d("History", recentSearches.toString())
 
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
     var debouncedQuery by remember { mutableStateOf("") }
+    //val showHistory = searchText.text.isBlank()
+
+    var selectedSource by remember {
+        mutableStateOf(SearchSource.JIOSAAVN)
+    }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -215,14 +239,17 @@ fun SearchScreen(
                 }
             }
     ) {
-        val(searchField, backButton, searchResults) = createRefs()
+        val(searchField, backButton, searchResults, sources, history) = createRefs()
 
         Box(
-            modifier = Modifier.constrainAs(backButton) {
-                top.linkTo(searchField.top)
-                bottom.linkTo(searchField.bottom)
-                start.linkTo(parent.start, margin = 25.dp)
-            }.size(36.dp).clip(RoundedCornerShape(20.dp))
+            modifier = Modifier
+                .constrainAs(backButton) {
+                    top.linkTo(searchField.top)
+                    bottom.linkTo(searchField.bottom)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }
+                .size(36.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .border(
                     width = 1.5.dp,
                     color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
@@ -248,27 +275,45 @@ fun SearchScreen(
         }
 
         SearchBar(
-            modifier = Modifier.constrainAs(searchField) {
-                top.linkTo(parent.top, margin = 20.dp)
-                start.linkTo(backButton.end)
-                end.linkTo(parent.end)
-                width = Dimension.fillToConstraints
-            }.padding(start = 20.dp, end = 20.dp)
-                .height(52.dp).focusRequester(focusRequester),
+            modifier = Modifier
+                .constrainAs(searchField) {
+                    top.linkTo(parent.top, margin = 20.dp)
+                    start.linkTo(backButton.end)
+                    end.linkTo(parent.end)
+                    width = Dimension.fillToConstraints
+                }
+                .padding(start = 18.dp, end = 18.dp)
+                .height(52.dp)
+                .focusRequester(focusRequester),
             query = searchText,
             onQueryChange = { newValue ->
                 searchText = newValue
             }
         )
 
+        SourceSelectorUI(
+            modifier = Modifier
+                .constrainAs(sources) {
+                    top.linkTo(searchField.bottom, margin = 15.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                },
+            selected = selectedSource,
+            onSourceSelected = {
+                selectedSource = it
+            }
+        )
+
         SearchTabs(
-            modifier = Modifier.constrainAs(searchResults){
-            top.linkTo(searchField.bottom, margin = 12.dp)
-            start.linkTo(parent.start)
-            end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom)
-            height = Dimension.fillToConstraints
-            },
+            modifier = Modifier
+                .constrainAs(searchResults){
+                    top.linkTo(sources.bottom, margin = 4.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    bottom.linkTo(parent.bottom)
+                    height = Dimension.fillToConstraints
+                },
+            source = selectedSource,
             searchText = debouncedQuery,
             downloadedIds = downloadedIds,
             onSongMoreClick = { song, songs, index ->
@@ -280,12 +325,35 @@ fun SearchScreen(
             snackBarHostState = snackBarHostState
         )
 
+//        AnimatedVisibility(
+//            visible = showHistory,
+//            enter = fadeIn(),
+//            exit = fadeOut(),
+//            modifier = Modifier
+//                .constrainAs(history) {
+//                    top.linkTo(sources.bottom, margin = 52.dp)
+//                    start.linkTo(parent.start)
+//                    end.linkTo(parent.end)
+//                }
+//        ) {
+//            RecentSearchSection(
+//                recentSearches = recentSearches,
+//                onClear = {
+//                    viewModel.clearSearches()
+//                },
+//                onSearchClick = {
+//                    searchText = TextFieldValue(it)
+//                }
+//            )
+//        }
+
         LaunchedEffect(Unit) {
-            snapshotFlow { searchText.text }
+            snapshotFlow { searchText.text.trim() }
                 .debounce(450)
                 .distinctUntilChanged()
-                .collectLatest { text ->
-                    debouncedQuery = text
+                .filter { it.length >= 2 || it.isEmpty() }
+                .collectLatest { query ->
+                    debouncedQuery = query
                 }
         }
     }
@@ -404,7 +472,11 @@ private fun Modifier.hideKeyboardOnClick(onClick: () -> Unit): Modifier {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: (TextFieldValue) -> Unit) {
+private fun SearchBar(
+    modifier: Modifier, query: TextFieldValue,
+    onQueryChange: (TextFieldValue) -> Unit,
+    viewModel: SearchHistoryViewModel = viewModel(),
+) {
     val selectionColors = TextSelectionColors(
         handleColor = Color(0xFF1C1C1C),
         backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
@@ -416,8 +488,16 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            placeholder = { Text("Search", fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
-                fontSize = 16.sp, lineHeight = 18.sp, color = colorResource(R.color.secondary_text_color)) },
+            placeholder = {
+                Text(
+                    text = "Search",
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.Normal,
+                    fontStyle = FontStyle.Normal,
+                    fontSize = 16.sp, lineHeight = 18.sp,
+                    color = colorResource(R.color.secondary_text_color)
+                )
+            },
             singleLine = true,
             leadingIcon = {
                 Box(
@@ -435,7 +515,7 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
                 if (query.text.isNotEmpty()) {
                     Icon(
                         painter = painterResource(R.drawable.clear_all_icon),
-                        contentDescription = "Clear",
+                        contentDescription = "Clear Icon",
                         modifier = Modifier
                             .size(22.dp)
                             .clickable { onQueryChange(
@@ -444,23 +524,23 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
                                     selection = TextRange(0)
                                 )
                             ) },
-                        tint = colorResource(R.color.theme_color)
+                        tint = colorResource(R.color.primary_text_color)
                     )
                 }
             },
             modifier = modifier
                 .border(
-                    width = if (isKeyboardVisible) 1.3.dp else 0.dp,
+                    width = if (isKeyboardVisible) 1.dp else 0.dp,
                     color = if (isKeyboardVisible)
-                        colorResource(R.color.secondary_text_color)
+                        colorResource(R.color.theme_color).copy(alpha = 0.60f)
                     else
                         Color.Transparent,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(26.dp)
                 ),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(26.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                focusedContainerColor = Color(0xFFfefefe),
+                unfocusedContainerColor = Color(0xFFfefefe),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 cursorColor = Color(0xFF121212)
@@ -471,15 +551,162 @@ private fun SearchBar(modifier: Modifier, query: TextFieldValue, onQueryChange: 
                 fontStyle = FontStyle.Normal,
                 fontSize = 16.sp, lineHeight = 18.sp,
                 color = colorResource(R.color.secondary_text_color)
+            ),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Search
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    viewModel.saveSearch(query.text)
+                }
             )
         )
+    }
+}
+
+@Composable
+fun SourceSelectorUI(
+    modifier: Modifier,
+    selected: SearchSource,
+    onSourceSelected: (SearchSource) -> Unit
+) {
+    val options = listOf(
+        SearchSource.JIOSAAVN to R.drawable.song_icon,
+        SearchSource.YTVIDEO to R.drawable.youtube_icon,
+        SearchSource.YTMUSIC to R.drawable.headset_icon
+    )
+
+    val scrollState = rememberScrollState()
+
+    val selectedBorder = colorResource(R.color.theme_color)
+    val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.20f)
+    val unselectedBg = colorResource(R.color.secondary_text_color).copy(alpha = 0.20f)
+    val textColor = colorResource(R.color.background_color)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.90f))
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+    ) {
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.scan_icon),
+                    contentDescription = null,
+                    tint = selectedBorder,
+                    modifier = Modifier.size(22.dp)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = "SOURCES",
+                    fontSize = 15.sp,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = colorResource(R.color.background_color), lineHeight = 20.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                options.forEach { (source, icon) ->
+                    val isSelected = selected == source
+
+                    val borderColor by animateColorAsState(
+                        targetValue = if (isSelected) selectedBorder else Color.Transparent,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = ""
+                    )
+
+                    val bgColor by animateColorAsState(
+                        targetValue = if (isSelected) selectedBg else unselectedBg,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = ""
+                    )
+
+                    val textAnimatedColor by animateColorAsState(
+                        targetValue = if (isSelected) Color(0xFFc2e5cb) else textColor,
+                        label = ""
+                    )
+
+                    val scale by animateDpAsState(
+                        targetValue = if (isSelected) 2.dp else 0.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = ""
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(bgColor)
+                            .border(
+                                width = 1.dp,
+                                color = borderColor,
+                                shape = RoundedCornerShape(50)
+                            )
+                            .clickable {
+                                onSourceSelected(source)
+                            }
+                            .padding(
+                                horizontal = 16.dp,
+                                vertical = 10.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                painter = painterResource(icon),
+                                contentDescription = null,
+                                tint = textAnimatedColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(2.dp + scale))
+                        }
+
+                        Text(
+                            text = source.name.lowercase(),
+                            color = textAnimatedColor,
+                            fontSize = 13.sp,
+                            fontFamily = fonts,
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @SuppressLint("FrequentlyChangingValue")
 @Composable
 private fun SearchTabs(
-    modifier: Modifier, searchText: String, downloadedIds: Set<String>,
+    modifier: Modifier, source: SearchSource,
+    searchText: String, downloadedIds: Set<String>,
     onSongMoreClick: (song: SongItem, songs: List<SongItem>, index: Int) -> Unit,
     snackBarHostState: SnackbarHostState
 ) {
@@ -577,18 +804,25 @@ private fun SearchTabs(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             flingBehavior = PagerDefaults.flingBehavior(pagerState)
         ) { page ->
             when(tabs[page]) {
                 "Artists" -> {
-                    SearchArtists(searchText, "results", modifier = Modifier, gridState = artistsGridState)
+                    SearchArtists(
+                        query = searchText,
+                        root = "results",
+                        source = source,
+                        modifier = Modifier,
+                        gridState = artistsGridState
+                    )
                 }
 
                 "Songs" -> {
                     SearchSongs(
                         query = searchText,
                         root = "results",
+                        source = source,
                         modifier = Modifier,
                         downloadedIds = downloadedIds,
                         listState = songsListState,
@@ -600,11 +834,22 @@ private fun SearchTabs(
                 }
 
                 "Albums" -> {
-                    SearchAlbums(searchText, "results", modifier = Modifier, gridState = albumsGridState)
+                    SearchAlbums(
+                        query = searchText,
+                        root = "results",
+                        source = source,
+                        modifier = Modifier,
+                        gridState = albumsGridState
+                    )
                 }
 
                 "Playlists" -> {
-                    SearchPlaylists(searchText, "results", modifier = Modifier, gridState = playlistsGridState)
+                    SearchPlaylists(
+                        query = searchText,
+                        root = "results",
+                        source = source,
+                        modifier = Modifier,
+                        gridState = playlistsGridState)
                 }
             }
         }
@@ -612,9 +857,118 @@ private fun SearchTabs(
 }
 
 @Composable
-private fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
-              onTextMeasured: (Dp) -> Unit, modifier: Modifier = Modifier)
-{
+fun RecentSearchSection(
+    recentSearches: List<String>,
+    onClear: () -> Unit,
+    onSearchClick: (String) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 22.dp, vertical = 14.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.recent_history),
+                        contentDescription = null,
+                        tint = colorResource(R.color.secondary_text_color),
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Text(
+                        text = "RECENT",
+                        color = colorResource(R.color.secondary_text_color),
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        letterSpacing = 2.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal,
+                    )
+                }
+
+                Text(
+                    text = "CLEAR",
+                    color = colorResource(R.color.secondary_text_color),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    letterSpacing = 2.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal,
+                    modifier = Modifier.clickable {
+                        onClear()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                recentSearches.forEach { item ->
+                    Row(
+                        modifier = Modifier
+                            .clickable {
+                                onSearchClick(item)
+                            }
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                colorResource(R.color.secondary_text_color).copy(alpha = 0.06f)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.10f),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .padding(
+                                horizontal = 14.dp,
+                                vertical = 12.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.clock_icon),
+                            contentDescription = null,
+                            tint = colorResource(R.color.secondary_text_color),
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Text(
+                            text = item,
+                            color = colorResource(R.color.primary_text_color),
+                            fontSize = 14.sp,
+                            lineHeight = 16.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Normal,
+                            fontStyle = FontStyle.Normal,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmoothTab(
+    text: String, selected: Boolean, onClick: () -> Unit,
+    onTextMeasured: (Dp) -> Unit, modifier: Modifier = Modifier
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val density = LocalDensity.current
 
@@ -660,11 +1014,13 @@ private fun SmoothTab(text: String, selected: Boolean, onClick: () -> Unit,
 private fun SearchArtists(
     query: String,
     root: String,
+    source: SearchSource,
     modifier: Modifier,
     viewModel: SearchArtistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val ytArtists by viewModel.ytMusicArtists.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -672,7 +1028,7 @@ private fun SearchArtists(
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, source) {
         when {
             query.isBlank() -> {
                 viewModel.clearResults()
@@ -685,7 +1041,21 @@ private fun SearchArtists(
             }
 
             else -> {
-                viewModel.fetchArtistsByQuery(query, root)
+                when(source) {
+                    SearchSource.JIOSAAVN -> {
+                        viewModel.fetchArtistsByQuery(query, root)
+                    }
+
+//                    SearchSource.YTVIDEO -> {
+//                        viewModel.fetchYTVideoSongs(query)
+//                    }
+
+                    SearchSource.YTMUSIC -> {
+                        viewModel.fetchYTMusicArtists(query)
+                    }
+
+                    else -> { }
+                }
             }
         }
     }
@@ -716,38 +1086,78 @@ private fun SearchArtists(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(artists) { artist ->
-                    Column(
-                        modifier = Modifier.hideKeyboardOnClick {
-                            val intent = Intent(context, ArtistActivity::class.java).apply {
-                                putExtra("artist_id", artist.id)
-                                putExtra("artist_imageUrl", artist.image)
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                            }
-                            context.startActivity(intent)
-                        } ,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        AsyncImage(
-                            model = artist.image.takeIf { it.isNotBlank() },
-                            contentDescription = artist.name,
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.default_artist),
-                            modifier = Modifier
-                                .size(82.dp)
-                                .clip(CircleShape)
-                        )
+                if (source == SearchSource.JIOSAAVN) {
+                    items(artists) { artist ->
+                        Column(
+                            modifier = Modifier.hideKeyboardOnClick {
+                                val intent = Intent(context, ArtistActivity::class.java).apply {
+                                    putExtra("artist_id", artist.id)
+                                    putExtra("artist_imageUrl", artist.image)
+                                    putExtra("artist_source", "jiosaavn")
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                }
+                                context.startActivity(intent)
+                            } ,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AsyncImage(
+                                model = artist.image.takeIf { it.isNotBlank() },
+                                contentDescription = artist.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_artist),
+                                modifier = Modifier
+                                    .size(82.dp)
+                                    .clip(CircleShape)
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        val artistName = htmlToText(artist.name)
+                            val artistName = htmlToText(artist.name)
 
-                        Text( modifier = Modifier.width(78.dp),
-                            text = artistName,
-                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                            Text( modifier = Modifier.width(78.dp),
+                                text = artistName,
+                                fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                else if (source == SearchSource.YTMUSIC) {
+                    items(ytArtists) { artist ->
+                        Column(
+                            modifier = Modifier.hideKeyboardOnClick {
+                                val intent = Intent(context, ArtistActivity::class.java).apply {
+                                    putExtra("artist_id", artist.id)
+                                    putExtra("artist_imageUrl", artist.image)
+                                    putExtra("artist_source", "ytmusic")
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                }
+                                context.startActivity(intent)
+                            } ,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AsyncImage(
+                                model = artist.image.takeIf { it.isNotBlank() },
+                                contentDescription = artist.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_artist),
+                                modifier = Modifier
+                                    .size(82.dp)
+                                    .clip(CircleShape)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val artistName = htmlToText(artist.name)
+
+                            Text( modifier = Modifier.width(78.dp),
+                                text = artistName,
+                                fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -759,6 +1169,7 @@ private fun SearchArtists(
 private fun SearchSongs(
     query: String,
     root: String,
+    source: SearchSource,
     modifier: Modifier,
     downloadedIds: Set<String>,
     viewModel: SearchSongsViewModel = viewModel(),
@@ -767,6 +1178,7 @@ private fun SearchSongs(
     snackBarHostState: SnackbarHostState
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val ytSongs by viewModel.ytMusicSongs.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -779,7 +1191,7 @@ private fun SearchSongs(
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, source) {
         when {
             query.isBlank() -> {
                 viewModel.clearResults()
@@ -792,7 +1204,21 @@ private fun SearchSongs(
             }
 
             else -> {
-                viewModel.fetchSongByQuery(query, root)
+                when(source) {
+                    SearchSource.JIOSAAVN -> {
+                        viewModel.fetchSongByQuery(query, root)
+                    }
+
+//                    SearchSource.YTVIDEO -> {
+//                        viewModel.fetchYTVideoSongs(query)
+//                    }
+
+                    SearchSource.YTMUSIC -> {
+                        viewModel.fetchYTMusicSongs(query)
+                    }
+
+                    else -> { }
+                }
             }
         }
     }
@@ -821,252 +1247,509 @@ private fun SearchSongs(
                 contentPadding = PaddingValues(top = 8.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val uniqueSongs = songs.distinctBy { it.id }
+                if (source == SearchSource.JIOSAAVN) {
+                    val uniqueSongs = songs.distinctBy { it.id }
 
-                itemsIndexed(
-                    items = uniqueSongs,
-                    key = { _, song -> song.id }
-                ) { index, song ->
+                    itemsIndexed(
+                        items = uniqueSongs,
+                        key = { _, song -> song.id }
+                    ) { index, song ->
 
-                    val isDownloaded = downloadedIds.contains(song.id)
-                    val state = ParallelDownloader.downloadStates[song.id]
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AnimatedVisibility(
-                            visible = currentSong?.id == song.id,
-                            enter = fadeIn() + expandHorizontally(),
-                            exit = fadeOut() + shrinkHorizontally()
-                        ) {
-                            val composition by rememberLottieComposition(
-                                LottieCompositionSpec.RawRes(R.raw.music_spectrum)
-                            )
-
-                            val progress by animateLottieCompositionAsState(
-                                composition = composition,
-                                isPlaying = isPlaying && currentSong?.id == song.id,
-                                iterations = LottieConstants.IterateForever
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(RectangleShape)
-                            ) {
-                                LottieAnimation(
-                                    composition = composition,
-                                    progress = { progress },
-                                    modifier = Modifier
-                                        .size(50.dp)
-                                        .graphicsLayer {
-                                            scaleX = 2.2f
-                                            scaleY = 2.2f
-                                        }
-                                )
-                            }
-                        }
+                        val isDownloaded = downloadedIds.contains(song.id)
+                        val state = ParallelDownloader.downloadStates[song.id]
 
                         Row(
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
-                                .hideKeyboardOnClick {
-                                    scope.launch {
-                                        PlayerManager.currentPlaylist = listOf(song)
-                                        PlayerManager.currentIndex = 0
-
-                                        val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                            action = MusicPlayerService.ACTION_PLAY_NEW
-                                            putExtra("index", 0)
-                                            putExtra("from_search", true)
-                                        }
-
-                                        ContextCompat.startForegroundService(context, intent)
-
-                                        RecentlyPlayedManager.add(context, song)
-                                    }
-                            },
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AsyncImage(
-                                model = song.image.getOrNull(2)?.url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f),
-                                verticalArrangement = Arrangement.Center
+                            AnimatedVisibility(
+                                visible = currentSong?.id == song.id,
+                                enter = fadeIn() + expandHorizontally(),
+                                exit = fadeOut() + shrinkHorizontally()
                             ) {
-                                val songName = htmlToText(song.name)
-
-                                Text(
-                                    text = songName,
-                                    fontSize = 15.sp,
-                                    lineHeight = 16.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.Bold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                val composition by rememberLottieComposition(
+                                    LottieCompositionSpec.RawRes(R.raw.music_spectrum)
                                 )
 
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                val artistsList = song.artist
-                                    .takeIf { it.isNotEmpty() }
-                                    ?.joinToString(", ") { it.name }
-                                    ?: "Unknown Artist"
-
-                                val artistsName = htmlToText(artistsList)
-
-                                Text(
-                                    text = artistsName,
-                                    fontSize = 13.sp,
-                                    lineHeight = 14.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                val progress by animateLottieCompositionAsState(
+                                    composition = composition,
+                                    isPlaying = isPlaying && currentSong?.id == song.id,
+                                    iterations = LottieConstants.IterateForever
                                 )
 
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = formatDuration(song.duration),
-                                    fontSize = 12.sp,
-                                    lineHeight = 14.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(RectangleShape)
+                                ) {
+                                    LottieAnimation(
+                                        composition = composition,
+                                        progress = { progress },
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .graphicsLayer {
+                                                scaleX = 2.2f
+                                                scaleY = 2.2f
+                                            }
+                                    )
+                                }
                             }
 
-                            Spacer(modifier = Modifier.width(14.dp))
-
                             Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
+                                    .hideKeyboardOnClick {
+                                        scope.launch {
+                                            PlayerManager.currentPlaylist = listOf(song)
+                                            PlayerManager.currentIndex = 0
+
+                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                                putExtra("index", 0)
+                                                putExtra("from_search", true)
+                                            }
+
+                                            ContextCompat.startForegroundService(context, intent)
+
+                                            RecentlyPlayedManager.add(context, song)
+                                        }
+                                    },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                IconButton(
-                                    onClick = {
-                                        val qualityIndex = musicService?.downloadQualityIndex
-                                        val url = song.downloadUrl[qualityIndex ?: 4].url
+                                AsyncImage(
+                                    model = song.image.getOrNull(2)?.url,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    val songName = htmlToText(song.name)
+
+                                    Text(
+                                        text = songName,
+                                        fontSize = 15.sp,
+                                        lineHeight = 16.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Bold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    val artistsList = song.artist
+                                        .takeIf { it.isNotEmpty() }
+                                        ?.joinToString(", ") { it.name }
+                                        ?: "Unknown Artist"
+
+                                    val artistsName = htmlToText(artistsList)
+
+                                    Text(
+                                        text = artistsName,
+                                        fontSize = 13.sp,
+                                        lineHeight = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = formatDuration(song.duration),
+                                        fontSize = 12.sp,
+                                        lineHeight = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            val qualityIndex = musicService?.downloadQualityIndex
+                                            val url = song.downloadUrl[qualityIndex ?: 4].url
+
+                                            when {
+                                                isDownloaded -> {
+                                                    scope.launch {
+                                                        snackBarHostState.showSnackbar("Song already downloaded")
+                                                    }
+                                                }
+
+                                                state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                        action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
+                                                        putExtra("songId", song.id)
+                                                    }
+
+                                                    context.startService(intent)
+                                                }
+
+                                                state == ParallelDownloader.DownloadState.PAUSED -> {
+                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                        action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+                                                        putExtra("url", url)
+                                                        putExtra("fileName", song.name)
+                                                        putExtra("songId", song.id)
+                                                        putExtra("song", song)
+                                                    }
+
+                                                    ContextCompat.startForegroundService(context, intent)
+                                                }
+
+                                                else -> {
+                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                                        action = MusicPlayerService.ACTION_DOWNLOAD_START
+                                                        putExtra("url", url)
+                                                        putExtra("fileName", song.name)
+                                                        putExtra("songId", song.id)
+                                                        putExtra("song", song)
+                                                    }
+
+                                                    ContextCompat.startForegroundService(context, intent)
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        val composition by rememberLottieComposition(
+                                            LottieCompositionSpec.RawRes(R.raw.timer)
+                                        )
+
+                                        val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
+
+                                        val progress by animateLottieCompositionAsState(
+                                            composition = composition,
+                                            isPlaying = isPlayingAnimation,
+                                            iterations = LottieConstants.IterateForever
+                                        )
 
                                         when {
-                                            isDownloaded -> {
-                                                scope.launch {
-                                                    snackBarHostState.showSnackbar("Song already downloaded")
+                                            state == ParallelDownloader.DownloadState.DOWNLOADING ||
+                                                    state == ParallelDownloader.DownloadState.PAUSED -> {
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(30.dp)
+                                                        .clip(RectangleShape)
+                                                ) {
+                                                    LottieAnimation(
+                                                        composition = composition,
+                                                        progress = { progress },
+                                                        modifier = Modifier
+                                                            .size(30.dp)
+                                                            .graphicsLayer {
+                                                                scaleX = 2f
+                                                                scaleY = 2f
+                                                            }
+                                                    )
                                                 }
-                                            }
-
-                                            state == ParallelDownloader.DownloadState.DOWNLOADING -> {
-                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                    action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
-                                                    putExtra("songId", song.id)
-                                                }
-
-                                                context.startService(intent)
-                                            }
-
-                                            state == ParallelDownloader.DownloadState.PAUSED -> {
-                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                    action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                    putExtra("url", url)
-                                                    putExtra("fileName", song.name)
-                                                    putExtra("songId", song.id)
-                                                    putExtra("song", song)
-                                                }
-
-                                                ContextCompat.startForegroundService(context, intent)
                                             }
 
                                             else -> {
-                                                val intent = Intent(context, MusicPlayerService::class.java).apply {
-                                                    action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                    putExtra("url", url)
-                                                    putExtra("fileName", song.name)
-                                                    putExtra("songId", song.id)
-                                                    putExtra("song", song)
-                                                }
-
-                                                ContextCompat.startForegroundService(context, intent)
-                                            }
-                                        }
-                                    }
-                                ) {
-                                    val composition by rememberLottieComposition(
-                                        LottieCompositionSpec.RawRes(R.raw.timer)
-                                    )
-
-                                    val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
-
-                                    val progress by animateLottieCompositionAsState(
-                                        composition = composition,
-                                        isPlaying = isPlayingAnimation,
-                                        iterations = LottieConstants.IterateForever
-                                    )
-
-                                    when {
-                                        state == ParallelDownloader.DownloadState.DOWNLOADING ||
-                                                state == ParallelDownloader.DownloadState.PAUSED -> {
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(30.dp)
-                                                    .clip(RectangleShape)
-                                            ) {
-                                                LottieAnimation(
-                                                    composition = composition,
-                                                    progress = { progress },
-                                                    modifier = Modifier
-                                                        .size(30.dp)
-                                                        .graphicsLayer {
-                                                            scaleX = 2f
-                                                            scaleY = 2f
-                                                        }
+                                                Icon(
+                                                    painter = if (isDownloaded)
+                                                        painterResource(R.drawable.downloaded_icon)
+                                                    else
+                                                        painterResource(R.drawable.download_icon),
+                                                    contentDescription = "Download",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = if (isDownloaded)
+                                                        colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                    else
+                                                        colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
                                                 )
                                             }
                                         }
+                                    }
 
-                                        else -> {
-                                            Icon(
-                                                painter = if (isDownloaded)
-                                                    painterResource(R.drawable.downloaded_icon)
-                                                else
-                                                    painterResource(R.drawable.download_icon),
-                                                contentDescription = "Download",
-                                                modifier = Modifier.size(24.dp),
-                                                tint = if (isDownloaded)
-                                                    colorResource(R.color.theme_color).copy(alpha = 0.6f)
-                                                else
-                                                    colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
-                                            )
-                                        }
+                                    IconButton(onClick = {
+                                        onMoreClick(song, songs, index)
+                                    }) {
+                                        Icon(
+                                            modifier = Modifier.size(20.dp),
+                                            painter = painterResource(R.drawable.three_dots_icon),
+                                            contentDescription = "Three Dots",
+                                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                        )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
 
-                                IconButton(onClick = {
-                                    onMoreClick(song, songs, index)
-                                }) {
-                                    Icon(
-                                        modifier = Modifier.size(20.dp),
-                                        painter = painterResource(R.drawable.three_dots_icon),
-                                        contentDescription = "Three Dots",
-                                        tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                else if (source == SearchSource.YTMUSIC) {
+                    val uniqueSongs = ytSongs.distinctBy { it.id }
+
+                    itemsIndexed(
+                        items = uniqueSongs,
+                        key = { _, song -> song.id }
+                    ) { index, song ->
+
+                        val isDownloaded = downloadedIds.contains(song.id)
+                        val state = ParallelDownloader.downloadStates[song.id]
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AnimatedVisibility(
+                                visible = currentSong?.id == song.id,
+                                enter = fadeIn() + expandHorizontally(),
+                                exit = fadeOut() + shrinkHorizontally()
+                            ) {
+                                val composition by rememberLottieComposition(
+                                    LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+                                )
+
+                                val progress by animateLottieCompositionAsState(
+                                    composition = composition,
+                                    isPlaying = isPlaying && currentSong?.id == song.id,
+                                    iterations = LottieConstants.IterateForever
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(RectangleShape)
+                                ) {
+                                    LottieAnimation(
+                                        composition = composition,
+                                        progress = { progress },
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .graphicsLayer {
+                                                scaleX = 2.2f
+                                                scaleY = 2.2f
+                                            }
                                     )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
+                                    .hideKeyboardOnClick {
+//                                        scope.launch {
+//                                            PlayerManager.currentPlaylist = listOf(song)
+//                                            PlayerManager.currentIndex = 0
+//
+//                                            val intent = Intent(context, MusicPlayerService::class.java).apply {
+//                                                action = MusicPlayerService.ACTION_PLAY_NEW
+//                                                putExtra("index", 0)
+//                                                putExtra("from_search", true)
+//                                            }
+//
+//                                            ContextCompat.startForegroundService(context, intent)
+//
+//                                            RecentlyPlayedManager.add(context, song)
+//                                        }
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = song.image
+                                        .getOrNull(0)
+                                        ?.url,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = htmlToText(song.name),
+                                        fontSize = 15.sp,
+                                        lineHeight = 16.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Bold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    val artistsList = if (song.artist.isNotEmpty()) {
+                                        song.artist.joinToString(", ") { it.name }
+                                    } else {
+                                        "Unknown Artist"
+                                    }
+
+                                    val artistsName = htmlToText(artistsList)
+
+                                    Text(
+                                        text = artistsName,
+                                        fontSize = 13.sp,
+                                        lineHeight = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = "00",
+                                        fontSize = 12.sp,
+                                        lineHeight = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = {
+//                                            val qualityIndex = musicService?.downloadQualityIndex
+//                                            val url = song.downloadUrl[qualityIndex ?: 4].url
+//
+//                                            when {
+//                                                isDownloaded -> {
+//                                                    scope.launch {
+//                                                        snackBarHostState.showSnackbar("Song already downloaded")
+//                                                    }
+//                                                }
+//
+//                                                state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+//                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+//                                                        action = MusicPlayerService.ACTION_DOWNLOAD_PAUSE
+//                                                        putExtra("songId", song.id)
+//                                                    }
+//
+//                                                    context.startService(intent)
+//                                                }
+//
+//                                                state == ParallelDownloader.DownloadState.PAUSED -> {
+//                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+//                                                        action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
+//                                                        putExtra("url", url)
+//                                                        putExtra("fileName", song.name)
+//                                                        putExtra("songId", song.id)
+//                                                        putExtra("song", song)
+//                                                    }
+//
+//                                                    ContextCompat.startForegroundService(context, intent)
+//                                                }
+//
+//                                                else -> {
+//                                                    val intent = Intent(context, MusicPlayerService::class.java).apply {
+//                                                        action = MusicPlayerService.ACTION_DOWNLOAD_START
+//                                                        putExtra("url", url)
+//                                                        putExtra("fileName", song.name)
+//                                                        putExtra("songId", song.id)
+//                                                        putExtra("song", song)
+//                                                    }
+//
+//                                                    ContextCompat.startForegroundService(context, intent)
+//                                                }
+//                                            }
+                                        }
+                                    ) {
+                                        val composition by rememberLottieComposition(
+                                            LottieCompositionSpec.RawRes(R.raw.timer)
+                                        )
+
+                                        val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
+
+                                        val progress by animateLottieCompositionAsState(
+                                            composition = composition,
+                                            isPlaying = isPlayingAnimation,
+                                            iterations = LottieConstants.IterateForever
+                                        )
+
+                                        when {
+                                            state == ParallelDownloader.DownloadState.DOWNLOADING ||
+                                                    state == ParallelDownloader.DownloadState.PAUSED -> {
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(30.dp)
+                                                        .clip(RectangleShape)
+                                                ) {
+                                                    LottieAnimation(
+                                                        composition = composition,
+                                                        progress = { progress },
+                                                        modifier = Modifier
+                                                            .size(30.dp)
+                                                            .graphicsLayer {
+                                                                scaleX = 2f
+                                                                scaleY = 2f
+                                                            }
+                                                    )
+                                                }
+                                            }
+
+                                            else -> {
+                                                Icon(
+                                                    painter = if (isDownloaded)
+                                                        painterResource(R.drawable.downloaded_icon)
+                                                    else
+                                                        painterResource(R.drawable.download_icon),
+                                                    contentDescription = "Download",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = if (isDownloaded)
+                                                        colorResource(R.color.theme_color).copy(alpha = 0.6f)
+                                                    else
+                                                        colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    IconButton(onClick = {
+                                        onMoreClick(song, songs, index)
+                                    }) {
+                                        Icon(
+                                            modifier = Modifier.size(20.dp),
+                                            painter = painterResource(R.drawable.three_dots_icon),
+                                            contentDescription = "Three Dots",
+                                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.6f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1081,11 +1764,13 @@ private fun SearchSongs(
 private fun SearchAlbums(
     query: String,
     root: String,
+    source: SearchSource,
     modifier: Modifier,
     viewModel: SearchAlbumsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val ytAlbums by viewModel.ytMusicAlbums.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -1093,7 +1778,7 @@ private fun SearchAlbums(
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, source) {
         when {
             query.isBlank() -> {
                 viewModel.clearResults()
@@ -1106,7 +1791,21 @@ private fun SearchAlbums(
             }
 
             else -> {
-                viewModel.fetchAlbumByQuery(query, root)
+                when(source) {
+                    SearchSource.JIOSAAVN -> {
+                        viewModel.fetchAlbumByQuery(query, root)
+                    }
+
+//                    SearchSource.YTVIDEO -> {
+//                        viewModel.fetchYTVideoSongs(query)
+//                    }
+
+                    SearchSource.YTMUSIC -> {
+                        viewModel.fetchYTMusicAlbums(query)
+                    }
+
+                    else -> { }
+                }
             }
         }
     }
@@ -1137,51 +1836,107 @@ private fun SearchAlbums(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                items(albums) { album ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .hideKeyboardOnClick {
-                                val intent = Intent(context, AlbumActivity::class.java).apply {
-                                    putExtra("album_id", album.id)
-                                    putExtra("album_imageUrl", album.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                }
-                                context.startActivity(intent)
-                            }
-                    ) {
-                        AsyncImage(
-                            model = album.image[2].url,
-                            contentDescription = album.name,
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.default_image),
+                if (source == SearchSource.JIOSAAVN) {
+                    items(albums) { album ->
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth().aspectRatio(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
+                                .fillMaxWidth()
+                                .hideKeyboardOnClick {
+                                    val intent = Intent(context, AlbumActivity::class.java).apply {
+                                        putExtra("album_id", album.id)
+                                        putExtra("album_imageUrl", album.image[2].url)
+                                        putExtra("album_source", "jiosaavn")
+                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            AsyncImage(
+                                model = album.image[2].url,
+                                contentDescription = album.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_image),
+                                modifier = Modifier
+                                    .fillMaxWidth().aspectRatio(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        val albumName = htmlToText(album.name)
+                            val albumName = htmlToText(album.name)
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                            text = albumName,
-                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                text = albumName,
+                                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
 
-                        val artistsName = album.artist
-                            .takeIf { it.isNotEmpty() }
-                            ?.joinToString(", ") { it.name }
-                            ?: "Unknown Artist"
+                            val artistsName = album.artist
+                                .takeIf { it.isNotEmpty() }
+                                ?.joinToString(", ") { it.name }
+                                ?: "Unknown Artist"
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp ),
-                            text = artistsName,
-                            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.secondary_text_color), maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                            Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                text = artistsName,
+                                fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                else if (source == SearchSource.YTMUSIC) {
+                    items(ytAlbums) { album ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .hideKeyboardOnClick {
+                                    val intent = Intent(context, AlbumActivity::class.java).apply {
+                                        putExtra("album_id", album.id)
+                                        putExtra("album_imageUrl", album.image.getOrNull(0)?.url)
+                                        putExtra("album_source", "ytmusic")
+                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            AsyncImage(
+                                model = album.image
+                                    .getOrNull(0)
+                                    ?.url,
+                                contentDescription = album.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_image),
+                                modifier = Modifier
+                                    .fillMaxWidth().aspectRatio(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val albumName = htmlToText(album.name)
+
+                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                text = albumName,
+                                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            val artistsList = if (album.artist.isNotEmpty()) {
+                                album.artist.joinToString(", ") { it.name }
+                            } else {
+                                "Unknown Artist"
+                            }
+
+                            Text( modifier = Modifier.padding(horizontal = 2.dp ),
+                                text = htmlToText(artistsList),
+                                fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -1193,11 +1948,13 @@ private fun SearchAlbums(
 private fun SearchPlaylists(
     query: String,
     root: String,
+    source: SearchSource,
     modifier: Modifier,
     viewModel: SearchPlaylistsViewModel = viewModel(),
     gridState: LazyGridState
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val ytPlaylists by viewModel.ytMusicPlaylists.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -1205,7 +1962,7 @@ private fun SearchPlaylists(
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, source) {
         when {
             query.isBlank() -> {
                 viewModel.clearResults()
@@ -1218,7 +1975,21 @@ private fun SearchPlaylists(
             }
 
             else -> {
-                viewModel.fetchPlayListByQuery(query, root)
+                when(source) {
+                    SearchSource.JIOSAAVN -> {
+                        viewModel.fetchPlayListByQuery(query, root)
+                    }
+
+//                    SearchSource.YTVIDEO -> {
+//                        viewModel.fetchYTVideoSongs(query)
+//                    }
+
+                    SearchSource.YTMUSIC -> {
+                        viewModel.fetchYTMusicPlaylists(query)
+                    }
+
+                    else -> { }
+                }
             }
         }
     }
@@ -1249,39 +2020,82 @@ private fun SearchPlaylists(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                items(playlists) { playlist ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .hideKeyboardOnClick {
-                                val intent = Intent(context, PlaylistActivity::class.java).apply {
-                                    putExtra("playlist_id", playlist.id)
-                                    putExtra("playlist_imageUrl", playlist.image[2].url)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                }
-                                context.startActivity(intent)
-                            }
-                    ) {
-                        AsyncImage(
-                            model = playlist.image[2].url,
-                            contentDescription = playlist.name,
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.default_image),
+                if (source == SearchSource.JIOSAAVN) {
+                    items(playlists) { playlist ->
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth().aspectRatio(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
+                                .fillMaxWidth()
+                                .hideKeyboardOnClick {
+                                    val intent = Intent(context, PlaylistActivity::class.java).apply {
+                                        putExtra("playlist_id", playlist.id)
+                                        putExtra("playlist_imageUrl", playlist.image[2].url)
+                                        putExtra("playlist_source", "jiosaavn")
+                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            AsyncImage(
+                                model = playlist.image[2].url,
+                                contentDescription = playlist.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_image),
+                                modifier = Modifier
+                                    .fillMaxWidth().aspectRatio(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        val playlistName = htmlToText(playlist.name)
+                            val playlistName = htmlToText(playlist.name)
 
-                        Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
-                            text = playlistName,
-                            fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                text = playlistName,
+                                fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                else if (source == SearchSource.YTMUSIC) {
+                    items(ytPlaylists) { playlist ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .hideKeyboardOnClick {
+                                    val intent = Intent(context, PlaylistActivity::class.java).apply {
+                                        putExtra("playlist_id", playlist.id)
+                                        putExtra("playlist_imageUrl", playlist.image.getOrNull(0)?.url)
+                                        putExtra("playlist_source", "ytmusic")
+                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            AsyncImage(
+                                model = playlist.image
+                                    .getOrNull(0)
+                                    ?.url,
+                                contentDescription = playlist.name,
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(R.drawable.default_image),
+                                modifier = Modifier
+                                    .fillMaxWidth().aspectRatio(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val playlistName = htmlToText(playlist.name)
+
+                            Text( modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                text = playlistName,
+                                fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.primary_text_color), maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -1293,7 +2107,7 @@ private fun SearchPlaylists(
 private fun EmptyState(text: String) {
     Box(
         modifier = Modifier
-            .fillMaxWidth().padding(bottom = 100.dp),
+            .fillMaxSize().padding(bottom = 100.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -1353,7 +2167,7 @@ private fun LoadingEffect() {
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(bottom = 100.dp)
             .size(110.dp)
             .clip(RectangleShape),

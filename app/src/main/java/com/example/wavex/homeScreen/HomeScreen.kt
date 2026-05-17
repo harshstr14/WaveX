@@ -1246,7 +1246,9 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                     ) {
                         val intent = Intent(context, AlbumActivity::class.java).apply {
                             putExtra("album_id", album.id)
-                            putExtra("album_imageUrl", album.image[2].url)
+                            putExtra("album_imageUrl", if (album.source == "ytmusic") album.image.getOrNull(0)?.url
+                                    else album.image.getOrNull(2)?.url
+                            )
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)

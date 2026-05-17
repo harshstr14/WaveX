@@ -4,8 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.DataItem
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.searchScreen.repository.SearchAlbumsRepository
 import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
+import com.example.wavex.searchScreen.uiState.SearchSongsUiState
+import com.example.wavex.searchScreen.viewModel.SearchSongsViewModel.Companion.BASE_URL
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +21,9 @@ class SearchAlbumsViewModel(
 
     private val _albums = MutableStateFlow<List<DataItem>>(emptyList())
     val albums = _albums.asStateFlow()
+
+    private val _ytMusicAlbums = MutableStateFlow<List<DataItem>>(emptyList())
+    val ytMusicAlbums = _ytMusicAlbums.asStateFlow()
 
     private val _uiState =
         MutableStateFlow<SearchAlbumsUiState>(SearchAlbumsUiState.Idle)
@@ -48,7 +54,45 @@ class SearchAlbumsViewModel(
             } catch (e: Exception) {
                 _uiState.value =
                     SearchAlbumsUiState.Error("Something went wrong")
-                Log.e("SAAVN", "Artist search failed", e)
+                Log.e("SAAVN", "Album search failed", e)
+            }
+        }
+    }
+
+    fun fetchYTMusicAlbums(query: String) {
+        if (query.length < 2) {
+            searchJob?.cancel()
+            clearResults()
+            _uiState.value = SearchAlbumsUiState.Idle
+            return
+        }
+
+        searchJob?.cancel()
+
+        searchJob = viewModelScope.launch {
+            _uiState.value = SearchAlbumsUiState.Loading
+
+            try {
+                val result = repository.ytMusicSearch(
+                    query = query,
+                    baseUrl = BASE_URL
+                )
+
+                _ytMusicAlbums.value = result
+
+                _uiState.value =
+                    if (result.isEmpty())
+                        SearchAlbumsUiState.Empty
+                    else
+                        SearchAlbumsUiState.Success
+
+            } catch (_: CancellationException) {
+
+            } catch (e: Exception) {
+                _uiState.value =
+                    SearchAlbumsUiState.Error("Something went wrong")
+
+                Log.e("YT_MUSIC", "YT Music search failed", e)
             }
         }
     }

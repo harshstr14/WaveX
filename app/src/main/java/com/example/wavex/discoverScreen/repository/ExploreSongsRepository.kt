@@ -52,7 +52,8 @@ class ExploreSongsRepository {
                     image = images.toMutableList(),
                     duration = song.optInt("duration"),
                     playCount = song.optInt("playCount"),
-                    downloadUrl = downloads.toMutableList()
+                    downloadUrl = downloads.toMutableList(),
+                    searchSource = "jiosaavn"
                 )
             )
         }

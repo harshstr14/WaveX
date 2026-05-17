@@ -663,7 +663,8 @@ fun ExploreSongs(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             AsyncImage(
-                                model = song.image.getOrNull(2)?.url,
+                                model = if (song.searchSource == "jiosaavn") song.image.getOrNull(2)?.url
+                                else song.image.getOrNull(0)?.url,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(64.dp)
@@ -983,14 +984,17 @@ fun ExploreAlbums(
                             ) {
                                 val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
-                                    putExtra("album_imageUrl", album.image[2].url)
+                                    putExtra("album_imageUrl", if (album.source == "ytmusic") album.image.getOrNull(0)?.url
+                                                else album.image.getOrNull(2)?.url
+                                    )
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
                     ) {
                         AsyncImage(
-                            model = album.image.getOrNull(2)?.url,
+                            model = if (album.source == "jiosaavn") album.image.getOrNull(2)?.url
+                            else album.image.getOrNull(0)?.url,
                             contentDescription = album.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),
@@ -1082,14 +1086,17 @@ fun ExplorePlaylist(
                             ) {
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
-                                    putExtra("playlist_imageUrl", playlist.image[2].url)
+                                    putExtra("playlist_imageUrl", if (playlist.source == "jiosaavn") playlist.image[2].url
+                                                else playlist.image.getOrNull(0)?.url
+                                    )
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
                     ) {
                         AsyncImage(
-                            model = playlist.image.getOrNull(2)?.url,
+                            model = if (playlist.source == "jiosaavn") playlist.image.getOrNull(2)?.url
+                            else playlist.image.getOrNull(0)?.url,
                             contentDescription = playlist.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),

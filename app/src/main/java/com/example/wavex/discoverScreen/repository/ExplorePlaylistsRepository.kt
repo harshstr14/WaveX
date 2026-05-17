@@ -40,7 +40,8 @@ class ExplorePlaylistsRepository {
                     id = playlist.optString("id"),
                     name = playlist.optString("name"),
                     artist = artists.toMutableList(),
-                    image = images.toMutableList()
+                    image = images.toMutableList(),
+                    source = "jiosaavn"
                 )
             )
         }
