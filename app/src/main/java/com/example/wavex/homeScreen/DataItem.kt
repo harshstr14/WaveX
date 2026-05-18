@@ -8,5 +8,5 @@ data class DataItem(
     val name: String = "",
     val artist: MutableList<Artists> = mutableListOf(),
     val image: MutableList<Image> = mutableListOf(),
-    val source: String = ""
+    val searchSource: String = ""
 )

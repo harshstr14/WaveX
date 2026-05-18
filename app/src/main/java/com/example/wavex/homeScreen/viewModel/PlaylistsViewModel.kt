@@ -11,6 +11,7 @@ import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.searchScreen.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,7 +92,7 @@ class PlaylistsViewModel : ViewModel() {
                 }
 
             parsedPlaylist.add(
-                DataItem(id, name, primaryArtists, image)
+                DataItem(id, name, primaryArtists, image, searchSource = SearchSource.JIOSAAVN.name)
             )
         }
 

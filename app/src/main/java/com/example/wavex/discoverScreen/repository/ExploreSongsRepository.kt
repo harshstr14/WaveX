@@ -53,7 +53,7 @@ class ExploreSongsRepository {
                     duration = song.optInt("duration"),
                     playCount = song.optInt("playCount"),
                     downloadUrl = downloads.toMutableList(),
-                    searchSource = "jiosaavn"
+                    songSource = "jiosaavn"
                 )
             )
         }

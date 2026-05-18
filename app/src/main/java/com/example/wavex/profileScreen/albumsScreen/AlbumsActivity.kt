@@ -81,6 +81,7 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -318,6 +319,20 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
                                             val intent = Intent(context, AlbumActivity::class.java).apply {
                                                 putExtra("album_id", album.albumId)
                                                 putExtra("album_imageUrl", album.albumImageUrl)
+                                                putExtra("album_source",
+                                                    when(album.source) {
+                                                        SearchSource.YTMUSIC.name -> {
+                                                            SearchSource.YTMUSIC.name
+                                                        }
+                                                        SearchSource.JIOSAAVN.name -> {
+                                                            SearchSource.JIOSAAVN.name
+                                                        }
+
+                                                        else -> {
+                                                            "Unknown"
+                                                        }
+                                                    }
+                                                )
                                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                             }
                                             context.startActivity(intent)

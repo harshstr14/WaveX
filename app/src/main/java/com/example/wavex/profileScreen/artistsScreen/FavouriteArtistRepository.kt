@@ -18,7 +18,6 @@ class FavouriteArtistRepository {
 
     fun observeFavouriteArtists(): Flow<List<FavouriteArtist>> =
         callbackFlow {
-
             val listener = object : ValueEventListener {
 
                 override fun onDataChange(snapshot: DataSnapshot) {

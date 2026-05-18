@@ -114,6 +114,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -197,6 +198,14 @@ fun Favourite_Songs_Activity(
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
+
+    val spectrumComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+    )
+
+    val timerComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.timer)
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -400,6 +409,17 @@ fun Favourite_Songs_Activity(
                                 key = { _, song -> song.id }
                             ) { index, song ->
 
+                                val songName = remember(song.name) {
+                                    htmlToText(song.name)
+                                }
+
+                                val artistsName = remember(song.id) {
+                                    htmlToText(
+                                        song.artist.takeIf { it.isNotEmpty() }
+                                            ?.joinToString(", ") { it.name } ?: "Unknown Artist"
+                                    )
+                                }
+
                                 val isDownloaded = downloadedIds.contains(song.id)
                                 val state = ParallelDownloader.downloadStates[song.id]
 
@@ -515,12 +535,8 @@ fun Favourite_Songs_Activity(
                                             enter = fadeIn() + expandHorizontally(),
                                             exit = fadeOut() + shrinkHorizontally()
                                         ) {
-                                            val composition by rememberLottieComposition(
-                                                LottieCompositionSpec.RawRes(R.raw.music_spectrum)
-                                            )
-
                                             val progress by animateLottieCompositionAsState(
-                                                composition = composition,
+                                                composition = spectrumComposition,
                                                 isPlaying = isPlaying && currentSong?.id == song.id,
                                                 iterations = LottieConstants.IterateForever
                                             )
@@ -531,7 +547,7 @@ fun Favourite_Songs_Activity(
                                                     .clip(RectangleShape)
                                             ) {
                                                 LottieAnimation(
-                                                    composition = composition,
+                                                    composition = spectrumComposition,
                                                     progress = { progress },
                                                     modifier = Modifier
                                                         .size(50.dp)
@@ -567,7 +583,17 @@ fun Favourite_Songs_Activity(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             AsyncImage(
-                                                model = song.image.getOrNull(2)?.url,
+                                                model = when (song.songSource) {
+                                                    SearchSource.YTMUSIC.name ->
+                                                        song.image.getOrNull(0)?.url
+
+                                                    SearchSource.JIOSAAVN.name ->
+                                                        song.image.getOrNull(2)?.url
+                                                            ?: song.image.lastOrNull()?.url
+
+                                                    else ->
+                                                        song.image.lastOrNull()?.url
+                                                },
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(64.dp)
@@ -582,8 +608,6 @@ fun Favourite_Songs_Activity(
                                                     .weight(1f),
                                                 verticalArrangement = Arrangement.Center
                                             ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
                                                     text = songName,
                                                     fontSize = 15.sp,
@@ -597,13 +621,6 @@ fun Favourite_Songs_Activity(
                                                 )
 
                                                 Spacer(modifier = Modifier.height(4.dp))
-
-                                                val artistsList = song.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
 
                                                 Text(
                                                     text = artistsName,
@@ -684,14 +701,10 @@ fun Favourite_Songs_Activity(
                                                         }
                                                     }
                                                 ) {
-                                                    val composition by rememberLottieComposition(
-                                                        LottieCompositionSpec.RawRes(R.raw.timer)
-                                                    )
-
                                                     val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
 
                                                     val progress by animateLottieCompositionAsState(
-                                                        composition = composition,
+                                                        composition = timerComposition,
                                                         isPlaying = isPlayingAnimation,
                                                         iterations = LottieConstants.IterateForever
                                                     )
@@ -706,7 +719,7 @@ fun Favourite_Songs_Activity(
                                                                     .clip(RectangleShape)
                                                             ) {
                                                                 LottieAnimation(
-                                                                    composition = composition,
+                                                                    composition = timerComposition,
                                                                     progress = { progress },
                                                                     modifier = Modifier
                                                                         .size(30.dp)

@@ -41,7 +41,7 @@ class ExplorePlaylistsRepository {
                     name = playlist.optString("name"),
                     artist = artists.toMutableList(),
                     image = images.toMutableList(),
-                    source = "jiosaavn"
+                    searchSource = "jiosaavn"
                 )
             )
         }

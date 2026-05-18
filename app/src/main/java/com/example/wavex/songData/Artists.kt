@@ -9,5 +9,6 @@ data class Artists(
     var name: String = "",
     var role: String = "",
     var image: String = "",
-    var type: String = ""
+    var type: String = "",
+    val searchSource: String = ""
 ) : Parcelable

@@ -118,6 +118,7 @@ import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.settingScreen.checkForUpdate
 import com.example.wavex.searchScreen.SearchScreen
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -757,7 +758,17 @@ fun MiniPlayer(
             verticalAlignment = Alignment.Top
         ) {
             AsyncImage(
-                model = song.image.getOrNull(2)?.url,
+                model = when (song.songSource) {
+                    SearchSource.YTMUSIC.name ->
+                        song.image.getOrNull(0)?.url
+
+                    SearchSource.JIOSAAVN.name ->
+                        song.image.getOrNull(2)?.url
+                            ?: song.image.lastOrNull()?.url
+
+                    else ->
+                        song.image.lastOrNull()?.url
+                },
                 contentDescription = null,
                 modifier = Modifier.size(48.dp)
                     .align(Alignment.CenterVertically)

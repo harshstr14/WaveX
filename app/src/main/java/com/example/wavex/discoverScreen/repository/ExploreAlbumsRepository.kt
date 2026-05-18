@@ -39,7 +39,7 @@ class ExploreAlbumsRepository {
                     name = album.optString("name"),
                     artist = artists.toMutableList(),
                     image = images.toMutableList(),
-                    source = "jiosaavn"
+                    searchSource = "jiosaavn"
                 )
             )
         }

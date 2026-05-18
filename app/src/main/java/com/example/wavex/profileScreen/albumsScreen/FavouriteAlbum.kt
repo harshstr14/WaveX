@@ -5,5 +5,6 @@ data class FavouriteAlbum(
     val albumName: String = "",
     val albumImageUrl: String = "",
     val primaryArtists: String = "",
-    val isFavourite: Boolean = false
+    val isFavourite: Boolean = false,
+    val source: String = ""
 )

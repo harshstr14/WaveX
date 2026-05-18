@@ -81,6 +81,7 @@ import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -318,6 +319,20 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                                             val intent = Intent(context, PlaylistActivity::class.java).apply {
                                                 putExtra("playlist_id", playlist.playlistId)
                                                 putExtra("playlist_imageUrl", playlist.playlistImageUrl)
+                                                putExtra("playlist_source",
+                                                    when(playlist.source) {
+                                                        SearchSource.YTMUSIC.name -> {
+                                                            SearchSource.YTMUSIC.name
+                                                        }
+                                                        SearchSource.JIOSAAVN.name -> {
+                                                            SearchSource.JIOSAAVN.name
+                                                        }
+
+                                                        else -> {
+                                                            "Unknown"
+                                                        }
+                                                    }
+                                                )
                                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                             }
                                             context.startActivity(intent)

@@ -113,6 +113,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareArtist
@@ -143,7 +144,6 @@ class ArtistActivity : ComponentActivity() {
         val artistId = intent.getStringExtra("artist_id")
         val artistImageUrl = intent.getStringExtra("artist_imageUrl")
         val artistSource = intent.getStringExtra("artist_source")
-        Log.d("Source","$artistSource")
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -198,22 +198,28 @@ private fun Artist_Activity(
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
         .child(userID!!).child("Favourites").child("Artists").child(artistId.toString())
 
+    var invalidSource by remember {
+        mutableStateOf(false)
+    }
+
     LaunchedEffect(artistId, artistSource) {
-        if (artistId.isNullOrBlank()) return@LaunchedEffect
-
-        when (artistSource) {
-            "jiosaavn" -> {
-                viewModel.loadArtist(artistId)
-            }
-
-            "ytmusic" -> {
-                viewModel.loadYTArtist(artistId)
-            }
-
-            else -> {
-                viewModel.loadArtist(artistId)
-            }
+        if (artistId.isNullOrBlank()) {
+            invalidSource = true
+            return@LaunchedEffect
         }
+
+        when(artistSource) {
+            SearchSource.JIOSAAVN.name ->
+                viewModel.loadArtist(artistId)
+
+            SearchSource.YTMUSIC.name ->
+                viewModel.loadYTArtist(artistId)
+
+            "Unknown" ->
+                invalidSource = true
+        }
+
+        invalidSource = false
     }
 
     var isLiked by remember { mutableStateOf(false) }
@@ -273,6 +279,14 @@ private fun Artist_Activity(
 
     val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false)}
+
+    val spectrumComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+    )
+
+    val timerComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.timer)
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -367,7 +381,8 @@ private fun Artist_Activity(
                                                         "artistId" to artistId,
                                                         "artistName" to artists.name,
                                                         "artistImageUrl" to imageToLoad,
-                                                        "isFavourite" to true
+                                                        "isFavourite" to true,
+                                                        "source" to artistSource
                                                     )
 
                                                     favouriteReference.setValue(artistData)
@@ -521,6 +536,9 @@ private fun Artist_Activity(
                     )
                 }
 
+                artistSource == "Unknown" ->
+                    invalidSource = true
+
                 else -> {
                     ConstraintLayout(modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))) {
                         val (contentList, miniPlayer) = createRefs()
@@ -671,6 +689,17 @@ private fun Artist_Activity(
                                     key = { _, song -> song.id }
                                 ) { index, song ->
 
+                                    val songName = remember(song.name) {
+                                        htmlToText(song.name)
+                                    }
+
+                                    val artistsName = remember(song.id) {
+                                        htmlToText(
+                                            song.artist.takeIf { it.isNotEmpty() }
+                                                ?.joinToString(", ") { it.name } ?: "Unknown Artist"
+                                        )
+                                    }
+
                                     val isDownloaded = downloadedIds.contains(song.id)
                                     val state = ParallelDownloader.downloadStates[song.id]
 
@@ -683,12 +712,8 @@ private fun Artist_Activity(
                                             enter = fadeIn() + expandHorizontally(),
                                             exit = fadeOut() + shrinkHorizontally()
                                         ) {
-                                            val composition by rememberLottieComposition(
-                                                LottieCompositionSpec.RawRes(R.raw.music_spectrum)
-                                            )
-
                                             val progress by animateLottieCompositionAsState(
-                                                composition = composition,
+                                                composition = spectrumComposition,
                                                 isPlaying = isPlaying && currentSong?.id == song.id,
                                                 iterations = LottieConstants.IterateForever
                                             )
@@ -699,7 +724,7 @@ private fun Artist_Activity(
                                                     .clip(RectangleShape)
                                             ) {
                                                 LottieAnimation(
-                                                    composition = composition,
+                                                    composition = spectrumComposition,
                                                     progress = { progress },
                                                     modifier = Modifier
                                                         .size(50.dp)
@@ -735,8 +760,17 @@ private fun Artist_Activity(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             AsyncImage(
-                                                model = if (song.searchSource == "jiosaavn") song.image.getOrNull(2)?.url
-                                                else song.image.getOrNull(0)?.url,
+                                                model = when (song.songSource) {
+                                                    SearchSource.YTMUSIC.name ->
+                                                        song.image.getOrNull(0)?.url
+
+                                                    SearchSource.JIOSAAVN.name ->
+                                                        song.image.getOrNull(2)?.url
+                                                            ?: song.image.lastOrNull()?.url
+
+                                                    else ->
+                                                        song.image.lastOrNull()?.url
+                                                },
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(64.dp)
@@ -751,8 +785,6 @@ private fun Artist_Activity(
                                                     .weight(1f),
                                                 verticalArrangement = Arrangement.Center
                                             ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
                                                     text = songName,
                                                     fontSize = 15.sp,
@@ -766,13 +798,6 @@ private fun Artist_Activity(
                                                 )
 
                                                 Spacer(modifier = Modifier.height(4.dp))
-
-                                                val artistsList = song.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
 
                                                 Text(
                                                     text = artistsName,
@@ -853,14 +878,10 @@ private fun Artist_Activity(
                                                         }
                                                     }
                                                 ) {
-                                                    val composition by rememberLottieComposition(
-                                                        LottieCompositionSpec.RawRes(R.raw.timer)
-                                                    )
-
                                                     val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
 
                                                     val progress by animateLottieCompositionAsState(
-                                                        composition = composition,
+                                                        composition = timerComposition,
                                                         isPlaying = isPlayingAnimation,
                                                         iterations = LottieConstants.IterateForever
                                                     )
@@ -875,7 +896,7 @@ private fun Artist_Activity(
                                                                     .clip(RectangleShape)
                                                             ) {
                                                                 LottieAnimation(
-                                                                    composition = composition,
+                                                                    composition = timerComposition,
                                                                     progress = { progress },
                                                                     modifier = Modifier
                                                                         .size(30.dp)
@@ -968,18 +989,50 @@ private fun Artist_Activity(
                                                     ) {
                                                         val intent = Intent(context, AlbumActivity::class.java).apply {
                                                             putExtra("album_id", album.id)
-                                                            putExtra("album_imageUrl", if (album.source == "ytmusic") album.image.getOrNull(0)?.url
-                                                                    else album.image.getOrNull(2)?.url
+                                                            putExtra("album_imageUrl",
+                                                                when (album.searchSource) {
+                                                                    SearchSource.YTMUSIC.name ->
+                                                                        album.image.getOrNull(0)?.url
+
+                                                                    SearchSource.JIOSAAVN.name ->
+                                                                        album.image.getOrNull(2)?.url
+                                                                            ?: album.image.lastOrNull()?.url
+
+                                                                    else ->
+                                                                        album.image.lastOrNull()?.url
+                                                                }
                                                             )
-                                                            putExtra("album_source", artistSource ?: "")
+                                                            putExtra("album_source",
+                                                                when(album.searchSource) {
+                                                                    SearchSource.YTMUSIC.name -> {
+                                                                        SearchSource.YTMUSIC.name
+                                                                    }
+                                                                    SearchSource.JIOSAAVN.name -> {
+                                                                        SearchSource.JIOSAAVN.name
+                                                                    }
+
+                                                                    else -> {
+                                                                        "Unknown"
+                                                                    }
+                                                                }
+                                                            )
                                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
                                                     }
                                             ) {
                                                 AsyncImage(
-                                                    model = if (album.source == "jiosaavn") album.image.getOrNull(2)?.url
-                                                    else album.image.getOrNull(0)?.url,
+                                                    model = when (album.searchSource) {
+                                                        SearchSource.YTMUSIC.name ->
+                                                            album.image.getOrNull(0)?.url
+
+                                                        SearchSource.JIOSAAVN.name ->
+                                                            album.image.getOrNull(2)?.url
+                                                                ?: album.image.lastOrNull()?.url
+
+                                                        else ->
+                                                            album.image.lastOrNull()?.url
+                                                    },
                                                     contentDescription = album.name,
                                                     contentScale = ContentScale.Crop,
                                                     error = painterResource(R.drawable.default_image),
@@ -1044,18 +1097,50 @@ private fun Artist_Activity(
                                                     ) {
                                                         val intent = Intent(context, AlbumActivity::class.java).apply {
                                                             putExtra("album_id", album.id)
-                                                            putExtra("album_imageUrl", if (album.source == "ytmusic") album.image.getOrNull(0)?.url
-                                                                                    else album.image.getOrNull(2)?.url
+                                                            putExtra("album_imageUrl",
+                                                                when (album.searchSource) {
+                                                                    SearchSource.YTMUSIC.name ->
+                                                                        album.image.getOrNull(0)?.url
+
+                                                                    SearchSource.JIOSAAVN.name ->
+                                                                        album.image.getOrNull(2)?.url
+                                                                            ?: album.image.lastOrNull()?.url
+
+                                                                    else ->
+                                                                        album.image.lastOrNull()?.url
+                                                                }
                                                             )
-                                                            putExtra("album_source", artistSource ?: "")
+                                                            putExtra("album_source",
+                                                                when(album.searchSource) {
+                                                                    SearchSource.YTMUSIC.name -> {
+                                                                        SearchSource.YTMUSIC.name
+                                                                    }
+                                                                    SearchSource.JIOSAAVN.name -> {
+                                                                        SearchSource.JIOSAAVN.name
+                                                                    }
+
+                                                                    else -> {
+                                                                        "Unknown"
+                                                                    }
+                                                                }
+                                                            )
                                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
                                                     }
                                             ) {
                                                 AsyncImage(
-                                                    model = if (album.source == "jiosaavn") album.image.getOrNull(2)?.url
-                                                    else album.image.getOrNull(0)?.url,
+                                                    model = when (album.searchSource) {
+                                                        SearchSource.YTMUSIC.name ->
+                                                            album.image.getOrNull(0)?.url
+
+                                                        SearchSource.JIOSAAVN.name ->
+                                                            album.image.getOrNull(2)?.url
+                                                                ?: album.image.lastOrNull()?.url
+
+                                                        else ->
+                                                            album.image.lastOrNull()?.url
+                                                    },
                                                     contentDescription = album.name,
                                                     contentScale = ContentScale.Crop,
                                                     error = painterResource(R.drawable.default_image),
@@ -1257,6 +1342,25 @@ private fun Artist_Activity(
                                 }
 
                                 ContextCompat.startForegroundService(context, intent)
+                            }
+                        }
+                    }
+                )
+            }
+
+            if (invalidSource) {
+                ErrorState(
+                    message = "Invalid artist source",
+                    onRetry = {
+                        when(artistSource) {
+                            SearchSource.JIOSAAVN.name -> {
+                                viewModel.loadArtist(artistId ?: "")
+                                invalidSource = false
+                            }
+
+                            SearchSource.YTMUSIC.name -> {
+                                viewModel.loadYTArtist(artistId ?: "")
+                                invalidSource = false
                             }
                         }
                     }

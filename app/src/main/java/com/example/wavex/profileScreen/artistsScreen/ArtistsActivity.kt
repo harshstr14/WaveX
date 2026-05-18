@@ -83,6 +83,7 @@ import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -319,6 +320,20 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
                                         val intent = Intent(context, ArtistActivity::class.java).apply {
                                             putExtra("artist_id", artist.artistId)
                                             putExtra("artist_imageUrl", artist.artistImageUrl)
+                                            putExtra("artist_source",
+                                                when(artist.source) {
+                                                    SearchSource.YTMUSIC.name -> {
+                                                        SearchSource.YTMUSIC.name
+                                                    }
+                                                    SearchSource.JIOSAAVN.name -> {
+                                                        SearchSource.JIOSAAVN.name
+                                                    }
+
+                                                    else -> {
+                                                        "Unknown"
+                                                    }
+                                                }
+                                            )
                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                         }
                                         context.startActivity(intent)

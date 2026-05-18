@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -113,6 +112,7 @@ import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.ProfileActivity
 import com.example.wavex.recommendation.MusicHistoryRepository
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
@@ -805,7 +805,33 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                     ) {
                         val intent = Intent(context, PlaylistActivity::class.java).apply {
                             putExtra("playlist_id", realItem.id)
-                            putExtra("playlist_imageUrl", realItem.image[2].url)
+                            putExtra("playlist_imageUrl",
+                                when (realItem.searchSource) {
+                                    SearchSource.YTMUSIC.name ->
+                                        realItem.image.getOrNull(0)?.url
+
+                                    SearchSource.JIOSAAVN.name ->
+                                        realItem.image.getOrNull(2)?.url
+                                            ?: realItem.image.lastOrNull()?.url
+
+                                    else ->
+                                        realItem.image.lastOrNull()?.url
+                                }
+                            )
+                            putExtra("playlist_source",
+                                when(realItem.searchSource) {
+                                    SearchSource.YTMUSIC.name -> {
+                                        SearchSource.YTMUSIC.name
+                                    }
+                                    SearchSource.JIOSAAVN.name -> {
+                                        SearchSource.JIOSAAVN.name
+                                    }
+
+                                    else -> {
+                                        "Unknown"
+                                    }
+                                }
+                            )
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
@@ -1246,7 +1272,7 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
                     ) {
                         val intent = Intent(context, AlbumActivity::class.java).apply {
                             putExtra("album_id", album.id)
-                            putExtra("album_imageUrl", if (album.source == "ytmusic") album.image.getOrNull(0)?.url
+                            putExtra("album_imageUrl", if (album.searchSource == "ytmusic") album.image.getOrNull(0)?.url
                                     else album.image.getOrNull(2)?.url
                             )
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP

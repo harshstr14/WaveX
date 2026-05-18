@@ -7,7 +7,6 @@ import com.example.wavex.BuildConfig
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import com.example.wavex.searchScreen.uiState.SearchSongsUiState
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -17,99 +16,86 @@ class SearchSongsViewModel(
     private val repository: SearchSongsRepository = SearchSongsRepository()
 ) : ViewModel() {
 
-    private val _songs = MutableStateFlow<List<SongItem>>(emptyList())
-    val songs = _songs.asStateFlow()
-
-    private val _ytMusicSongs = MutableStateFlow<List<SongItem>>(emptyList())
-    val ytMusicSongs = _ytMusicSongs.asStateFlow()
-
-    private val _uiState =
-        MutableStateFlow<SearchSongsUiState>(SearchSongsUiState.Idle)
-    val uiState = _uiState.asStateFlow()
-
-    private var searchJob: Job? = null
-
     companion object {
+        private const val TAG = "SearchSongsViewModel"
         const val BASE_URL = BuildConfig.YT_API_BASE_URL
     }
 
-    fun fetchSongByQuery(query: String, root: String) {
-        if (query.length < 2) {
-            searchJob?.cancel()
-            clearResults()
-            _uiState.value = SearchSongsUiState.Idle
+    private val _songs =MutableStateFlow<List<SongItem>>(emptyList())
+
+    val songs = _songs.asStateFlow()
+
+    private val _uiState =
+        MutableStateFlow<SearchSongsUiState>(
+            SearchSongsUiState.Idle
+        )
+
+    val uiState = _uiState.asStateFlow()
+
+    fun fetchSongByQuery(query: String,root: String) {
+        if (!validateQuery(query)) {
             return
         }
 
-        searchJob?.cancel()
+        launchSearch(
+            tag = "SAAVN"
+        ) {
+            repository.searchSongs(query, root)
+        }
+    }
 
-        searchJob = viewModelScope.launch {
+    fun fetchYTMusicSongs(query: String) {
+        if (!validateQuery(query)) {
+            return
+        }
+
+        launchSearch(
+            tag = "YT_MUSIC"
+        ) {
+            repository.ytMusicSearch(
+                query = query,
+                baseUrl = BASE_URL
+            )
+        }
+    }
+
+    private fun launchSearch(tag: String,block: suspend () -> List<SongItem>) {
+        viewModelScope.launch {
             _uiState.value = SearchSongsUiState.Loading
+
             try {
-                val result = repository.searchSongs(query, root)
+                val result = block()
                 _songs.value = result
 
                 _uiState.value =
-                    if (result.isEmpty()) SearchSongsUiState.Empty
-                    else SearchSongsUiState.Success
+                    if (result.isEmpty()) {
+                        SearchSongsUiState.Empty
+                    } else {
+                        SearchSongsUiState.Success
+                    }
 
             } catch (_: CancellationException) {
+
             } catch (e: Exception) {
                 _uiState.value =
-                    SearchSongsUiState.Error("Something went wrong")
-                Log.e("SAAVN", "Artist search failed", e)
+                    SearchSongsUiState.Error(
+                        "Something went wrong"
+                    )
+
+                Log.e(tag, "Search failed", e)
             }
         }
     }
 
-    fun fetchYTMusicSongs(
-        query: String
-    ) {
+    private fun validateQuery(query: String): Boolean {
         if (query.length < 2) {
-            searchJob?.cancel()
             clearResults()
 
             _uiState.value = SearchSongsUiState.Idle
 
-            return
+            return false
         }
-
-        searchJob?.cancel()
-
-        searchJob = viewModelScope.launch {
-            _uiState.value = SearchSongsUiState.Loading
-
-            try {
-                val result = repository.ytMusicSearch(
-                    query = query,
-                    baseUrl = BASE_URL
-                )
-
-                _ytMusicSongs.value = result
-
-                _uiState.value =
-                    if (result.isEmpty())
-                        SearchSongsUiState.Empty
-                    else
-                        SearchSongsUiState.Success
-
-            } catch (_: CancellationException) {
-
-            } catch (e: Exception) {
-                _uiState.value =
-                    SearchSongsUiState.Error("Something went wrong")
-
-                Log.e("YT_MUSIC", "YT Music search failed", e)
-            }
-        }
-    }
-
-    suspend fun fetchSuggestionSongs(songId: String): List<SongItem> {
-        return try {
-            repository.fetchSuggestionSongs(songId)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        return true
     }
 
     fun clearResults() {

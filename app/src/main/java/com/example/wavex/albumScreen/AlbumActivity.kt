@@ -115,6 +115,7 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.playlistScreen.formatTotalDuration
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareAlbum_Playlist
@@ -150,7 +151,7 @@ class AlbumActivity : ComponentActivity() {
 
         val albumId = intent.getStringExtra("album_id")
         val albumImageUrl = intent.getStringExtra("album_imageUrl")
-        val albumSource = intent.getStringExtra("album_source")
+        val albumSource = intent.getStringExtra("album_source") ?: "unknown"
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -209,22 +210,28 @@ private fun Album_Activity(
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
         .child(userID!!).child("Favourites").child("Albums").child(albumId.toString())
 
+    var invalidSource by remember {
+        mutableStateOf(false)
+    }
+
     LaunchedEffect(albumId, albumSource) {
-        if (albumId.isNullOrBlank()) return@LaunchedEffect
-
-        when (albumSource) {
-            "jiosaavn" -> {
-                viewModel.loadAlbum(albumId)
-            }
-
-            "ytmusic" -> {
-                viewModel.loadYTAlbum(albumId)
-            }
-
-            else -> {
-                viewModel.loadAlbum(albumId)
-            }
+        if (albumId.isNullOrBlank()) {
+            invalidSource = true
+            return@LaunchedEffect
         }
+
+        when(albumSource) {
+            SearchSource.JIOSAAVN.name ->
+                viewModel.loadAlbum(albumId)
+
+            SearchSource.YTMUSIC.name ->
+                viewModel.loadYTAlbum(albumId)
+
+            "Unknown" ->
+                invalidSource = true
+        }
+
+        invalidSource = false
     }
 
     LaunchedEffect(Unit) {
@@ -282,6 +289,14 @@ private fun Album_Activity(
 
     val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false)}
+
+    val spectrumComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.music_spectrum)
+    )
+
+    val timerComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.timer)
+    )
 
     Scaffold(
         modifier = Modifier.background(colorResource(R.color.background_color)).
@@ -372,7 +387,6 @@ private fun Album_Activity(
                                         favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
 
                                             override fun onDataChange(snapshot: DataSnapshot) {
-
                                                 if (!snapshot.exists()) {
                                                     val artistsList = albums.primaryArtists
                                                         .takeIf { it.isNotEmpty() }
@@ -386,7 +400,8 @@ private fun Album_Activity(
                                                         "albumName" to albums.albumName,
                                                         "albumImageUrl" to imageToLoad,
                                                         "primaryArtists" to artistsName,
-                                                        "isFavourite" to true
+                                                        "isFavourite" to true,
+                                                        "source" to albumSource
                                                     )
 
                                                     favouriteReference.setValue(albumData)
@@ -535,10 +550,21 @@ private fun Album_Activity(
                     ErrorState(
                         message = albums.errorMessage,
                         onRetry = {
-                            albumId?.let { viewModel.loadAlbum(it) }
+                            if (!albumId.isNullOrBlank()) {
+                                when(albumSource) {
+                                    SearchSource.JIOSAAVN.name ->
+                                        viewModel.loadAlbum(albumId)
+
+                                    SearchSource.YTMUSIC.name ->
+                                        viewModel.loadYTAlbum(albumId)
+                                }
+                            }
                         }
                     )
                 }
+
+                albumSource == "Unknown" ->
+                    invalidSource = true
 
                 else -> {
                     ConstraintLayout(
@@ -819,6 +845,20 @@ private fun Album_Activity(
                                                         val intent = Intent(context, ArtistActivity::class.java).apply {
                                                             putExtra("artist_id", artist.id)
                                                             putExtra("artist_imageUrl", artist.image)
+                                                            putExtra("artist_source",
+                                                                when(artist.searchSource) {
+                                                                    SearchSource.YTMUSIC.name -> {
+                                                                        SearchSource.YTMUSIC.name
+                                                                    }
+                                                                    SearchSource.JIOSAAVN.name -> {
+                                                                        SearchSource.JIOSAAVN.name
+                                                                    }
+
+                                                                    else -> {
+                                                                        "Unknown"
+                                                                    }
+                                                                }
+                                                            )
                                                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                                         }
                                                         context.startActivity(intent)
@@ -874,6 +914,17 @@ private fun Album_Activity(
                                     key = { _, song -> song.id }
                                 ) { index, song ->
 
+                                    val songName = remember(song.name) {
+                                        htmlToText(song.name)
+                                    }
+
+                                    val artistsName = remember(song.id) {
+                                        htmlToText(
+                                            song.artist.takeIf { it.isNotEmpty() }
+                                                ?.joinToString(", ") { it.name } ?: "Unknown Artist"
+                                        )
+                                    }
+
                                     val isDownloaded = downloadedIds.contains(song.id)
                                     val state = ParallelDownloader.downloadStates[song.id]
 
@@ -886,12 +937,8 @@ private fun Album_Activity(
                                             enter = fadeIn() + expandHorizontally(),
                                             exit = fadeOut() + shrinkHorizontally()
                                         ) {
-                                            val composition by rememberLottieComposition(
-                                                LottieCompositionSpec.RawRes(R.raw.music_spectrum)
-                                            )
-
                                             val progress by animateLottieCompositionAsState(
-                                                composition = composition,
+                                                composition = spectrumComposition,
                                                 isPlaying = isPlaying && currentSong?.id == song.id,
                                                 iterations = LottieConstants.IterateForever
                                             )
@@ -902,7 +949,7 @@ private fun Album_Activity(
                                                     .clip(RectangleShape)
                                             ) {
                                                 LottieAnimation(
-                                                    composition = composition,
+                                                    composition = spectrumComposition,
                                                     progress = { progress },
                                                     modifier = Modifier
                                                         .size(50.dp)
@@ -938,8 +985,17 @@ private fun Album_Activity(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             AsyncImage(
-                                                model = if (song.searchSource == "jiosaavn") song.image.getOrNull(2)?.url
-                                                else song.image.getOrNull(0)?.url,
+                                                model = when (song.songSource) {
+                                                    SearchSource.YTMUSIC.name ->
+                                                        song.image.getOrNull(0)?.url
+
+                                                    SearchSource.JIOSAAVN.name ->
+                                                        song.image.getOrNull(2)?.url
+                                                            ?: song.image.lastOrNull()?.url
+
+                                                    else ->
+                                                        song.image.lastOrNull()?.url
+                                                },
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(64.dp)
@@ -954,8 +1010,6 @@ private fun Album_Activity(
                                                     .weight(1f),
                                                 verticalArrangement = Arrangement.Center
                                             ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
                                                     text = songName,
                                                     fontSize = 15.sp,
@@ -969,13 +1023,6 @@ private fun Album_Activity(
                                                 )
 
                                                 Spacer(modifier = Modifier.height(4.dp))
-
-                                                val artistsList = song.artist
-                                                    .takeIf { it.isNotEmpty() }
-                                                    ?.joinToString(", ") { it.name }
-                                                    ?: "Unknown Artist"
-
-                                                val artistsName = htmlToText(artistsList)
 
                                                 Text(
                                                     text = artistsName,
@@ -1057,14 +1104,10 @@ private fun Album_Activity(
                                                         }
                                                     }
                                                 ) {
-                                                    val composition by rememberLottieComposition(
-                                                        LottieCompositionSpec.RawRes(R.raw.timer)
-                                                    )
-
                                                     val isPlayingAnimation = state == ParallelDownloader.DownloadState.DOWNLOADING
 
                                                     val progress by animateLottieCompositionAsState(
-                                                        composition = composition,
+                                                        composition = timerComposition,
                                                         isPlaying = isPlayingAnimation,
                                                         iterations = LottieConstants.IterateForever
                                                     )
@@ -1079,7 +1122,7 @@ private fun Album_Activity(
                                                                     .clip(RectangleShape)
                                                             ) {
                                                                 LottieAnimation(
-                                                                    composition = composition,
+                                                                    composition = timerComposition,
                                                                     progress = { progress },
                                                                     modifier = Modifier
                                                                         .size(30.dp)
@@ -1290,6 +1333,25 @@ private fun Album_Activity(
                         type = ShareType.ALBUM
                     ),
                     onDismiss = { showShareSheet = false }
+                )
+            }
+
+            if (invalidSource) {
+                ErrorState(
+                    message = "Invalid album source",
+                    onRetry = {
+                        when(albumSource) {
+                            SearchSource.JIOSAAVN.name -> {
+                                viewModel.loadAlbum(albumId ?: "")
+                                invalidSource = false
+                            }
+
+                            SearchSource.YTMUSIC.name -> {
+                                viewModel.loadYTAlbum(albumId ?: "")
+                                invalidSource = false
+                            }
+                        }
+                    }
                 )
             }
         }
