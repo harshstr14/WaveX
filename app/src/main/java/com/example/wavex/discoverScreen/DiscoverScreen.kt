@@ -6,14 +6,17 @@ import android.graphics.Shader
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,7 +32,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,17 +45,20 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,13 +71,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -115,7 +123,11 @@ import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.launch
-import kotlin.math.absoluteValue
+
+data class BrowseItem(
+    val title: String,
+    val subtitle: String
+)
 
 @Composable
 fun DiscoverScreen(
@@ -233,7 +245,7 @@ fun DiscoverScreen(
             pageCount = { categoriesList.size }
         )
 
-        val suggestedGridState = rememberLazyGridState()
+        val suggestedGridState = rememberLazyStaggeredGridState()
         val songsListState = rememberLazyListState()
         val artistsGridState = rememberLazyGridState()
         val albumsGridState = rememberLazyGridState()
@@ -242,7 +254,8 @@ fun DiscoverScreen(
         val scope = rememberCoroutineScope()
         val listState = rememberLazyListState()
 
-        val interactionSource = remember { MutableInteractionSource() }
+        val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.95f)
+        val unselectedBg = colorResource(R.color.primary_text_color).copy(alpha = 0.85f)
 
         LazyRow(
             state = listState,
@@ -252,63 +265,109 @@ fun DiscoverScreen(
                 end.linkTo(parent.end)
             },
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(categoriesList) { index, category ->
                 val isSelected = pagerState.currentPage == index
 
                 val bgColor by animateColorAsState(
-                    if (isSelected) colorResource(R.color.theme_color)
-                    else colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                    targetValue = if (isSelected) selectedBg else unselectedBg,
+                    animationSpec = tween(
+                        durationMillis = 450,
+                        easing = FastOutSlowInEasing
+                    ),
                     label = "bg"
                 )
 
+                val borderColor by animateColorAsState(
+                    targetValue = if (isSelected)
+                        Color(0xFF71c287)
+                    else
+                        colorResource(R.color.secondary_text_color),
+                    animationSpec = tween(
+                        durationMillis = 450,
+                        easing = FastOutSlowInEasing
+                    ),
+                    label = "border"
+                )
+
                 val textColor by animateColorAsState(
-                    if (isSelected) colorResource(R.color.background_color)
-                    else colorResource(R.color.primary_text_color).copy(alpha = 0.6f),
+                    targetValue = if (isSelected)
+                        colorResource(R.color.off_white)
+                    else
+                        colorResource(R.color.background_color),
+                    animationSpec = tween(
+                        durationMillis = 350,
+                        easing = LinearOutSlowInEasing
+                    ),
                     label = "text"
                 )
 
                 val scale by animateFloatAsState(
-                    if (isSelected) 1.05f else 1f,
-                    label = "tabScale"
+                    targetValue = if (isSelected) 1f else 0.96f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "scale"
                 )
 
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = bgColor),
+                val elevation by animateDpAsState(
+                    targetValue = if (isSelected) 3.dp else 0.dp,
+                    animationSpec = tween(400),
+                    label = "elevation"
+                )
+
+                val interactionSource = remember { MutableInteractionSource() }
+
+                Box(
                     modifier = Modifier
-                        .height(36.dp)
-                        .selectable(
-                            selected = isSelected,
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .shadow(
+                            elevation = elevation,
+                            shape = RoundedCornerShape(50),
+                            clip = false
+                        )
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(bgColor)
+                        .border(
+                            width = 1.2.dp,
+                            color = borderColor,
+                            shape = RoundedCornerShape(50)
+                        )
+                        .clickable(
                             interactionSource = interactionSource,
-                            indication = null,
-                            onClick = {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(
-                                        index,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
+                            indication = ripple(
+                                bounded = true,
+                                radius = 28.dp
+                            )
+                        ) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = index,
+                                    animationSpec = tween(
+                                        durationMillis = 500,
+                                        easing = FastOutSlowInEasing
                                     )
-                                }
+                                )
                             }
-                        )
+                        }
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            modifier = Modifier.scale(scale),
-                            text = category,
-                            fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                            fontStyle = FontStyle.Normal, fontSize = 13.sp, color = textColor
-                        )
-                    }
+                    Text(
+                        text = category,
+                        lineHeight = 16.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal,
+                        fontSize = 13.sp,
+                        color = textColor
+                    )
                 }
             }
         }
@@ -325,7 +384,10 @@ fun DiscoverScreen(
         ) { page ->
             when(categoriesList[page]) {
                 "Suggested" -> {
-                    ExploreGrid(modifier = Modifier.fillMaxSize(), gridState = suggestedGridState)
+                    ExploreGrid(
+                        modifier = Modifier.fillMaxSize(),
+                        gridState = suggestedGridState
+                    )
                 }
 
                 "Songs" -> {
@@ -486,67 +548,117 @@ fun DiscoverScreen(
 }
 
 @Composable
-fun ExploreGrid(modifier: Modifier, gridState: LazyGridState) {
+fun ExploreGrid(
+    modifier: Modifier,
+    gridState: LazyStaggeredGridState
+) {
+    val musicService = ServiceLocator.musicService
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
     val exploreList = listOf(
-        BrowseItem("Made For You", colorFromTitle("Made For You"), R.drawable.logo2),
-        BrowseItem("New Releases", colorFromTitle("New Releases"), R.drawable.logo2),
-        BrowseItem("Hindi", colorFromTitle("Hindi"), R.drawable.logo2),
-        BrowseItem("English", colorFromTitle("English"), R.drawable.logo2),
-        BrowseItem("Punjabi", colorFromTitle("Punjabi"), R.drawable.logo2),
-        BrowseItem("Rajasthani", colorFromTitle("Rajasthani"), R.drawable.logo2),
-        BrowseItem("Haryanvi", colorFromTitle("Haryanvi"), R.drawable.logo2),
-        BrowseItem("Telugu", colorFromTitle("Telugu"), R.drawable.logo2),
-        BrowseItem("Marathi", colorFromTitle("Marathi"), R.drawable.logo2),
-        BrowseItem("Gujarati", colorFromTitle("Gujarati"), R.drawable.logo2),
+        BrowseItem("Made\nFor You", "32 fresh picks"),
+        BrowseItem("New\nReleases", "this week"),
+        BrowseItem("Top\nCharts", "India 100"),
+        BrowseItem("Hindi", "1.2k songs"),
+        BrowseItem("Late Night\nLo-Fi", "ambient • chill"),
+        BrowseItem("Punjabi", "892 songs"),
+        BrowseItem("Workout", "gym vibes"),
+        BrowseItem("Romantic", "love hits"),
     )
 
-    LazyVerticalGrid(
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(2),
         state = gridState,
-        columns = GridCells.Fixed(2),
-        modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(rememberNestedScrollInteropConnection()),
+        verticalItemSpacing = 14.dp,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = if (currentSong != null) 168.dp else 100.dp)
     ) {
-        items(exploreList) { item ->
+        itemsIndexed(exploreList) { index, item ->
+            val cardHeight = when (index % 4) {
+                0 -> 210.dp
+                1 -> 100.dp
+                2 -> 220.dp
+                else -> 105.dp
+            }
+
+            val gradient = when (index % 6) {
+                0 -> listOf(Color(0xFFF9A26C), Color(0xFFD63384))
+                1 -> listOf(Color(0xFFFFB347), Color(0xFFFF6B35))
+                2 -> listOf(Color(0xFFA18CD1), Color(0xFFFBC2EB))
+                3 -> listOf(Color(0xFFC471ED), Color(0xFF6A11CB))
+                4 -> listOf(Color(0xFF434343), Color(0xFF5B4BFF))
+                else -> listOf(Color(0xFFFF9966), Color(0xFFFF5E62))
+            }
+
             Box(
                 modifier = Modifier
-                    .aspectRatio(1.9f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(item.color)
+                    .fillMaxWidth()
+                    .height(cardHeight)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(
+                        brush = Brush.verticalGradient(gradient)
+                    )
             ) {
-                Text(
-                    text = item.title,
-                    color = colorResource(R.color.background_color),
-                    fontSize = 15.sp, lineHeight = 16.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal,
-                    modifier = Modifier
-                        .padding(12.dp).width(85.dp)
-                        .align(Alignment.TopStart)
-                )
+                if (index == 0 || index == 1 || index == 4) {
+                    val badgeText = when (index) {
+                        0 -> "DAILY"
+                        1 -> "NEW"
+                        else -> "LIVE"
+                    }
 
-                Image(
-                    painter = painterResource(item.image),
-                    contentDescription = null,
+                    Box(
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .align(Alignment.TopEnd)
+                            .clip(RoundedCornerShape(40))
+                            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.25f))
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        Text(
+                            text = badgeText,
+                            color = colorResource(R.color.off_white),
+                            fontSize = 9.sp,
+                            fontFamily = fonts,
+                            fontStyle = FontStyle.Normal,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Column(
                     modifier = Modifier
-                        .size(80.dp)
-                        .align(Alignment.BottomEnd)
-                        .offset(x = 20.dp, y = 20.dp)
-                        .graphicsLayer {
-                            rotationZ = 22f
-                            shape = RoundedCornerShape(12.dp)
-                            clip = true
-                        },
-                    contentScale = ContentScale.Crop
-                )
+                        .align(Alignment.BottomStart)
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = item.title,
+                        color = colorResource(R.color.off_white),
+                        fontSize = 18.sp,
+                        lineHeight = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fonts,
+                        fontStyle = FontStyle.Normal
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = item.subtitle,
+                        color = colorResource(R.color.off_white).copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontFamily = fonts,
+                        lineHeight = 12.sp,
+                        fontStyle = FontStyle.Normal,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
-}
-fun colorFromTitle(title: String): Color {
-    val hue = (title.hashCode() % 360).absoluteValue.toFloat()
-    return Color.hsl(hue, 0.65f, 0.45f)
 }
 
 @Composable
