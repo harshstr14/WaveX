@@ -51,6 +51,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +63,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -120,13 +123,16 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.launch
 
 data class BrowseItem(
     val title: String,
-    val subtitle: String
+    val subtitle: String,
+    val playlistId: String,
+    val gradient: List<Color>
 )
 
 @Composable
@@ -268,7 +274,9 @@ fun DiscoverScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(categoriesList) { index, category ->
-                val isSelected = pagerState.currentPage == index
+                val isSelected by remember {
+                    derivedStateOf { pagerState.currentPage == index }
+                }
 
                 val bgColor by animateColorAsState(
                     targetValue = if (isSelected) selectedBg else unselectedBg,
@@ -349,9 +357,9 @@ fun DiscoverScreen(
                             scope.launch {
                                 pagerState.animateScrollToPage(
                                     page = index,
-                                    animationSpec = tween(
-                                        durationMillis = 500,
-                                        easing = FastOutSlowInEasing
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessLow
                                     )
                                 )
                             }
@@ -374,6 +382,8 @@ fun DiscoverScreen(
 
         HorizontalPager(
             state = pagerState,
+            key = { categoriesList[it] },
+            flingBehavior = PagerDefaults.flingBehavior(pagerState),
             modifier = Modifier.constrainAs(contentPager) {
                 top.linkTo(categoryTabs.bottom, margin = 8.dp)
                 start.linkTo(parent.start)
@@ -409,7 +419,7 @@ fun DiscoverScreen(
 
                 "Artists" -> {
                     ExploreArtists(
-                        "top artists", "results",
+                        "trending artists", "results",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp), gridState = artistsGridState
                     )
                 }
@@ -552,19 +562,91 @@ fun ExploreGrid(
     modifier: Modifier,
     gridState: LazyStaggeredGridState
 ) {
+    val context = LocalContext.current
     val musicService = ServiceLocator.musicService
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
 
     val exploreList = listOf(
-        BrowseItem("Made\nFor You", "32 fresh picks"),
-        BrowseItem("New\nReleases", "this week"),
-        BrowseItem("Top\nCharts", "India 100"),
-        BrowseItem("Hindi", "1.2k songs"),
-        BrowseItem("Late Night\nLo-Fi", "ambient • chill"),
-        BrowseItem("Punjabi", "892 songs"),
-        BrowseItem("Workout", "gym vibes"),
-        BrowseItem("Romantic", "love hits"),
+        BrowseItem(
+            title = "Made\nFor You",
+            subtitle = "fresh picks",
+            playlistId = "RDCLAK5uy_n9Fbdw7e6ap-98_A-8JYBmPv64v-Uaq1g",
+            gradient = listOf(
+                Color(0xFFF9A26C),
+                Color(0xFFD63384)
+            )
+        ),
+
+        BrowseItem(
+            title = "New\nReleases",
+            subtitle = "this week",
+            playlistId = "PLO7-VO1D0_6NmK47v6tpOcxurcxdW-hZa",
+            gradient = listOf(
+                Color(0xFFFFB347),
+                Color(0xFFFF6B35)
+            )
+        ),
+
+        BrowseItem(
+            title = "Top\nCharts",
+            subtitle = "India 100",
+            playlistId = "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i",
+            gradient = listOf(
+                Color(0xFFA18CD1),
+                Color(0xFFFBC2EB)
+            )
+        ),
+
+        BrowseItem(
+            title = "Hindi",
+            subtitle = "100 songs",
+            playlistId = "PL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX",
+            gradient = listOf(
+                Color(0xFFC471ED),
+                Color(0xFF6A11CB)
+            )
+        ),
+
+        BrowseItem(
+            title = "Haryanvi",
+            subtitle = "100 songs",
+            playlistId = "PL4fGSI1pDJn4tiNLMZVGGt2Kghgw__2u0",
+            gradient = listOf(
+                Color(0xFF434343),
+                Color(0xFF5B4BFF)
+            )
+        ),
+
+        BrowseItem(
+            title = "Punjabi",
+            subtitle = "100 songs",
+            playlistId = "PL4fGSI1pDJn5JXkyIohg2RstsbL2SnRew",
+            gradient = listOf(
+                Color(0xFFFF9966),
+                Color(0xFFFF5E62)
+            )
+        ),
+
+        BrowseItem(
+            title = "Workout",
+            subtitle = "gym vibes",
+            playlistId = "PLf_ANWupyE3bhSLCyaRhSoRnj3QbOhzXn",
+            gradient = listOf(
+                Color(0xFFF9A26C),
+                Color(0xFFD63384)
+            )
+        ),
+
+        BrowseItem(
+            title = "Romantic",
+            subtitle = "love hits",
+            playlistId = "RDCLAK5uy_miAacfMxVybbt7ketqqnPPbH9LDn1TavU",
+            gradient = listOf(
+                Color(0xFFFFB347),
+                Color(0xFFFF6B35)
+            )
+        )
     )
 
     LazyVerticalStaggeredGrid(
@@ -585,29 +667,37 @@ fun ExploreGrid(
                 else -> 105.dp
             }
 
-            val gradient = when (index % 6) {
-                0 -> listOf(Color(0xFFF9A26C), Color(0xFFD63384))
-                1 -> listOf(Color(0xFFFFB347), Color(0xFFFF6B35))
-                2 -> listOf(Color(0xFFA18CD1), Color(0xFFFBC2EB))
-                3 -> listOf(Color(0xFFC471ED), Color(0xFF6A11CB))
-                4 -> listOf(Color(0xFF434343), Color(0xFF5B4BFF))
-                else -> listOf(Color(0xFFFF9966), Color(0xFFFF5E62))
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(cardHeight)
                     .clip(RoundedCornerShape(18.dp))
+                    .clickable {
+                        val intent = Intent(context, PlaylistActivity::class.java).apply {
+                            putExtra("playlist_id", item.playlistId)
+                            putIntegerArrayListExtra(
+                                "playlist_gradient",
+                                arrayListOf(
+                                    item.gradient[0].toArgb(),
+                                    item.gradient[1].toArgb()
+                                )
+                            )
+                            putExtra("playlist_title", item.title)
+                            putExtra("playlist_source",SearchSource.YTMUSIC.name)
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+
+                        context.startActivity(intent)
+                    }
                     .background(
-                        brush = Brush.verticalGradient(gradient)
+                        brush = Brush.verticalGradient(item.gradient)
                     )
             ) {
                 if (index == 0 || index == 1 || index == 4) {
                     val badgeText = when (index) {
                         0 -> "DAILY"
                         1 -> "NEW"
-                        else -> "LIVE"
+                        else -> ""
                     }
 
                     Box(

@@ -121,6 +121,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.BuildConfig
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
@@ -482,6 +483,7 @@ private fun SearchBar(
         backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
     )
 
+    val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.isImeVisible
 
     CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -558,6 +560,7 @@ private fun SearchBar(
             keyboardActions = KeyboardActions(
                 onSearch = {
                     viewModel.saveSearch(query.text)
+                    keyboardController?.hide()
                 }
             )
         )
@@ -578,7 +581,7 @@ fun SourceSelectorUI(
 
     val scrollState = rememberScrollState()
 
-    val selectedBorder = colorResource(R.color.theme_color)
+    val selectedBorder = Color(0xFF71c287)
     val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.20f)
     val unselectedBg = colorResource(R.color.secondary_text_color).copy(alpha = 0.20f)
     val textColor = colorResource(R.color.background_color)
@@ -588,7 +591,7 @@ fun SourceSelectorUI(
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(26.dp))
-            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.90f))
+            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.88f))
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
         Column {
@@ -624,7 +627,7 @@ fun SourceSelectorUI(
                     val isSelected = selected == source
 
                     val borderColor by animateColorAsState(
-                        targetValue = if (isSelected) selectedBorder else Color.Transparent,
+                        targetValue = if (isSelected) selectedBorder else colorResource(R.color.secondary_text_color).copy(alpha = 0.30f),
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessLow
@@ -1266,10 +1269,35 @@ private fun SearchSongs(
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
                                     scope.launch {
-                                        PlayerManager.currentPlaylist = listOf(song)
+                                        val finalSong = if (
+                                            song.songSource == SearchSource.YTMUSIC.name
+                                        ) {
+                                            val streamData = viewModel.fetchYTStreamData(
+                                                song.id,
+                                                BuildConfig.YT_API_BASE_URL
+                                            )
+
+                                            if (streamData != null) {
+                                                song.copy(
+                                                    duration = streamData.duration,
+                                                    downloadUrl = streamData.downloadUrl.toMutableList()
+                                                )
+                                            } else {
+                                                song
+                                            }
+
+                                        } else {
+                                            song
+                                        }
+
+                                        PlayerManager.currentPlaylist = listOf(finalSong)
                                         PlayerManager.currentIndex = 0
 
-                                        val intent = Intent(context, MusicPlayerService::class.java).apply {
+                                        val intent = Intent(
+                                            context,
+                                            MusicPlayerService::class.java
+                                        ).apply {
+
                                             action = MusicPlayerService.ACTION_PLAY_NEW
                                             putExtra("index", 0)
                                             putExtra("from_search", true)
@@ -1277,7 +1305,7 @@ private fun SearchSongs(
 
                                         ContextCompat.startForegroundService(context, intent)
 
-                                        RecentlyPlayedManager.add(context, song)
+                                        RecentlyPlayedManager.add(context, finalSong)
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically

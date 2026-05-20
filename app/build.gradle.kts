@@ -72,6 +72,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.session)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.firebase.config)
     implementation(libs.okhttp)

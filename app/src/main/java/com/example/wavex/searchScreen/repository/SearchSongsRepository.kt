@@ -68,7 +68,7 @@ class SearchSongsRepository {
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
 
             val request = Request.Builder()
-                .url("$baseUrl/search?q=$encodedQuery&filter=songs")
+                .url("$baseUrl/search?q=$encodedQuery&filter=songs&page=20")
                 .get()
                 .build()
 
@@ -287,6 +287,99 @@ class SearchSongsRepository {
                     )
                 )
             }
+        }
+    }
+
+    suspend fun fetchYTStreamData(songId: String,baseUrl: String): SongItem? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/stream?id=$songId")
+                .get()
+                .build()
+
+            HttpClientProvider.client.newCall(request)
+                .execute()
+                .use { response ->
+
+                    if (!response.isSuccessful) {
+                        return@withContext null
+                    }
+
+                    val body = response.body?.string().orEmpty()
+
+                    if (body.isEmpty()) {
+                        return@withContext null
+                    }
+
+                    parseYTStream(body)
+                }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchYTStreamData failed", e)
+            null
+        }
+    }
+
+    private fun parseYTStream(jsonString: String): SongItem? {
+        val json = JSONObject(jsonString)
+
+        if (!json.optBoolean("success")) {
+            return null
+        }
+
+        val metadata = json.optJSONObject("metadata")
+            ?: return null
+
+        val streams = json.optJSONArray("streamingUrls")
+            ?: JSONArray()
+
+        return SongItem(
+            id = metadata.optString("id"),
+            name = metadata.optString("title"),
+            duration = metadata.optInt("duration"),
+            downloadUrl = parseYTDownloads(streams).toMutableList(),
+            image = mutableListOf(
+                Image(
+                    quality = "high",
+                    url = metadata.optString("thumbnail")
+                )
+            ),
+            artist = mutableListOf(
+                Artists(
+                    id = "",
+                    name = metadata.optString("uploader"),
+                    searchSource = SearchSource.YTMUSIC.name
+                )
+            ),
+            songSource = SearchSource.YTMUSIC.toString()
+        )
+    }
+
+    private fun parseYTDownloads(array: JSONArray?): List<Download> {
+        if (array == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+
+                val mimeType = obj.optString("mimeType")
+
+                if (!mimeType.contains("audio/mp4")) {
+                    continue
+                }
+
+                add(
+                    Download(
+                        quality = obj.optString("quality"),
+                        url = obj.optString("url")
+                    )
+                )
+            }
+        }.sortedByDescending {
+            it.quality.substringBefore(" ")
+                .toIntOrNull() ?: 0
         }
     }
 }

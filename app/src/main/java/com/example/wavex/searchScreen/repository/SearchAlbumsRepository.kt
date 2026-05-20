@@ -45,7 +45,7 @@ class SearchAlbumsRepository {
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
 
             val request = Request.Builder()
-                .url("$baseUrl/search?q=$encodedQuery&filter=albums")
+                .url("$baseUrl/search?q=$encodedQuery&filter=albums&page=20")
                 .get()
                 .build()
 

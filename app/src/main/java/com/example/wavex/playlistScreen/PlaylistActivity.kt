@@ -85,6 +85,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -171,6 +172,10 @@ class PlaylistActivity : ComponentActivity() {
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
         val playlistSource = intent.getStringExtra("playlist_source")
+        val gradientColors = intent.getIntegerArrayListExtra("playlist_gradient")
+
+        val gradient = gradientColors?.map { Color(it) } ?: emptyList()
+        val playlistTitle = intent.getStringExtra("playlist_title") ?: ""
 
         val downloadViewModel: DownloadViewModel by viewModels {
             DownloadViewModelFactory(AppContainer.downloadRepository)
@@ -178,7 +183,14 @@ class PlaylistActivity : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                Playlist_Activity(downloadViewModel, playlistId, playlistImageUrl, playlistSource)
+                Playlist_Activity(
+                    downloadViewModel = downloadViewModel,
+                    playlistId = playlistId,
+                    playlistImageUrl = playlistImageUrl,
+                    playlistSource = playlistSource,
+                    playlistTitle = playlistTitle,
+                    gradient = gradient
+                )
             }
         }
     }
@@ -190,6 +202,8 @@ fun Playlist_Activity(
     downloadViewModel: DownloadViewModel,
     playlistId: String?, playlistImageUrl: String?,
     playlistSource: String?,
+    playlistTitle: String?,
+    gradient: List<Color>,
     viewModel: PlaylistViewModel = viewModel()
 )  {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -602,16 +616,40 @@ fun Playlist_Activity(
                                         .padding(top = 10.dp, start = 24.dp, end = 24.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    AsyncImage(
-                                        model = imageToLoad,
-                                        contentDescription = "Playlist Image",
-                                        contentScale = ContentScale.Crop,
-                                        error = painterResource(R.drawable.default_image),
-                                        modifier = Modifier
-                                            .size((screenWidth * 0.4f).coerceAtMost(220.dp))
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .zIndex(10f)
-                                    )
+                                    if (gradient.isNotEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(
+                                                    Brush.verticalGradient(gradient)
+                                                )
+                                                .zIndex(10f)
+                                        ) {
+                                            Text(
+                                                text = playlistTitle ?: "",
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomStart)
+                                                    .padding(16.dp),
+                                                fontSize = 20.sp,
+                                                lineHeight = 20.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colorResource(R.color.off_white)
+                                            )
+                                        }
+                                    } else {
+                                        AsyncImage(
+                                            model = imageToLoad,
+                                            contentDescription = "Playlist Image",
+                                            contentScale = ContentScale.Crop,
+                                            error = painterResource(R.drawable.default_image),
+                                            modifier = Modifier
+                                                .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .zIndex(10f)
+                                        )
+                                    }
 
                                     Column(
                                         modifier = Modifier.fillMaxWidth()
@@ -634,7 +672,11 @@ fun Playlist_Activity(
                                         Spacer(modifier = Modifier.height(4.dp))
 
                                         Text(
-                                            text = htmlToText(playlists.name),
+                                            text = if (!playlistTitle.isNullOrEmpty()) {
+                                                playlistTitle
+                                            } else {
+                                                htmlToText(playlists.name)
+                                            },
                                             fontSize = 25.sp,
                                             lineHeight = 26.sp,
                                             fontFamily = fonts,

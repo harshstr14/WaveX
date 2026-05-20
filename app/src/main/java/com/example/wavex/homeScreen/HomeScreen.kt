@@ -16,7 +16,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +32,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -68,11 +69,12 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -80,6 +82,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
@@ -135,6 +138,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.absoluteValue
 
 object PlayerManager {
     var currentPlaylist: List<SongItem> = emptyList()
@@ -610,21 +614,38 @@ fun HomeScreen (
             }.verticalScroll(scrollState).zIndex(0f)
             ) {
                 ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
-                    val (topPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
+                    val (featuredPlaylistTitle,featuredPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
                         popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
 
-                    Playlist("Top","results",modifier = Modifier.constrainAs(topPlaylistsSection) {
-                        top.linkTo(parent.top, margin = 90.dp)
+                    Text(
+                        text = "FEATURED · TODAY",
+                        modifier = Modifier
+                            .constrainAs(featuredPlaylistTitle) {
+                                top.linkTo(parent.top, margin = 75.dp)
+                                start.linkTo(parent.start, margin = 25.dp)
+                            },
+                        fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                        lineHeight = 20.sp
+                    )
+
+                    Playlist("Top","results",modifier = Modifier.constrainAs(featuredPlaylistsSection) {
+                        top.linkTo(featuredPlaylistTitle.bottom, margin = 15.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     }, playlistsVM)
 
                     if (recentSongs.isNotEmpty() && playlists.isNotEmpty()) {
-                        Text("Recently Played", modifier = Modifier.constrainAs(recentlyPlayedTitle) {
-                            top.linkTo(topPlaylistsSection.bottom, margin = if (playlists.isNotEmpty()) 25.dp else 80.dp)
-                            start.linkTo(parent.start, margin = 25.dp)
-                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        Text(
+                            text = "Recently Played",
+                            modifier = Modifier
+                                .constrainAs(recentlyPlayedTitle) {
+                                    top.linkTo(featuredPlaylistsSection.bottom, margin = if (playlists.isNotEmpty()) 25.dp else 80.dp)
+                                    start.linkTo(parent.start, margin = 25.dp)
+                                },
+                            fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                            lineHeight = 20.sp
                         )
 
                         RecentlyPlayedSongs(
@@ -636,11 +657,16 @@ fun HomeScreen (
                     }
 
                     if (newReleases.isNotEmpty()) {
-                        Text("New Releases", modifier = Modifier.constrainAs(newReleasesTitle) {
-                            top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else topPlaylistsSection.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 25.dp)
-                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        Text(
+                            text = "New Releases",
+                            modifier = Modifier
+                                .constrainAs(newReleasesTitle) {
+                                    top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else featuredPlaylistsSection.bottom, margin = 22.dp)
+                                    start.linkTo(parent.start, margin = 25.dp)
+                                },
+                            fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                            lineHeight = 20.sp
                         )
                     }
 
@@ -651,11 +677,16 @@ fun HomeScreen (
                     }, newReleasesVM, onSongLongPress = onSongLongPress)
 
                     if (artists.isNotEmpty()) {
-                        Text("Popular Artists", modifier = Modifier.constrainAs(popularArtistsTitle) {
-                            top.linkTo(newReleasesSection.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 25.dp)
-                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        Text(
+                            text = "Top Artists",
+                            modifier = Modifier
+                                .constrainAs(popularArtistsTitle) {
+                                    top.linkTo(newReleasesSection.bottom, margin = 22.dp)
+                                    start.linkTo(parent.start, margin = 25.dp)
+                                },
+                            fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                            lineHeight = 20.sp
                         )
                     }
 
@@ -666,11 +697,16 @@ fun HomeScreen (
                     }, artistsVM)
 
                     if (trending.isNotEmpty()) {
-                        Text("Trending Songs", modifier = Modifier.constrainAs(trendingSongsTitle) {
-                            top.linkTo(popularArtistsSection.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 25.dp)
-                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        Text(
+                            text = "Trending Songs",
+                            modifier = Modifier
+                                .constrainAs(trendingSongsTitle) {
+                                    top.linkTo(popularArtistsSection.bottom, margin = 22.dp)
+                                    start.linkTo(parent.start, margin = 25.dp)
+                                },
+                            fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                            lineHeight = 20.sp
                         )
                     }
 
@@ -681,11 +717,16 @@ fun HomeScreen (
                     }, trendingVM, onSongLongPress = onSongLongPress)
 
                     if (albums.isNotEmpty()) {
-                        Text("Top Albums", modifier = Modifier.constrainAs(topAlbumsTitle) {
-                            top.linkTo(trendingSongsSection.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 25.dp)
-                        }, fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                        Text(
+                            text = "Top Albums",
+                            modifier = Modifier
+                                .constrainAs(topAlbumsTitle) {
+                                    top.linkTo(trendingSongsSection.bottom, margin = 22.dp)
+                                    start.linkTo(parent.start, margin = 25.dp)
+                                },
+                            fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal, color = colorResource(R.color.primary_text_color),
+                            lineHeight = 20.sp
                         )
                     }
 
@@ -726,100 +767,97 @@ fun HomeScreen (
 }
 
 @Composable
-fun Playlist(query: String, root: String, modifier: Modifier, viewModel: PlaylistsViewModel = viewModel()) {
+fun Playlist(
+    query: String, root: String,
+    modifier: Modifier,
+    viewModel: PlaylistsViewModel = viewModel()
+) {
     val playlists by viewModel.playlists
     val context = LocalContext.current
 
     LaunchedEffect(query) {
         viewModel.fetchPlayListByQuery(query,root)
     }
-
     val interactionSource = remember { MutableInteractionSource() }
 
     if (playlists.isEmpty()) return
 
-    val listSize = playlists.size
-    val infiniteItems = Int.MAX_VALUE
-    val startIndex = infiniteItems / 2 - (infiniteItems / 2) % listSize
+    val infiniteCount = Int.MAX_VALUE
+    val startIndex = infiniteCount / 2
 
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
-    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+    val pagerState = rememberPagerState(
+        initialPage = startIndex,
+        pageCount = { infiniteCount }
+    )
 
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val itemWidth = 160.dp
-    val itemSpacing = 18.dp
-    val sidePadding = (screenWidth - itemWidth) / 2
-
-    LaunchedEffect(listState, listSize) {
+    LaunchedEffect(Unit) {
         while (true) {
             delay(4000)
-            listState.animateScrollToItem(
-                listState.firstVisibleItemIndex + 1
+
+            pagerState.animateScrollToPage(
+                pagerState.currentPage + 1
             )
         }
     }
 
-    val scaleAlphaMap by remember(listState) {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val viewportCenter =
-                (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 58.dp),
+            pageSpacing = 2.dp
+        ) { page ->
+            val item = playlists[page % playlists.size]
 
-            val viewportWidth =
-                layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val pageOffset = (
+                    (pagerState.currentPage - page) +
+                            pagerState.currentPageOffsetFraction
+                    ).absoluteValue
 
-            val maxDistance = viewportWidth / 2f
+            val scale = lerp(
+                start = 0.82f,
+                stop = 1f,
+                fraction = 1f - pageOffset.coerceIn(0f, 1f)
+            )
 
-            layoutInfo.visibleItemsInfo.associate { itemInfo ->
-                val itemCenter = itemInfo.offset + itemInfo.size / 2f
-                val distance = kotlin.math.abs(viewportCenter - itemCenter)
-                val fraction = (1f - distance / maxDistance).coerceIn(0f, 1f)
-
-                val scale = 0.75f + 0.35f * fraction
-                val alpha = 0.4f + 0.6f * fraction
-
-                itemInfo.index to (scale to alpha)
+            val playlistName = remember(item.name) {
+                htmlToText(item.name)
             }
-        }
-    }
 
-    LazyRow(modifier = modifier, state = listState, flingBehavior = snapFlingBehavior,
-        contentPadding = PaddingValues(horizontal = sidePadding),
-        horizontalArrangement = Arrangement.spacedBy(itemSpacing)) {
-        items(infiniteItems) { index ->
-            val realItem = playlists[index % listSize]
-
-            val scaleAndAlpha = scaleAlphaMap[index] ?: (0.75f to 0.4f)
-
-            Column(
+            Box(
                 modifier = Modifier
-                    .width(itemWidth)
                     .graphicsLayer {
-                        scaleX = scaleAndAlpha.first
-                        scaleY = scaleAndAlpha.first
-                        alpha = scaleAndAlpha.second
+                        scaleX = scale
+                        scaleY = scale
+
+                        alpha = lerp(
+                            start = 0.5f,
+                            stop = 1f,
+                            fraction = 1f - pageOffset.coerceIn(0f, 1f)
+                        )
                     }
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
                     ) {
                         val intent = Intent(context, PlaylistActivity::class.java).apply {
-                            putExtra("playlist_id", realItem.id)
+                            putExtra("playlist_id", item.id)
                             putExtra("playlist_imageUrl",
-                                when (realItem.searchSource) {
+                                when (item.searchSource) {
                                     SearchSource.YTMUSIC.name ->
-                                        realItem.image.getOrNull(0)?.url
+                                        item.image.getOrNull(0)?.url
 
                                     SearchSource.JIOSAAVN.name ->
-                                        realItem.image.getOrNull(2)?.url
-                                            ?: realItem.image.lastOrNull()?.url
+                                        item.image.getOrNull(2)?.url
+                                            ?: item.image.lastOrNull()?.url
 
                                     else ->
-                                        realItem.image.lastOrNull()?.url
+                                        item.image.lastOrNull()?.url
                                 }
                             )
                             putExtra("playlist_source",
-                                when(realItem.searchSource) {
+                                when(item.searchSource) {
                                     SearchSource.YTMUSIC.name -> {
                                         SearchSource.YTMUSIC.name
                                     }
@@ -836,26 +874,49 @@ fun Playlist(query: String, root: String, modifier: Modifier, viewModel: Playlis
                         }
                         context.startActivity(intent)
                     }
+                    .fillMaxWidth()
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .clip(RoundedCornerShape(28.dp))
             ) {
                 AsyncImage(
-                    model = realItem.image.getOrNull(2)?.url,
-                    contentDescription = realItem.name,
+                    model = item.image.getOrNull(2)?.url,
+                    contentDescription = item.name,
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.default_image),
-                    modifier = Modifier
-                        .height(itemWidth)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                    modifier = Modifier.fillMaxSize()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.85f)
+                                )
+                            )
+                        )
+                )
 
                 Text(
-                    modifier = Modifier.padding(horizontal = 8.dp ),
-                    text = htmlToText(realItem.name),
-                    fontSize = 12.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.primary_text_color), maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = playlistName,
+                    color = colorResource(R.color.off_white),
+                    fontSize = 24.sp,
+                    lineHeight = 26.sp,
+                    fontFamily = fonts,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            start = 22.dp,
+                            end = 22.dp,
+                            bottom = 22.dp
+                        )
                 )
             }
         }

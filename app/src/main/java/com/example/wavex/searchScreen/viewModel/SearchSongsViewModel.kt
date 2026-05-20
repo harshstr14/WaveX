@@ -59,6 +59,11 @@ class SearchSongsViewModel(
         }
     }
 
+    suspend fun fetchYTStreamData(
+        songId: String,
+        baseUrl: String
+    ) = repository.fetchYTStreamData(songId, baseUrl)
+
     private fun launchSearch(tag: String,block: suspend () -> List<SongItem>) {
         viewModelScope.launch {
             _uiState.value = SearchSongsUiState.Loading

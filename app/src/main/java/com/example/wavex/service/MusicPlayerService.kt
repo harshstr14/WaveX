@@ -23,8 +23,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Html
 import android.util.Log
 import android.util.LruCache
@@ -35,16 +33,21 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.LifecycleService
-import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaStyleNotificationHelper
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
@@ -80,6 +83,7 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 class  MusicPlayerService : LifecycleService() {
@@ -109,7 +113,7 @@ class  MusicPlayerService : LifecycleService() {
 
     private val binder = LocalBinder()
     private lateinit var player: ExoPlayer
-    private lateinit var mediaSession: MediaSessionCompat
+    private lateinit var mediaSession: MediaSession
     private val handler = Handler(Looper.getMainLooper())
     private val progressRefreshMs = 100L
     private var currentAlbumArt: Bitmap? = null
@@ -215,24 +219,6 @@ class  MusicPlayerService : LifecycleService() {
     private var isRetrying = false
     private var shouldFetchSuggestions = false
 
-//    @kotlin.OptIn(FlowPreview::class)
-//    val playerUiState = combine(
-//        _isOnline,
-//        _isBuffering,
-//        _isPlaying
-//    ) { isOnline, isBuffering, isPlaying ->
-//
-//        when {
-//            !isOnline -> "RECONNECTING"
-//            isBuffering -> "BUFFERING"
-//            isPlaying -> "PLAYING"
-//            else -> "PAUSED"
-//        }
-//    }.debounce(250).stateIn(
-//        serviceScope,
-//        SharingStarted.WhileSubscribed(5000),
-//        "PAUSED"
-//    )
 
     override fun onCreate() {
         super.onCreate()
@@ -352,10 +338,32 @@ class  MusicPlayerService : LifecycleService() {
                 3000    // bufferForPlaybackAfterRebufferMs: after buffering again (3s)
             )
             .build()
+
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0")
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Referer" to "https://www.youtube.com/",
+                    "Origin" to "https://www.youtube.com"
+                )
+            )
+
+        val dataSourceFactory = DefaultDataSource.Factory(
+            this,
+            httpDataSourceFactory
+        )
+
         player = ExoPlayer.Builder(this)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .setLoadControl(loadControl)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(dataSourceFactory)
+            )
             .build()
+
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -401,13 +409,21 @@ class  MusicPlayerService : LifecycleService() {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
                 if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable)
-                updatePlaybackState()
                 serviceScope.launch {
                     updateNotification()
                 }
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                Log.e("PLAYER_ERROR", "Message: ${error.message}")
+                Log.e("PLAYER_ERROR", "Code: ${error.errorCode}")
+                Log.e("PLAYER_ERROR", "Code Name: ${error.errorCodeName}")
+
+                Log.e(
+                    "PLAYER_ERROR",
+                    Log.getStackTraceString(error)
+                )
+
                 val song = _currentSong.value
                 val localFile = song?.localPath?.let { File(it) }
 
@@ -449,37 +465,9 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun initMediaSession() {
-        mediaSession = MediaSessionCompat(this, "MusicPlayerService")
-        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onPlay() { resume() }
-            override fun onPause() { togglePlayPause() }
-            override fun onSkipToNext() { next() }
-            override fun onSkipToPrevious() { previous() }
-            override fun onStop() { stopServiceAndNotification() }
-            override fun onSeekTo(pos: Long) { seekTo(pos) }
-        })
-        mediaSession.isActive = true
-        updatePlaybackState()
-    }
-
-    private fun updatePlaybackState() {
-        val stateBuilder = PlaybackStateCompat.Builder()
-            .setActions(
-                PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                        PlaybackStateCompat.ACTION_STOP or
-                        PlaybackStateCompat.ACTION_SEEK_TO
-            )
-        val state = if (::player.isInitialized && player.isPlaying) {
-            PlaybackStateCompat.STATE_PLAYING
-        } else {
-            PlaybackStateCompat.STATE_PAUSED
-        }
-        stateBuilder.setState(state, player.currentPosition, 1.0f)
-        mediaSession.setPlaybackState(stateBuilder.build())
+        mediaSession = MediaSession.Builder(this, player)
+            .setCallback(object : MediaSession.Callback {})
+            .build()
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -653,10 +641,29 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun SongItem.getBestUri(isOnline: Boolean): Uri {
+
         val localFile = localPath?.let { File(it) }
+
         return when {
-            localFile != null && localFile.exists() -> localFile.toUri()
-            isOnline ->  downloadUrl[qualityIndex].url.toUri()
+
+            localFile != null && localFile.exists() -> {
+                localFile.toUri()
+            }
+
+            isOnline -> {
+
+                if (downloadUrl.isEmpty()) {
+                    return Uri.EMPTY
+                }
+
+                val safeIndex = qualityIndex.coerceIn(
+                    0,
+                    downloadUrl.lastIndex
+                )
+
+                downloadUrl[safeIndex].url.toUri()
+            }
+
             else -> Uri.EMPTY
         }
     }
@@ -755,8 +762,6 @@ class  MusicPlayerService : LifecycleService() {
             player.setMediaItem(mediaItem)
             player.prepare()
             player.playWhenReady = true
-
-            updatePlaybackState()
         }
     }
 
@@ -1232,6 +1237,7 @@ class  MusicPlayerService : LifecycleService() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun buildNotification(song: SongItem, bitmap: Bitmap): Notification {
         val playPending    = servicePendingIntent(ACTION_PLAY)
         val pausePending   = servicePendingIntent(ACTION_PAUSE)
@@ -1293,23 +1299,6 @@ class  MusicPlayerService : LifecycleService() {
             ?: "Unknown Artist"
         val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
 
-        val playbackState = PlaybackStateCompat.Builder()
-            .setActions(
-                PlaybackStateCompat.ACTION_PLAY or
-                PlaybackStateCompat.ACTION_PAUSE or
-                PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                PlaybackStateCompat.ACTION_SEEK_TO
-            )
-            .setState(
-                if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
-                getCurrentPosition().toLong(),
-                1f)
-            .build()
-
-        mediaSession.setPlaybackState(playbackState)
-
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(songName)
             .setContentText(artistsNameList)
@@ -1323,7 +1312,8 @@ class  MusicPlayerService : LifecycleService() {
             .addAction(playPauseAction)
             .addAction(NotificationCompat.Action(R.drawable.notificationnextbutton, "Next", nextPending))
             .addAction(repeatAction)
-            .setStyle(MediaStyle().setMediaSession(mediaSession.sessionToken).setShowActionsInCompactView(0, 1, 2, 3, 4))
+            .setStyle(MediaStyleNotificationHelper.MediaStyle(mediaSession)
+                .setShowActionsInCompactView(0, 1, 2, 3, 4))
 
         return notifBuilder.build()
     }
@@ -1345,22 +1335,48 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun updateMetadata(song: SongItem, bitmap: Bitmap) {
-        val duration = if (::player.isInitialized && player.duration > 0) player.duration else song.duration.toLong()
-        val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)
-        val artistsName = song.artist
-            .takeIf { it.isNotEmpty() }     // only proceed if list not empty
-            ?.joinToString(", ") { it.name } // join all artist names
-            ?: "Unknown Artist"
-        val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
 
-        mediaSession.setMetadata(
-            android.support.v4.media.MediaMetadataCompat.Builder()
-                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, songName.toString())
-                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, artistsNameList.toString())
-                .putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
-                .putLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-                .build()
+        val songName = Html.fromHtml(
+            song.name,
+            Html.FROM_HTML_MODE_LEGACY
+        ).toString()
+
+        val artistsName = song.artist
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(", ") { it.name }
+            ?: "Unknown Artist"
+
+        val metadata = MediaMetadata.Builder()
+            .setTitle(songName)
+            .setArtist(artistsName)
+            .setArtworkData(
+                bitmapToByteArray(bitmap),
+                MediaMetadata.PICTURE_TYPE_FRONT_COVER
+            )
+            .build()
+
+        val currentItem = player.currentMediaItem ?: return
+
+        val updatedItem = currentItem.buildUpon()
+            .setMediaMetadata(metadata)
+            .build()
+
+        player.replaceMediaItem(
+            player.currentMediaItemIndex,
+            updatedItem
         )
+    }
+
+    private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
+        val stream = ByteArrayOutputStream()
+
+        bitmap.compress(
+            Bitmap.CompressFormat.JPEG,
+            90,
+            stream
+        )
+
+        return stream.toByteArray()
     }
 
     private fun updatePlaybackInfo() {
@@ -1398,24 +1414,6 @@ class  MusicPlayerService : LifecycleService() {
         _duration.value = duration.toInt()
         _progress.value = position.toInt()
         _buffer.value = buffered.toInt()
-
-        // Update playback state
-        val playbackState = PlaybackStateCompat.Builder()
-            .setActions(
-                PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                        PlaybackStateCompat.ACTION_SEEK_TO
-            )
-            .setState(
-                if (player.isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
-                position,
-                1f
-            )
-            .build()
-        mediaSession.setPlaybackState(playbackState)
     }
 
     private fun servicePendingIntent(action: String): PendingIntent {

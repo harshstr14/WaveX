@@ -18,6 +18,7 @@ firebaseBom = "34.13.0"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 googleid = "1.2.0"
+media3Ui = "1.10.1"
 okhttp = "5.3.2"
 paletteKtx = "1.0.0"
 playServicesAuth = "21.5.1"
@@ -44,6 +45,8 @@ workRuntimeKtx = "2.11.2"
 runtimeLivedata = "1.11.1"
 
 [libraries]
+androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3Ui" }
+androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3Ui" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
