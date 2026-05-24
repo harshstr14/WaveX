@@ -101,7 +101,7 @@ fun ShareArtist(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = colorResource(R.color.off_white),
+        containerColor = colorResource(R.color.background_color),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {

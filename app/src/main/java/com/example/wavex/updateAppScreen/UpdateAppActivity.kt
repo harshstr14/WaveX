@@ -59,9 +59,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -415,25 +416,24 @@ fun Update_App_Activity(
                             val cornerRadius = 20.dp.toPx()
 
                             drawIntoCanvas { canvas ->
-                                val paint = Paint().apply {
-                                    color = glowColor.copy(alpha = glowAlpha)
-                                    asFrameworkPaint().apply {
-                                        isAntiAlias = true
-                                        maskFilter = android.graphics.BlurMaskFilter(
-                                            safeBlur,
-                                            android.graphics.BlurMaskFilter.Blur.NORMAL
-                                        )
-                                    }
+                                val frameworkPaint = android.graphics.Paint().apply {
+                                    isAntiAlias = true
+                                    color = glowColor.copy(alpha = glowAlpha).toArgb()
+
+                                    maskFilter = android.graphics.BlurMaskFilter(
+                                        safeBlur,
+                                        android.graphics.BlurMaskFilter.Blur.NORMAL
+                                    )
                                 }
 
-                                canvas.drawRoundRect(
+                                canvas.nativeCanvas.drawRoundRect(
                                     8f,
                                     8f,
                                     size.width - 8f,
                                     size.height - 8f,
                                     cornerRadius,
                                     cornerRadius,
-                                    paint
+                                    frameworkPaint
                                 )
                             }
                         }

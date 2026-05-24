@@ -1465,7 +1465,7 @@ fun SongOptionsBottomSheet(
             }
         },
         sheetState = sheetState,
-        containerColor = colorResource(R.color.off_white),
+        containerColor = colorResource(R.color.background_color),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
@@ -1826,10 +1826,7 @@ private fun BottomSheetContent(
     ParallelDownloader.downloadStates[song.id]
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxWidth()
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -1845,7 +1842,9 @@ private fun BottomSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -1977,154 +1976,209 @@ private fun BottomSheetContent(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        SheetOptionItem(
-            icon = if (isCurrentSong && isPlaying)
-                R.drawable.notificationpausebutton
-            else
-                R.drawable.notificationplaybutton,
-            text = if (isCurrentSong && isPlaying)
-                "Pause"
-            else
-                "Play Now"
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color(0xFFfefefe))
+                .verticalScroll(rememberScrollState())
         ) {
-            onPlayNow()
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        SheetOptionItem(
-            icon = if (isFavourite) R.drawable.heart_filled else R.drawable.heart_outline,
-            text = if (isFavourite) "Remove from Favourite" else "Save to Favourite",
-            isAnimated = isFavourite,
-            enabled = isOnline
-        ) {
-            if (isOnline) {
-                onToggleFavourite(song)
-            } else {
-                onShowSnackBar("No internet connection")
+            SheetOptionItem(
+                icon = if (isCurrentSong && isPlaying)
+                    R.drawable.notificationpausebutton
+                else
+                    R.drawable.notificationplaybutton,
+                text = if (isCurrentSong && isPlaying)
+                    "Pause"
+                else
+                    "Play Now"
+            ) {
+                onPlayNow()
             }
-        }
 
-        //SheetOptionItem(R.drawable.next_icon, "Play Next")
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
 
-        SheetOptionItem(
-            icon = R.drawable.add_playlist_icon,
-            text = "Add to Playlist",
-            enabled = isOnline
-        ) {
-            if (isOnline) {
-                onAddToPlaylistClick()
-            } else {
-                onShowSnackBar("No internet connection")
-            }
-        }
-
-        SheetOptionItem(
-            icon = R.drawable.queue_icon,
-            text = when {
-                isInQueue -> "Remove from queue"
-                else -> "Add to queue"
-            }
-        ) {
-            when {
-                isInQueue -> {
-                    musicService?.removeFromQueue(song.id)
-                    onShowSnackBar("Removed from queue")
-                }
-
-                isInPlaylist -> {
-                    onShowSnackBar("Song already in playlist")
-                }
-
-                else -> {
-                    musicService?.addToQueue(song)
-                    onShowSnackBar("Added to queue")
+            SheetOptionItem(
+                icon = if (isFavourite) R.drawable.heart_filled else R.drawable.heart_outline,
+                text = if (isFavourite) "Remove from Favourite" else "Save to Favourite",
+                isAnimated = isFavourite,
+                enabled = isOnline
+            ) {
+                if (isOnline) {
+                    onToggleFavourite(song)
+                } else {
+                    onShowSnackBar("No internet connection")
                 }
             }
-        }
 
-        val state = ParallelDownloader.downloadStates[song.id]
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
 
-        SheetOptionItem(
-            icon = when {
-                isDownloaded -> R.drawable.downloaded_icon
-                state == ParallelDownloader.DownloadState.DOWNLOADING -> R.drawable.download_icon
-                else -> R.drawable.download_icon
-            },
-            text = when {
-                isDownloaded -> "Remove From Download"
-                state == ParallelDownloader.DownloadState.DOWNLOADING -> "Download in Progress"
-                state == ParallelDownloader.DownloadState.PAUSED -> "Resume Download"
-                state == ParallelDownloader.DownloadState.FAILED -> "Retry Download"
-                else -> "Download"
-            }
-        ) {
-            when {
-                isDownloaded -> {
-                    onToggleDownload(song)
-                    onShowSnackBar("Removed from downloads")
-                }
+            //SheetOptionItem(R.drawable.next_icon, "Play Next")
 
-                state == ParallelDownloader.DownloadState.DOWNLOADING -> {
-                    onShowSnackBar("Song is already downloading")
-                }
-
-                state == ParallelDownloader.DownloadState.PAUSED -> {
-                    onToggleDownload(song) // resume
-                }
-
-                state == ParallelDownloader.DownloadState.FAILED -> {
-                    onToggleDownload(song) // retry
-                }
-
-                else -> {
-                    onToggleDownload(song) // start
-                    onShowSnackBar("Downloading started")
+            SheetOptionItem(
+                icon = R.drawable.add_playlist_icon,
+                text = "Add to Playlist",
+                enabled = isOnline
+            ) {
+                if (isOnline) {
+                    onAddToPlaylistClick()
+                } else {
+                    onShowSnackBar("No internet connection")
                 }
             }
-        }
 
-        SheetOptionItem(
-            icon = R.drawable.mic_icon,
-            text = "View Artist"
-        ) {
-            onShowArtistsClick()
-        }
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
 
-        SheetOptionItem(
-            icon = R.drawable.album_icon,
-            text = "Go to Album",
-            enabled = isOnline
-        ) {
-            if (isOnline) {
-                val intent = Intent(context, AlbumActivity::class.java).apply {
-                    putExtra("album_id", song.album?.id)
-                    putExtra("album_imageUrl", "")
-                    putExtra("album_source",
-                        when(song.songSource) {
-                            SearchSource.YTMUSIC.name -> {
-                                SearchSource.YTMUSIC.name
+            SheetOptionItem(
+                icon = R.drawable.queue_icon,
+                text = when {
+                    isInQueue -> "Remove from queue"
+                    else -> "Add to queue"
+                }
+            ) {
+                when {
+                    isInQueue -> {
+                        musicService?.removeFromQueue(song.id)
+                        onShowSnackBar("Removed from queue")
+                    }
+
+                    isInPlaylist -> {
+                        onShowSnackBar("Song already in playlist")
+                    }
+
+                    else -> {
+                        musicService?.addToQueue(song)
+                        onShowSnackBar("Added to queue")
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
+
+            val state = ParallelDownloader.downloadStates[song.id]
+
+            SheetOptionItem(
+                icon = when {
+                    isDownloaded -> R.drawable.downloaded_icon
+                    state == ParallelDownloader.DownloadState.DOWNLOADING -> R.drawable.download_icon
+                    else -> R.drawable.download_icon
+                },
+                text = when {
+                    isDownloaded -> "Remove From Download"
+                    state == ParallelDownloader.DownloadState.DOWNLOADING -> "Download in Progress"
+                    state == ParallelDownloader.DownloadState.PAUSED -> "Resume Download"
+                    state == ParallelDownloader.DownloadState.FAILED -> "Retry Download"
+                    else -> "Download"
+                }
+            ) {
+                when {
+                    isDownloaded -> {
+                        onToggleDownload(song)
+                        onShowSnackBar("Removed from downloads")
+                    }
+
+                    state == ParallelDownloader.DownloadState.DOWNLOADING -> {
+                        onShowSnackBar("Song is already downloading")
+                    }
+
+                    state == ParallelDownloader.DownloadState.PAUSED -> {
+                        onToggleDownload(song) // resume
+                    }
+
+                    state == ParallelDownloader.DownloadState.FAILED -> {
+                        onToggleDownload(song) // retry
+                    }
+
+                    else -> {
+                        onToggleDownload(song) // start
+                        onShowSnackBar("Downloading started")
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
+
+            SheetOptionItem(
+                icon = R.drawable.mic_icon,
+                text = "View Artist"
+            ) {
+                onShowArtistsClick()
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
+
+            SheetOptionItem(
+                icon = R.drawable.album_icon,
+                text = "Go to Album",
+                enabled = isOnline
+            ) {
+                if (isOnline) {
+                    val intent = Intent(context, AlbumActivity::class.java).apply {
+                        putExtra("album_id", song.album?.id)
+                        putExtra("album_imageUrl", "")
+                        putExtra("album_source",
+                            when(song.songSource) {
+                                SearchSource.YTMUSIC.name -> {
+                                    SearchSource.YTMUSIC.name
+                                }
+                                SearchSource.JIOSAAVN.name -> {
+                                    SearchSource.JIOSAAVN.name
+                                }
+
+                                else -> {
+                                    "Unknown"
+                                }
                             }
-                            SearchSource.JIOSAAVN.name -> {
-                                SearchSource.JIOSAAVN.name
-                            }
-
-                            else -> {
-                                "Unknown"
-                            }
-                        }
-                    )
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        )
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    context.startActivity(intent)
+                } else {
+                    onShowSnackBar("No internet connection")
                 }
-                context.startActivity(intent)
-            } else {
-                onShowSnackBar("No internet connection")
             }
-        }
 
-        SheetOptionItem(
-            icon = R.drawable.share_icon,
-            text = "Share"
-        ) {
-            onShowShareSheet()
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                thickness = 1.dp,
+                color = colorResource(R.color.background_color)
+            )
+
+            SheetOptionItem(
+                icon = R.drawable.share_icon,
+                text = "Share"
+            ) {
+                onShowShareSheet()
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -2159,7 +2213,7 @@ fun SheetOptionItem(
                 onClick()
             }
             .alpha(if (enabled) 1f else 0.4f)
-            .padding(vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
