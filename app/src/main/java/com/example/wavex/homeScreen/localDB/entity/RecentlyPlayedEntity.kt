@@ -1,15 +1,17 @@
-package com.example.wavex.homeScreen
+package com.example.wavex.homeScreen.localDB.entity
 
-import android.os.Parcelable
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.example.wavex.songData.Album
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
-import kotlinx.parcelize.Parcelize
 
-@Parcelize
-data class SongItem(
-    var id: String = "",
+@Entity(tableName = "recently_played_songs")
+data class RecentlyPlayedEntity(
+    @PrimaryKey
+    var id: String,
+
     var name: String = "",
     var artist: MutableList<Artists> = mutableListOf(),
     var album: Album? = null,
@@ -17,9 +19,8 @@ data class SongItem(
     var duration: Int = 0,
     var playCount: Int = 0,
     var downloadUrl: MutableList<Download> = mutableListOf(),
-    var isFav: Boolean = false,
-    var localPath: String? = null,
-    val source: String? = null,
-    val songSource: String ?= null,
+
     val playedAt: Long = System.currentTimeMillis(),
-) : Parcelable
+    var localPath: String? = null,
+    val songSource: String ?= null
+)

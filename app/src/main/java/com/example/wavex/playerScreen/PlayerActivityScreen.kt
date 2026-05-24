@@ -14,7 +14,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -121,6 +120,7 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
@@ -134,27 +134,29 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareSong
 import com.example.wavex.shareComponent.ShareSongItem
 import com.example.wavex.ui.theme.WaveXTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class PlayerActivityScreen : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -169,13 +171,9 @@ class PlayerActivityScreen : ComponentActivity() {
             )
         )
 
-        val downloadViewModel: DownloadViewModel by viewModels {
-            DownloadViewModelFactory(AppContainer.downloadRepository)
-        }
-
         setContent {
             WaveXTheme {
-                Player_Activity_Screen(downloadViewModel)
+                Player_Activity_Screen()
             }
         }
     }
@@ -200,7 +198,9 @@ class PlayerActivityScreen : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
+private fun Player_Activity_Screen(
+    downloadViewModel: DownloadViewModel = hiltViewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -603,7 +603,17 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
 
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(currentSong?.image?.getOrNull(2)?.url)
+                            .data(when (currentSong?.songSource) {
+                                SearchSource.YTMUSIC.name ->
+                                    currentSong?.image?.getOrNull(0)?.url
+
+                                SearchSource.JIOSAAVN.name ->
+                                    currentSong?.image?.getOrNull(2)?.url
+                                        ?: currentSong?.image?.lastOrNull()?.url
+
+                                else ->
+                                    currentSong?.image?.lastOrNull()?.url
+                            })
                             .allowHardware(false)
                             .build(),
                         contentDescription = currentSong?.name,
@@ -998,7 +1008,17 @@ private fun Player_Activity_Screen(downloadViewModel: DownloadViewModel) {
                             title = htmlToText(currentSong?.name ?: ""),
                             subtitle = currentSong?.album?.name ?: "Unknown",
                             artists = currentSong?.artist?.joinToString(", ") { htmlToText(it.name) } ?: "Unknown",
-                            image = currentSong?.image?.getOrNull(2)?.url,
+                            image = when (currentSong?.songSource) {
+                                SearchSource.YTMUSIC.name ->
+                                    currentSong?.image?.getOrNull(0)?.url
+
+                                SearchSource.JIOSAAVN.name ->
+                                    currentSong?.image?.getOrNull(2)?.url
+                                        ?: currentSong?.image?.lastOrNull()?.url
+
+                                else ->
+                                    currentSong?.image?.lastOrNull()?.url
+                            },
                             id = currentSong?.id ?: "",
                             type = ShareType.SONG
                         ),
@@ -1224,6 +1244,7 @@ fun UpNextSheetContent(
     currentSongId: String?,
     sheetState: SheetState,
     downloadedIds: Set<String>,
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onMoreClick: (SongItem, Int, List<SongItem>) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1393,14 +1414,24 @@ fun UpNextSheetContent(
 
                                     ContextCompat.startForegroundService(context, intent)
 
-                                    scope.launch {
-                                        RecentlyPlayedManager.add(context, song)
-                                    }
+                                    recentlyPlayedViewModel.onSongPlayed(
+                                        song.toRecentlyPlayedEntity()
+                                    )
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             AsyncImage(
-                                model = song.image.getOrNull(2)?.url,
+                                model = when (song.songSource) {
+                                    SearchSource.YTMUSIC.name ->
+                                        song.image.getOrNull(0)?.url
+
+                                    SearchSource.JIOSAAVN.name ->
+                                        song.image.getOrNull(2)?.url
+                                            ?: song.image.lastOrNull()?.url
+
+                                    else ->
+                                        song.image.lastOrNull()?.url
+                                },
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(60.dp)

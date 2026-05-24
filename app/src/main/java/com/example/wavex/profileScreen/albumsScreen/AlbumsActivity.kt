@@ -376,10 +376,10 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
 
             if (showDeleteDialog) {
                 IOSStyleBottomDialog(
-                    title = "Delete All Albums",
-                    message = "Do you want to delete all favourite albums?",
+                    title = "Delete All Albums?",
+                    message = "Do you want to delete all favourite albums.",
                     confirmText = "Delete",
-                    //icon = R.drawable.delete_icon,
+                    icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllAlbums()
                         showDeleteDialog = false

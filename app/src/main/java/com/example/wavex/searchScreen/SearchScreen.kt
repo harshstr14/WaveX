@@ -112,6 +112,7 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -125,15 +126,16 @@ import com.example.wavex.BuildConfig
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.seachHistory.SearchHistoryViewModel
@@ -1136,6 +1138,7 @@ private fun SearchSongs(
     modifier: Modifier,
     downloadedIds: Set<String>,
     viewModel: SearchSongsViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     listState: LazyListState,
     onMoreClick: (SongItem, List<SongItem>, Int) -> Unit,
     snackBarHostState: SnackbarHostState
@@ -1215,7 +1218,6 @@ private fun SearchSongs(
                     items = songs,
                     key = { _, song -> song.id }
                 ) { index, song ->
-
                     val songName = remember(song.name) {
                         htmlToText(song.name)
                     }
@@ -1269,35 +1271,15 @@ private fun SearchSongs(
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
                                     scope.launch {
-                                        val finalSong = if (
-                                            song.songSource == SearchSource.YTMUSIC.name
-                                        ) {
-                                            val streamData = viewModel.fetchYTStreamData(
-                                                song.id,
-                                                BuildConfig.YT_API_BASE_URL
-                                            )
 
-                                            if (streamData != null) {
-                                                song.copy(
-                                                    duration = streamData.duration,
-                                                    downloadUrl = streamData.downloadUrl.toMutableList()
-                                                )
-                                            } else {
-                                                song
-                                            }
-
-                                        } else {
-                                            song
-                                        }
-
-                                        PlayerManager.currentPlaylist = listOf(finalSong)
+                                        Log.d("STREAM_URL", "${song.downloadUrl}")
+                                        PlayerManager.currentPlaylist = listOf(song)
                                         PlayerManager.currentIndex = 0
 
                                         val intent = Intent(
                                             context,
                                             MusicPlayerService::class.java
                                         ).apply {
-
                                             action = MusicPlayerService.ACTION_PLAY_NEW
                                             putExtra("index", 0)
                                             putExtra("from_search", true)
@@ -1305,7 +1287,9 @@ private fun SearchSongs(
 
                                         ContextCompat.startForegroundService(context, intent)
 
-                                        RecentlyPlayedManager.add(context, finalSong)
+                                        recentlyPlayedViewModel.onSongPlayed(
+                                            song.toRecentlyPlayedEntity()
+                                        )
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically
@@ -1364,17 +1348,19 @@ private fun SearchSongs(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                Text(
-                                    text = formatDuration(song.duration),
-                                    fontSize = 12.sp,
-                                    lineHeight = 14.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = secondaryTextColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                if (song.duration > 0) {
+                                    Text(
+                                        text = formatDuration(song.duration),
+                                        fontSize = 12.sp,
+                                        lineHeight = 14.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = secondaryTextColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(14.dp))
@@ -1764,6 +1750,20 @@ private fun SearchPlaylists(
 
                                             else -> {
                                                 "Unknown"
+                                            }
+                                        }
+                                    )
+                                    putExtra("rectangular_image",
+                                        when(playlist.searchSource) {
+                                            SearchSource.YTMUSIC.name -> {
+                                                true
+                                            }
+                                            SearchSource.JIOSAAVN.name -> {
+                                                false
+                                            }
+
+                                            else -> {
+                                                false
                                             }
                                         }
                                     )

@@ -4,6 +4,7 @@ import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.searchScreen.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -53,7 +54,8 @@ class AllAlbumsRepository {
                     id = album.optString("id"),
                     name = album.optString("name"),
                     artist = parsePrimaryArtists(album.optJSONObject("artists")).toMutableList(),
-                    image = parseImages(album.optJSONArray("image")).toMutableList()
+                    image = parseImages(album.optJSONArray("image")).toMutableList(),
+                    searchSource = SearchSource.JIOSAAVN.name
                 )
             )
         }

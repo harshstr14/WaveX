@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.ksp)
+    id("com.google.dagger.hilt.android")
 }
 
 val localProps = gradleLocalProperties(rootDir,providers)
@@ -23,6 +24,12 @@ val waveXApiUrl = localProps.getProperty("WAVEX_API_URL")
 
 val ytApiUrl = localProps.getProperty("YT_API_BASE_URL")
     ?: error("YT_API_BASE_URL missing in local.properties")
+
+val ytStreamUrl = localProps.getProperty("YT_STREAM_URL")
+    ?: error("YT_STREAM_URL missing in local.properties")
+
+val musicAIApi = localProps.getProperty("MUSIC_AI_API_BASE_URL")
+    ?: error("MUSIC_AI_API_BASE_URL missing in local.properties")
 
 android {
     namespace = "com.example.wavex"
@@ -50,6 +57,14 @@ android {
         buildConfigField("String", "WAVEX_API_URL", "\"$waveXApiUrl\"")
 
         buildConfigField("String", "YT_API_BASE_URL", "\"$ytApiUrl\"")
+
+        buildConfigField("String", "YT_STREAM_URL", "\"$ytStreamUrl\"")
+
+        buildConfigField("String", "MUSIC_AI_API_BASE_URL", "\"$musicAIApi\"")
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -69,9 +84,24 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+configurations.configureEach {
+    exclude(
+        group = "com.google.firebase",
+        module = "protolite-well-known-types"
+    )
 }
 
 dependencies {
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.work.runtime.ktx)

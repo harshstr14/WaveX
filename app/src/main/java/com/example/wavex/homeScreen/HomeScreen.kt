@@ -90,6 +90,7 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
@@ -103,14 +104,14 @@ import com.example.wavex.HttpClientProvider
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.downloadSong.data.DatabaseProvider
-import com.example.wavex.downloadSong.repository.DownloadRepository
 import com.example.wavex.fonts
+import com.example.wavex.homeScreen.localDB.entity.RecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.AlbumsViewModel
-import com.example.wavex.homeScreen.viewModel.ArtistsViewModel
 import com.example.wavex.homeScreen.viewModel.NewReleasesSongsViewModel
 import com.example.wavex.homeScreen.viewModel.PlaylistsViewModel
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
+import com.example.wavex.homeScreen.viewModel.TopArtistsViewModel
 import com.example.wavex.homeScreen.viewModel.TrendingSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.profileScreen.ProfileActivity
@@ -119,8 +120,6 @@ import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -143,15 +142,6 @@ import kotlin.math.absoluteValue
 object PlayerManager {
     var currentPlaylist: List<SongItem> = emptyList()
     var currentIndex: Int = 0
-}
-
-object AppContainer {
-    lateinit var downloadRepository: DownloadRepository
-
-    fun init(context: Context) {
-        val db = DatabaseProvider.getDatabase(context)
-        downloadRepository = DownloadRepository(db.downloadDao())
-    }
 }
 
 object ParallelDownloader {
@@ -267,48 +257,6 @@ object ParallelDownloader {
     }
 }
 
-val Context.musicDataStore by preferencesDataStore("waveX_datastore")
-
-object RecentlyPlayedManager {
-    private val RECENTLY_PLAYED_KEY = stringPreferencesKey("recently_played")
-
-    private val gson = Gson()
-    private val type = object : TypeToken<List<SongItem>>() {}.type
-
-    suspend fun add(context: Context, song: SongItem, maxSize: Int = 20) {
-        context.musicDataStore.edit { prefs ->
-
-            val currentList = prefs[RECENTLY_PLAYED_KEY]
-                ?.let { gson.fromJson<List<SongItem>>(it, type) }
-                ?.toMutableList()
-                ?: mutableListOf()
-
-            currentList.removeAll { it.id == song.id }
-
-            currentList.add(0, song)
-
-            if (currentList.size > maxSize) {
-                currentList.subList(maxSize, currentList.size).clear()
-            }
-
-            prefs[RECENTLY_PLAYED_KEY] = gson.toJson(currentList)
-        }
-    }
-
-    fun flow(context: Context) =
-        context.musicDataStore.data.map { prefs ->
-            prefs[RECENTLY_PLAYED_KEY]
-                ?.let { gson.fromJson<List<SongItem>>(it, type) }
-                ?: emptyList()
-        }
-
-    suspend fun clear(context: Context) {
-        context.musicDataStore.edit { prefs ->
-            prefs.remove(RECENTLY_PLAYED_KEY)
-        }
-    }
-}
-
 object ProfilePrefs {
     private const val DATASTORE_NAME = "profile"
 
@@ -412,17 +360,15 @@ fun HomeScreen (
     val newReleasesVM: NewReleasesSongsViewModel = viewModel()
     val trendingVM: TrendingSongsViewModel = viewModel()
     val albumsVM: AlbumsViewModel = viewModel()
-    val artistsVM: ArtistsViewModel = viewModel()
+    val artistsVM: TopArtistsViewModel = hiltViewModel()
+    val recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
 
     val playlists by playlistsVM.playlists
     val newReleases by newReleasesVM.songs
     val trending by trendingVM.songs
     val albums by albumsVM.albums
-    val artists by artistsVM.artists
-
-    val recentSongs by RecentlyPlayedManager
-        .flow(context)
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val artists by artistsVM.artists.collectAsStateWithLifecycle()
+    val recentlyPlayed by recentlyPlayedViewModel.recentlyPlayed.collectAsState(initial = emptyList())
 
     val isLoading by remember(playlistsVM.isLoading, newReleasesVM.isLoading,
         trendingVM.isLoading, albumsVM.isLoading, artistsVM.isLoading) {
@@ -478,7 +424,7 @@ fun HomeScreen (
             newReleasesVM.fetchPlaylistsByID("6689255","songs")
             trendingVM.fetchPlaylistsByID("946682072","songs")
             albumsVM.fetchAlbumByQuery("latest","results")
-            artistsVM.fetchArtistsByQuery("top artists","results")
+            artistsVM.refreshArtists()
 
             userID?.let { viewModel.refreshUserData(it) }
 
@@ -629,13 +575,18 @@ fun HomeScreen (
                         lineHeight = 20.sp
                     )
 
-                    Playlist("Top","results",modifier = Modifier.constrainAs(featuredPlaylistsSection) {
-                        top.linkTo(featuredPlaylistTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }, playlistsVM)
+                    Playlist(
+                        query = "Top", root = "results",
+                        modifier = Modifier
+                            .constrainAs(featuredPlaylistsSection) {
+                                top.linkTo(featuredPlaylistTitle.bottom, margin = 15.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
+                        viewModel = playlistsVM
+                    )
 
-                    if (recentSongs.isNotEmpty() && playlists.isNotEmpty()) {
+                    if (recentlyPlayed.isNotEmpty() && playlists.isNotEmpty()) {
                         Text(
                             text = "Recently Played",
                             modifier = Modifier
@@ -649,10 +600,14 @@ fun HomeScreen (
                         )
 
                         RecentlyPlayedSongs(
-                            recentSongs, modifier = Modifier.constrainAs(recentlyPlayedSection) {
-                                top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
-                                start.linkTo(parent.start)
-                            }, onSongLongPress = onSongLongPress
+                            recentlyPlayed = recentlyPlayed,
+                            viewModel = recentlyPlayedViewModel,
+                            modifier = Modifier
+                                .constrainAs(recentlyPlayedSection) {
+                                    top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
+                                    start.linkTo(parent.start)
+                                },
+                            onSongLongPress = onSongLongPress
                         )
                     }
 
@@ -661,7 +616,7 @@ fun HomeScreen (
                             text = "New Releases",
                             modifier = Modifier
                                 .constrainAs(newReleasesTitle) {
-                                    top.linkTo(if (recentSongs.isNotEmpty()) recentlyPlayedSection.bottom else featuredPlaylistsSection.bottom, margin = 22.dp)
+                                    top.linkTo(if (recentlyPlayed.isNotEmpty()) recentlyPlayedSection.bottom else featuredPlaylistsSection.bottom, margin = 22.dp)
                                     start.linkTo(parent.start, margin = 25.dp)
                                 },
                             fontSize = 17.sp, fontFamily = FontFamily(Font(R.font.chalesrientta)), fontWeight = FontWeight.SemiBold,
@@ -690,11 +645,11 @@ fun HomeScreen (
                         )
                     }
 
-                    Artists("top artists","results", modifier = Modifier.constrainAs(popularArtistsSection){
+                    Artists(modifier = Modifier.constrainAs(popularArtistsSection){
                         top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
-                    }, artistsVM)
+                    })
 
                     if (trending.isNotEmpty()) {
                         Text(
@@ -870,6 +825,20 @@ fun Playlist(
                                     }
                                 }
                             )
+                            putExtra("rectangular_image",
+                                when(item.searchSource) {
+                                    SearchSource.YTMUSIC.name -> {
+                                        true
+                                    }
+                                    SearchSource.JIOSAAVN.name -> {
+                                        false
+                                    }
+
+                                    else -> {
+                                        false
+                                    }
+                                }
+                            )
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
@@ -925,16 +894,19 @@ fun Playlist(
 
 @Composable
 fun RecentlyPlayedSongs(
-    recentSongs: List<SongItem>,
+    recentlyPlayed: List<RecentlyPlayedEntity>,
+    viewModel: RecentlyPlayedViewModel,
     modifier: Modifier,
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
+    val uniqueSongs = recentlyPlayed.distinctBy { it.id }
+    val songLists = uniqueSongs.map { it.toSongItem() }
+
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
-    val columns = remember(recentSongs) {
-        recentSongs.chunked(3)
+    val columns = remember(songLists) {
+        songLists.chunked(3)
     }
 
     LazyRow(
@@ -958,7 +930,7 @@ fun RecentlyPlayedSongs(
                                 interactionSource = interactionSource,
                                 indication = null,
                                 onClick = {
-                                    val songIndex = recentSongs.indexOfFirst { it.id == song.id }
+                                    val songIndex = songLists.indexOfFirst { it.id == song.id }
                                     if (songIndex == -1) return@combinedClickable
 
                                     val intent = Intent(context, MusicPlayerService::class.java).apply {
@@ -966,26 +938,36 @@ fun RecentlyPlayedSongs(
                                         putExtra("index", songIndex)
                                     }
 
-                                    PlayerManager.currentPlaylist = recentSongs
+                                    PlayerManager.currentPlaylist = songLists
                                     PlayerManager.currentIndex = songIndex
 
                                     ContextCompat.startForegroundService(context, intent)
 
-                                    scope.launch {
-                                        RecentlyPlayedManager.add(context, song)
-                                    }
+                                    viewModel.onSongPlayed(
+                                        song.toRecentlyPlayedEntity()
+                                    )
                                 },
                                 onLongClick = {
-                                    val songIndex = recentSongs.indexOfFirst { it.id == song.id }
+                                    val songIndex = songLists.indexOfFirst { it.id == song.id }
                                     if (songIndex != -1) {
-                                        onSongLongPress(recentSongs, song, songIndex)
+                                        onSongLongPress(songLists, song, songIndex)
                                     }
                                 }
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = song.image.getOrNull(2)?.url,
+                            model = when (song.songSource) {
+                                SearchSource.YTMUSIC.name ->
+                                    song.image.getOrNull(0)?.url
+
+                                SearchSource.JIOSAAVN.name ->
+                                    song.image.getOrNull(2)?.url
+                                        ?: song.image.lastOrNull()?.url
+
+                                else ->
+                                    song.image.lastOrNull()?.url
+                            },
                             contentDescription = null,
                             modifier = Modifier
                                 .size(64.dp)
@@ -1059,10 +1041,10 @@ fun RecentlyPlayedSongs(
 fun NewReleasesSongs(
     playlistId: String, root: String, modifier: Modifier,
     viewModel: NewReleasesSongsViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
     val songs by viewModel.songs
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     LaunchedEffect(playlistId) {
@@ -1097,9 +1079,9 @@ fun NewReleasesSongs(
 
                             ContextCompat.startForegroundService(context, intent)
 
-                            scope.launch {
-                                RecentlyPlayedManager.add(context, song)
-                            }
+                            recentlyPlayedViewModel.onSongPlayed(
+                                song.toRecentlyPlayedEntity()
+                            )
                         },
                         onLongClick = {
                             val songIndex = songs.indexOfFirst { it.id == song.id }
@@ -1151,13 +1133,10 @@ fun NewReleasesSongs(
 }
 
 @Composable
-fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsViewModel = viewModel()) {
-    val artists = viewModel.artists.value
+fun Artists(modifier: Modifier) {
+    val viewModel: TopArtistsViewModel = hiltViewModel()
+    val artists by viewModel.artists.collectAsStateWithLifecycle()
     val context = LocalContext.current
-
-    LaunchedEffect(query) {
-        viewModel.fetchArtistsByQuery(query, root)
-    }
 
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -1175,6 +1154,20 @@ fun Artists(query: String, root: String, modifier: Modifier, viewModel: ArtistsV
                     val intent = Intent(context, ArtistActivity::class.java).apply {
                         putExtra("artist_id", artist.id)
                         putExtra("artist_imageUrl", artist.image)
+                        putExtra("artist_source",
+                            when(artist.searchSource) {
+                                SearchSource.YTMUSIC.name -> {
+                                    SearchSource.YTMUSIC.name
+                                }
+                                SearchSource.JIOSAAVN.name -> {
+                                    SearchSource.JIOSAAVN.name
+                                }
+
+                                else -> {
+                                    "Unknown"
+                                }
+                            }
+                        )
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
                     context.startActivity(intent)
@@ -1212,10 +1205,10 @@ fun TrendingSongs(
     playlistId: String, root: String,
     modifier: Modifier,
     viewModel: TrendingSongsViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
     val songs by viewModel.songs
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     LaunchedEffect(playlistId) {
@@ -1250,9 +1243,9 @@ fun TrendingSongs(
 
                             ContextCompat.startForegroundService(context, intent)
 
-                            scope.launch {
-                                RecentlyPlayedManager.add(context, song)
-                            }
+                            recentlyPlayedViewModel.onSongPlayed(
+                                song.toRecentlyPlayedEntity()
+                            )
                         },
                         onLongClick = {
                             val songIndex = songs.indexOfFirst { it.id == song.id }
@@ -1529,6 +1522,38 @@ private fun LoadingEffect() {
                 }
         )
     }
+}
+
+private fun RecentlyPlayedEntity.toSongItem(): SongItem {
+    return SongItem(
+        id = id,
+        name = name,
+        artist = artist,
+        album = album,
+        image = image,
+        duration = duration,
+        playCount = playCount,
+        downloadUrl = downloadUrl,
+        localPath = localPath,
+        songSource = songSource,
+        playedAt = playedAt
+    )
+}
+
+fun SongItem.toRecentlyPlayedEntity(): RecentlyPlayedEntity {
+    return RecentlyPlayedEntity(
+        id = id,
+        name = name,
+        artist = artist,
+        album = album,
+        image = image,
+        duration = duration,
+        playCount = playCount,
+        downloadUrl = downloadUrl,
+        localPath = localPath,
+        songSource = songSource,
+        playedAt = playedAt
+    )
 }
 
 @Composable

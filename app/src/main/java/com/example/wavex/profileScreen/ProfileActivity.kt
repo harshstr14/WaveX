@@ -78,7 +78,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.R
-import com.example.wavex.downloadSong.downloadedSongScreen.DownloadedSongActivity
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadedSongActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity

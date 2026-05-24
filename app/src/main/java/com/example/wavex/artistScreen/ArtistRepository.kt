@@ -146,10 +146,7 @@ class ArtistRepository {
             ?.optString("subscribers")
             .orEmpty()
 
-        val followerCount = fanCount
-            .replace(",", "")
-            .filter { it.isDigit() }
-            .toIntOrNull() ?: 0
+        val followerCount = parseFollowerCount(fanCount)
 
         return ArtistDetailUiState(
             id = artistObject
@@ -170,6 +167,28 @@ class ArtistRepository {
             topAlbums = parseYTAlbums(json.optJSONArray("albums")),
             singles = parseYTAlbums(json.optJSONArray("singles"))
         )
+    }
+
+    private fun parseFollowerCount(value: String): Int {
+        val cleanValue = value.trim().uppercase()
+
+        return when {
+            cleanValue.endsWith("K") -> {
+                (cleanValue.removeSuffix("K").toDoubleOrNull()?.times(1_000))?.toInt()
+            }
+
+            cleanValue.endsWith("M") -> {
+                (cleanValue.removeSuffix("M").toDoubleOrNull()?.times(1_000_000))?.toInt()
+            }
+
+            cleanValue.endsWith("B") -> {
+                (cleanValue.removeSuffix("B").toDoubleOrNull()?.times(1_000_000_000))?.toInt()
+            }
+
+            else -> {
+                cleanValue.replace(",", "").toIntOrNull()
+            }
+        } ?: 0
     }
 
     private fun parseTopSongs(data: JSONObject): List<SongItem> {

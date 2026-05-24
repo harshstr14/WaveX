@@ -9,6 +9,8 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven(url = "https://jitpack.io")
+        maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     }
 }
 plugins {
@@ -20,9 +22,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     }
 }
 
 rootProject.name = "WaveX"
 include(":app")
- 

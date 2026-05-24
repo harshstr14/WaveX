@@ -314,24 +314,24 @@ fun LibraryScreen(
 
             Box(
                 modifier = Modifier
-                .constrainAs(backButton) {
-                    top.linkTo(titleText.top)
-                    bottom.linkTo(titleText.bottom)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }
-                .size(36.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .clickable(
-                    interactionSource = backInteraction,
-                    indication = null
-                ) {
-                    navController.popBackStack()
-                }, contentAlignment = Alignment.Center
+                    .constrainAs(backButton) {
+                        top.linkTo(titleText.top)
+                        bottom.linkTo(titleText.bottom)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null
+                    ) {
+                        navController.popBackStack()
+                    }, contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
@@ -417,7 +417,7 @@ fun LibraryScreen(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                     containerColor = Color(0xFF3a3a3a),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     offset = DpOffset(x = 0.dp, y = 8.dp),
                     modifier = Modifier.width(200.dp),
                 ) {
@@ -491,7 +491,9 @@ fun LibraryScreen(
                 when {
                     playlistsList.isLoading -> {
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 100.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             LoadingEffect()
@@ -500,7 +502,9 @@ fun LibraryScreen(
 
                     playlistsList.isError -> {
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 100.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             ErrorState(
@@ -511,7 +515,9 @@ fun LibraryScreen(
 
                     playlistsList.playlists.isEmpty() -> {
                         Box(
-                            modifier = Modifier.fillMaxSize().padding(bottom = 100.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 100.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             ErrorState(
@@ -663,7 +669,7 @@ fun LibraryScreen(
                                             expanded = menuExpanded,
                                             onDismissRequest = { menuExpanded = false },
                                             containerColor = Color(0xFF3a3a3a),
-                                            shape = RoundedCornerShape(10.dp),
+                                            shape = RoundedCornerShape(14.dp),
                                             modifier = Modifier.width(150.dp),
                                         ) {
                                             DropdownMenuItem(
@@ -682,7 +688,9 @@ fun LibraryScreen(
                                                         painter = painterResource(R.drawable.edit_icon),
                                                         contentDescription = null,
                                                         tint = colorResource(R.color.theme_color),
-                                                        modifier = Modifier.padding(start = 2.dp).size(20.dp)
+                                                        modifier = Modifier
+                                                            .padding(start = 2.dp)
+                                                            .size(20.dp)
                                                     )
                                                 },
                                                 onClick = {
@@ -710,7 +718,9 @@ fun LibraryScreen(
                                                         painter = painterResource(R.drawable.delete_icon),
                                                         contentDescription = null,
                                                         tint = colorResource(R.color.theme_color),
-                                                        modifier = Modifier.padding(start = 2.dp).size(20.dp)
+                                                        modifier = Modifier
+                                                            .padding(start = 2.dp)
+                                                            .size(20.dp)
                                                     )
                                                 },
                                                 onClick = {
@@ -754,7 +764,9 @@ fun LibraryScreen(
                     .fillMaxSize()
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
-                            while (true) { awaitPointerEvent() }
+                            while (true) {
+                                awaitPointerEvent()
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -762,7 +774,8 @@ fun LibraryScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(240.dp).padding(horizontal = 24.dp)
+                        .height(240.dp)
+                        .padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(colorResource(R.color.background_color)),
                     contentAlignment = Alignment.Center
@@ -839,7 +852,7 @@ fun LibraryScreen(
             title = "Delete Playlist",
             message = "Are you sure you want to delete \"${playlistToDelete!!.playlistName}\" ?",
             confirmText = "Delete",
-            //icon = R.drawable.delete_icon,
+            icon = R.drawable.delete_icon,
             onConfirm = {
                 viewModel.deletePlaylist(
                     playlistToDelete!!.playlistId
@@ -936,8 +949,7 @@ private fun AddWaveXPlaylistBottomSheet(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -1047,7 +1059,7 @@ private fun AddWaveXPlaylistBottomSheet(
                             end.linkTo(parent.end, margin = 15.dp)
                         }
                         .size(22.dp)
-                        .clickable (
+                        .clickable(
                             interactionSource = interactionSource,
                             indication = null
                         ) {
@@ -1079,33 +1091,33 @@ private fun AddWaveXPlaylistBottomSheet(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Cancel",
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.theme_color)
+                    color = colorResource(R.color.secondary_text_color)
                 )
             }
 
-            Spacer(modifier = Modifier.width(18.dp))
-
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable {
                         urlError = url.isBlank()
@@ -1115,7 +1127,7 @@ private fun AddWaveXPlaylistBottomSheet(
                             onClose()
                         }
                     }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1145,8 +1157,7 @@ private fun AddSpotifyPlaylistBottomSheet(
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -1255,7 +1266,7 @@ private fun AddSpotifyPlaylistBottomSheet(
                             end.linkTo(parent.end, margin = 15.dp)
                         }
                         .size(22.dp)
-                        .clickable (
+                        .clickable(
                             interactionSource = interactionSource,
                             indication = null
                         ) {
@@ -1287,33 +1298,33 @@ private fun AddSpotifyPlaylistBottomSheet(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Cancel",
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.theme_color)
+                    color = colorResource(R.color.secondary_text_color)
                 )
             }
 
-            Spacer(modifier = Modifier.width(18.dp))
-
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable {
                         urlError = url.isBlank()
@@ -1323,7 +1334,7 @@ private fun AddSpotifyPlaylistBottomSheet(
                             onClose()
                         }
                     }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1530,33 +1541,33 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Cancel",
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.theme_color)
+                    color = colorResource(R.color.secondary_text_color)
                 )
             }
 
-            Spacer(modifier = Modifier.width(18.dp))
-
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable {
                         titleError = titleName.isBlank()
@@ -1601,7 +1612,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                                 }
                         }
                     }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1808,33 +1819,33 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                     .clickable { onClose() }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Cancel",
                     fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = colorResource(R.color.theme_color)
+                    color = colorResource(R.color.secondary_text_color)
                 )
             }
 
-            Spacer(modifier = Modifier.width(18.dp))
-
             Box(
                 modifier = Modifier
-                    .width(148.dp)
+                    .weight(1f)
                     .padding(top = 25.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorResource(R.color.theme_color))
                     .clickable {
                         titleError = titleName.isBlank()
@@ -1885,7 +1896,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                                 }
                         }
                     }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

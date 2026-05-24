@@ -383,9 +383,14 @@ class PlaylistRepository {
     }
 
     private fun optimizeImage(url: String): String {
-        return url.replace(
-            imageSizeRegex,
-            "w520-h520"
-        )
+        return if (url.contains("i.ytimg.com/vi/")) {
+            val videoId = url.substringAfter("/vi/").substringBefore("/")
+            "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+        } else {
+            url.replace(
+                imageSizeRegex,
+                "w520-h520"
+            )
+        }
     }
 }

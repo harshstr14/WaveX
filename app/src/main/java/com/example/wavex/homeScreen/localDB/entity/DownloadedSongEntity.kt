@@ -1,4 +1,4 @@
-package com.example.wavex.downloadSong.data
+package com.example.wavex.homeScreen.localDB.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -8,7 +8,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 
 @Entity(tableName = "downloaded_songs")
-data class DownloadedSong(
+data class DownloadedSongEntity(
     @PrimaryKey
     val id: String,
 
@@ -20,5 +20,7 @@ data class DownloadedSong(
     var playCount: Int = 0,
     var downloadUrl: MutableList<Download> = mutableListOf(),
 
-    val localPath: String
+    val localPath: String,
+    val songSource: String ?= null,
+    val playedAt: Long = System.currentTimeMillis(),
 )

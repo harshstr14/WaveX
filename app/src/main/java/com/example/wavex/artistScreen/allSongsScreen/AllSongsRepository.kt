@@ -5,6 +5,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.requestWithFallback
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.songData.Album
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -67,7 +68,8 @@ class AllSongsRepository {
                     image = parseImages(song.optJSONArray("image")).toMutableList(),
                     duration = song.optInt("duration"),
                     playCount = song.optInt("playCount"),
-                    downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList()
+                    downloadUrl = parseDownloads(song.optJSONArray("downloadUrl")).toMutableList(),
+                    songSource = SearchSource.JIOSAAVN.name
                 )
             )
         }

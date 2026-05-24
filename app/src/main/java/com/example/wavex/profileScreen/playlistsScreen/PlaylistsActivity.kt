@@ -368,10 +368,10 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
 
             if (showDeleteDialog) {
                 IOSStyleBottomDialog(
-                    title = "Delete All Playlists",
-                    message = "Do you want to delete all favourite playlists?",
+                    title = "Delete All Playlists?",
+                    message = "Do you want to delete all favourite playlists.",
                     confirmText = "Delete",
-                    //icon = R.drawable.delete_icon,
+                    icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllPlaylists()
                         showDeleteDialog = false

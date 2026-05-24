@@ -1,4 +1,4 @@
-package com.example.wavex.downloadSong.data
+package com.example.wavex.homeScreen.localDB.db
 
 import androidx.room.TypeConverter
 import com.example.wavex.songData.Album
@@ -9,7 +9,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 class Converters {
-
     private val gson = Gson()
 
     @TypeConverter

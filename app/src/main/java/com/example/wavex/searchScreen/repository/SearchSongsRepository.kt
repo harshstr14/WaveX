@@ -293,7 +293,7 @@ class SearchSongsRepository {
     suspend fun fetchYTStreamData(songId: String,baseUrl: String): SongItem? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
-                .url("$baseUrl/stream?id=$songId")
+                .url("$baseUrl/$songId")
                 .get()
                 .build()
 
@@ -334,24 +334,9 @@ class SearchSongsRepository {
             ?: JSONArray()
 
         return SongItem(
-            id = metadata.optString("id"),
-            name = metadata.optString("title"),
-            duration = metadata.optInt("duration"),
+            duration = metadata.optInt("lengthSeconds"),
             downloadUrl = parseYTDownloads(streams).toMutableList(),
-            image = mutableListOf(
-                Image(
-                    quality = "high",
-                    url = metadata.optString("thumbnail")
-                )
-            ),
-            artist = mutableListOf(
-                Artists(
-                    id = "",
-                    name = metadata.optString("uploader"),
-                    searchSource = SearchSource.YTMUSIC.name
-                )
-            ),
-            songSource = SearchSource.YTMUSIC.toString()
+            songSource = SearchSource.YTMUSIC.name
         )
     }
 
@@ -364,22 +349,28 @@ class SearchSongsRepository {
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
 
-                val mimeType = obj.optString("mimeType")
+                val mimeType = obj.optString("type")
 
-                if (!mimeType.contains("audio/mp4")) {
+                // Only audio streams
+                if (!mimeType.contains("audio")) {
                     continue
                 }
 
                 add(
                     Download(
-                        quality = obj.optString("quality"),
+                        quality = obj.optString("audioQuality"),
                         url = obj.optString("url")
                     )
                 )
             }
-        }.sortedByDescending {
-            it.quality.substringBefore(" ")
-                .toIntOrNull() ?: 0
+        }.sortedBy { download ->
+            when {
+                download.url.contains("itag=140") -> 0
+                download.url.contains("itag=249") -> 1
+                download.url.contains("itag=250") -> 2
+                download.url.contains("itag=251") -> 3
+                else -> Int.MAX_VALUE
+            }
         }
     }
 }

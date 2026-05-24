@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -112,15 +113,16 @@ import com.example.wavex.discoverScreen.viewModel.ExploreAlbumsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.searchScreen.SearchSource
@@ -684,6 +686,7 @@ fun ExploreGrid(
                             )
                             putExtra("playlist_title", item.title)
                             putExtra("playlist_source",SearchSource.YTMUSIC.name)
+                            putExtra("rectangular_image", true)
                             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
 
@@ -760,7 +763,8 @@ fun ExploreSongs(
     viewModel: ExploreSongsViewModel = viewModel(),
     listState: LazyListState,
     onMoreClick: (SongItem, Int, List<SongItem>) -> Unit,
-    snackBarHostState: SnackbarHostState
+    snackBarHostState: SnackbarHostState,
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -858,9 +862,9 @@ fun ExploreSongs(
 
                                     ContextCompat.startForegroundService(context, intent)
 
-                                    scope.launch {
-                                        RecentlyPlayedManager.add(context, song)
-                                    }
+                                    recentlyPlayedViewModel.onSongPlayed(
+                                        song.toRecentlyPlayedEntity()
+                                    )
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {

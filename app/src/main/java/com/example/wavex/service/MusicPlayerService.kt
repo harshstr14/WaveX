@@ -51,19 +51,22 @@ import androidx.media3.session.MediaStyleNotificationHelper
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.wavex.R
-import com.example.wavex.downloadSong.data.DownloadedSong
-import com.example.wavex.homeScreen.AppContainer
+import com.example.wavex.homeScreen.localDB.entity.DownloadedSongEntity
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.repository.RecentlyPlayedRepository
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.playerScreen.PlayerActivityScreen
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadRepository
 import com.example.wavex.recommendation.MusicHistoryRepository
 import com.example.wavex.recommendation.dataClass.PlayedSong
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -71,6 +74,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,13 +83,16 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class  MusicPlayerService : LifecycleService() {
     companion object {
         const val CHANNEL_ID = "music_player_channel"
@@ -120,6 +127,9 @@ class  MusicPlayerService : LifecycleService() {
     private var currentArtSongId: String? = null
     var qualityIndex = 4
     var downloadQualityIndex = 4
+
+    private val ytMusicRegex = Regex("w\\d+-h\\d+")
+    private val normalRegex = Regex("\\d+x\\d+")
 
     private val prefsListener =
         SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
@@ -167,6 +177,10 @@ class  MusicPlayerService : LifecycleService() {
     private val artCache = LruCache<String, Bitmap>(30)
     private val historyRepository = MusicHistoryRepository()
     private var isHistorySaved = false
+    @Inject
+    lateinit var recentlyPlayedRepository: RecentlyPlayedRepository
+    @Inject
+    lateinit var downloadedSongsRepository: DownloadRepository
 
     private val _currentSong = MutableStateFlow<SongItem?>(null)
     val currentSong: StateFlow<SongItem?> = _currentSong.asStateFlow()
@@ -206,9 +220,7 @@ class  MusicPlayerService : LifecycleService() {
     private var isQueueOnlyMode = false
     private var queuePointer = 0
     private val repository = SearchSongsRepository()
-    private val downloadRepository by lazy {
-        AppContainer.downloadRepository
-    }
+
     val isOnlineFlow by lazy {
         NetworkMonitor(applicationContext).isOnline
     }
@@ -251,80 +263,98 @@ class  MusicPlayerService : LifecycleService() {
         initMediaSession()
 
         serviceScope.launch {
-            isOnlineFlow.collect { isOnline ->
-                val currentSong = _currentSong.value ?: return@collect
-                val localFile = currentSong.localPath?.let { File(it) }
-
-                val isLocalPlaying = player.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
-
-                if (!isOnline) {
-                    if (localFile != null && localFile.exists() && !isLocalPlaying) {
-                        val position = player.currentPosition
-
-                        player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
-                        player.prepare()
-                        player.seekTo(position)
-                        player.playWhenReady = true
-                    } else {
-                        player.pause()
-                    }
+            isOnlineFlow
+                .distinctUntilChanged()
+                .collectLatest { isOnline ->
+                    handleNetworkChange(isOnline)
                 }
-
-                if (isOnline) {
-                    if (shouldRetry && !isRetrying) {
-                        isRetrying = true
-                        shouldRetry = false
-
-                        val song = _currentSong.value ?: return@collect
-                        val position = player.currentPosition
-
-                        val uri = song.getBestUri(true)
-
-                        if (uri != Uri.EMPTY) {
-                            player.setMediaItem(MediaItem.fromUri(uri))
-                            player.prepare()
-                            player.seekTo(position)
-                            player.playWhenReady = true
-                        }
-
-                        isRetrying = false
-                    }
-                }
-            }
         }
 
         serviceScope.launch {
             _currentSong
                 .filterNotNull()
-                .distinctUntilChangedBy { it.id }
                 .collect { song ->
-
-                    RecentlyPlayedManager.add(this@MusicPlayerService, song)
-
-                    if (!shouldFetchSuggestions) return@collect
-
-                    shouldFetchSuggestions = false
-
-                    launch(Dispatchers.IO) {
-                        try {
-                            val suggestions = repository.fetchSuggestionSongs(song.id)
-
-                            val updated = (playlist + suggestions)
-                                .distinctBy { it.id }
-
-                            withContext(Dispatchers.Main) {
-                                playlist.clear()
-                                playlist.addAll(updated)
-
-                                _playlistFlow.value = playlist.toList()
-                                updateUpNext()
-                            }
-
-                        } catch (e: Exception) {
-                            Log.e("Suggestion", "Failed: ${e.message}")
-                        }
-                    }
+                    handleSongChange(song)
                 }
+        }
+    }
+
+    private fun handleSongChange(song: SongItem) {
+        serviceScope.launch {
+            recentlyPlayedRepository.addSong(
+                song.toRecentlyPlayedEntity()
+            )
+        }
+
+        if (!shouldFetchSuggestions) return
+        shouldFetchSuggestions = false
+
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val suggestions = repository.fetchSuggestionSongs(song.id)
+
+                val updated = (playlist + suggestions)
+                    .distinctBy { it.id }
+
+                withContext(Dispatchers.Main) {
+                    playlist.apply {
+                        clear()
+                        addAll(updated)
+                    }
+
+                    _playlistFlow.value = playlist.toList()
+                    updateUpNext()
+                }
+            } catch (e: Exception) {
+                Log.e("Suggestion", "Failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleNetworkChange(isOnline: Boolean) {
+        val currentSong = _currentSong.value ?: return
+        val localFile = currentSong.localPath?.let { File(it) }
+
+        val isLocalPlaying =
+            player.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
+
+        if (!isOnline) {
+            if (localFile != null && localFile.exists() && !isLocalPlaying) {
+                val position = player.currentPosition
+
+                player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                player.prepare()
+                player.seekTo(position)
+                player.playWhenReady = true
+            } else {
+                player.pause()
+            }
+            return
+        }
+
+        handleOnlineRecovery()
+    }
+
+    private fun handleOnlineRecovery() {
+        if (!shouldRetry || isRetrying) return
+
+        serviceScope.launch {
+            isRetrying = true
+            shouldRetry = false
+
+            val song = _currentSong.value ?: return@launch
+            val position = player.currentPosition
+
+            val uri = song.getBestUri(true)
+
+            if (uri != Uri.EMPTY) {
+                player.setMediaItem(MediaItem.fromUri(uri))
+                player.prepare()
+                player.seekTo(position)
+                player.playWhenReady = true
+            }
+
+            isRetrying = false
         }
     }
 
@@ -340,7 +370,7 @@ class  MusicPlayerService : LifecycleService() {
             .build()
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("Mozilla/5.0")
+            .setUserAgent("com.google.android.youtube/19.09.37 (Linux; U; Android 12)")
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(15000)
@@ -544,8 +574,8 @@ class  MusicPlayerService : LifecycleService() {
 
                                 song?.let {
                                     serviceScope.launch {
-                                        downloadRepository.insert(
-                                            DownloadedSong(
+                                        downloadedSongsRepository.insert(
+                                            DownloadedSongEntity(
                                                 id = it.id,
                                                 name = it.name,
                                                 artist = it.artist,
@@ -554,7 +584,9 @@ class  MusicPlayerService : LifecycleService() {
                                                 duration = it.duration,
                                                 playCount = it.playCount,
                                                 downloadUrl = it.downloadUrl,
-                                                localPath = path
+                                                localPath = path,
+                                                songSource = song.songSource,
+                                                playedAt = song.playedAt
                                             )
                                         )
                                     }
@@ -595,8 +627,8 @@ class  MusicPlayerService : LifecycleService() {
 
                                 song?.let {
                                     serviceScope.launch {
-                                        downloadRepository.insert(
-                                            DownloadedSong(
+                                        downloadedSongsRepository.insert(
+                                            DownloadedSongEntity(
                                                 id = it.id,
                                                 name = it.name,
                                                 artist = it.artist,
@@ -605,7 +637,9 @@ class  MusicPlayerService : LifecycleService() {
                                                 duration = it.duration,
                                                 playCount = it.playCount,
                                                 downloadUrl = it.downloadUrl,
-                                                localPath = path
+                                                localPath = path,
+                                                songSource = song.songSource,
+                                                playedAt = song.playedAt
                                             )
                                         )
                                     }
@@ -641,29 +675,36 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun SongItem.getBestUri(isOnline: Boolean): Uri {
-
         val localFile = localPath?.let { File(it) }
 
         return when {
-
             localFile != null && localFile.exists() -> {
                 localFile.toUri()
             }
 
             isOnline -> {
-
                 if (downloadUrl.isEmpty()) {
                     return Uri.EMPTY
                 }
 
-                val safeIndex = qualityIndex.coerceIn(
-                    0,
-                    downloadUrl.lastIndex
-                )
+                val safeIndex = if (songSource == SearchSource.YTMUSIC.name) {
+                    when (qualityIndex) {
+                        2 -> 1 // first url
+                        3 -> 2 // second url
+                        4 -> 3 // third url
+                        else -> 0
+                    }.coerceIn(0, downloadUrl.lastIndex)
+                } else {
+                    when (qualityIndex) {
+                        2 -> 2
+                        3 -> 3
+                        4 -> 4
+                        else -> 0
+                    }.coerceIn(0, downloadUrl.lastIndex)
+                }
 
                 downloadUrl[safeIndex].url.toUri()
             }
-
             else -> Uri.EMPTY
         }
     }
@@ -738,7 +779,7 @@ class  MusicPlayerService : LifecycleService() {
         playJob?.cancel()
 
         playJob = serviceScope.launch {
-            val downloadedSong = downloadRepository.getSongById(song.id)
+            val downloadedSong = downloadedSongsRepository.getSongById(song.id)
 
             val uri = if (
                 downloadedSong != null &&
@@ -749,6 +790,11 @@ class  MusicPlayerService : LifecycleService() {
                 song.getBestUri(_isOnline.value)
             }
 
+//            val uri = withContext(Dispatchers.IO) {
+//                getAudioUrl(song.id)
+//            }
+
+            Log.d("STREAM_URI", "$uri")
             if (uri == Uri.EMPTY) {
                 _isBuffering.value = false
                 return@launch
@@ -1042,11 +1088,11 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun setQuality(index: Int) {
+        qualityIndex = index
+
         val currentSong = _currentSong.value ?: return
         val currentPosition = player.currentPosition
         val wasPlaying = player.isPlaying
-
-        qualityIndex = index
 
         val uri = if (!currentSong.localPath.isNullOrEmpty()) {
             currentSong.localPath!!.toUri()
@@ -1437,22 +1483,24 @@ class  MusicPlayerService : LifecycleService() {
         val placeholder = placeholderBitmap
 
         return try {
-            val imageUrl = song.image
-                .lastOrNull { it.url.isNotBlank() }
-                ?.url
-                ?.replace("150x150", "500x500")
-                ?.replace("50x50", "500x500")
+            val imageUrl = optimizeImage(
+                song.image
+                    .lastOrNull { it.url.isNotBlank() }
+                    ?.url
+                    .orEmpty()
+            )
 
-            if (imageUrl.isNullOrBlank()) {
+            Log.d("IMAGE_URL", imageUrl)
+
+            if (imageUrl.isBlank()) {
                 return placeholder
             }
 
             val request = ImageRequest.Builder(this)
                 .data(imageUrl)
-                .size(512, 512)
                 .allowHardware(false)
-                .memoryCacheKey(song.id)
-                .diskCacheKey(song.id)
+                .memoryCachePolicy(CachePolicy.DISABLED)
+                .diskCachePolicy(CachePolicy.DISABLED)
                 .crossfade(false)
                 .build()
 
@@ -1472,10 +1520,8 @@ class  MusicPlayerService : LifecycleService() {
             artCache.put(song.id, rounded)
 
             rounded
-
         } catch (e: Exception) {
             Log.e("AlbumArt", "Load failed for ${song.name}", e)
-
             placeholder
         }
     }
@@ -1503,5 +1549,19 @@ class  MusicPlayerService : LifecycleService() {
         canvas.drawBitmap(this, 0f, 0f, paint)
 
         return output
+    }
+
+    private fun optimizeImage(url: String): String {
+        return if (url.contains("i.ytimg.com/vi/")) {
+            val videoId = url
+                .substringAfter("/vi/")
+                .substringBefore("/")
+
+            "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+        } else {
+            url
+                .replace(ytMusicRegex, "w520-h520")
+                .replace(normalRegex, "500x500")
+        }
     }
 }

@@ -1,16 +1,17 @@
-package com.example.wavex.downloadSong.viewmodel
+package com.example.wavex.profileScreen.downloadedSongScreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wavex.downloadSong.data.DownloadedSong
-import com.example.wavex.downloadSong.repository.DownloadRepository
-import kotlinx.coroutines.flow.Flow
+import com.example.wavex.homeScreen.localDB.entity.DownloadedSongEntity
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
-class DownloadViewModel(
+@HiltViewModel
+class DownloadViewModel @Inject constructor(
     private val repository: DownloadRepository
 ) : ViewModel() {
 
@@ -21,7 +22,7 @@ class DownloadViewModel(
             songs.map { it.id }.toSet()
         }
 
-    fun insertSong(song: DownloadedSong) {
+    fun insertSong(song: DownloadedSongEntity) {
         viewModelScope.launch {
             repository.insert(song)
         }

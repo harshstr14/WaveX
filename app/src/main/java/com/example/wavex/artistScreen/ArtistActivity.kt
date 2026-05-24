@@ -11,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -86,6 +85,7 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -100,19 +100,18 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
@@ -124,9 +123,11 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@AndroidEntryPoint
 class ArtistActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,13 +146,13 @@ class ArtistActivity : ComponentActivity() {
         val artistImageUrl = intent.getStringExtra("artist_imageUrl")
         val artistSource = intent.getStringExtra("artist_source")
 
-        val downloadViewModel: DownloadViewModel by viewModels {
-            DownloadViewModelFactory(AppContainer.downloadRepository)
-        }
-
         setContent {
             WaveXTheme {
-                Artist_Activity(downloadViewModel, artistId, artistImageUrl, artistSource)
+                Artist_Activity(
+                    artistId = artistId,
+                    artistImageUrl = artistImageUrl,
+                    artistSource = artistSource
+                )
             }
         }
     }
@@ -160,10 +161,11 @@ class ArtistActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Artist_Activity(
-    downloadViewModel: DownloadViewModel,
+    downloadViewModel: DownloadViewModel = hiltViewModel(),
     artistId: String?, artistImageUrl: String?,
     artistSource: String?,
-    viewModel: ArtistViewModel = viewModel()
+    viewModel: ArtistViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -654,6 +656,8 @@ private fun Artist_Activity(
                                 }
                             }
 
+                            val uniqueSongs = artists.topSongs.distinctBy { it.id }
+
                             if (artists.topSongs.isNotEmpty()) {
                                 item {
                                     Row(
@@ -664,7 +668,8 @@ private fun Artist_Activity(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Top Songs", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Top Songs", fontSize = 18.sp, letterSpacing = 1.sp,
+                                            fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                         )
 
@@ -685,7 +690,7 @@ private fun Artist_Activity(
                                 }
 
                                 itemsIndexed(
-                                    artists.topSongs,
+                                    uniqueSongs,
                                     key = { _, song -> song.id }
                                 ) { index, song ->
 
@@ -753,9 +758,9 @@ private fun Artist_Activity(
 
                                                     ContextCompat.startForegroundService(context, intent)
 
-                                                    scope.launch {
-                                                        RecentlyPlayedManager.add(context, song)
-                                                    }
+                                                    recentlyPlayedViewModel.onSongPlayed(
+                                                        song.toRecentlyPlayedEntity()
+                                                    )
                                                 },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
@@ -813,17 +818,19 @@ private fun Artist_Activity(
 
                                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                                Text(
-                                                    text = formatDuration(song.duration),
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                if (song.duration > 0) {
+                                                    Text(
+                                                        text = formatDuration(song.duration),
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
 
                                             Spacer(modifier = Modifier.width(14.dp))
@@ -953,7 +960,8 @@ private fun Artist_Activity(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Top Albums", fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                            text = "Top Albums", fontSize = 18.sp, letterSpacing = 1.sp,
+                                            fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                         )
 
@@ -1077,7 +1085,7 @@ private fun Artist_Activity(
                                     Text(
                                         text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 5.dp)
                                         , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp, letterSpacing = 1.sp,
                                     )
                                 }
 
@@ -1429,9 +1437,9 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 
 private fun formatCount(count: Long): String {
     return when {
-        count >= 1_000_000_000 -> String.format(Locale.US,"%.1fB", count / 1_000_000_000.0)
-        count >= 1_000_000 -> String.format(Locale.US,"%.1fM", count / 1_000_000.0)
-        count >= 1_000 -> String.format(Locale.US,"%.1fK", count / 1_000.0)
+        count >= 1_000_000_000 -> String.format(Locale.US,"%.2fB", count / 1_000_000_000.0)
+        count >= 1_000_000 -> String.format(Locale.US,"%.2fM", count / 1_000_000.0)
+        count >= 1_000 -> String.format(Locale.US,"%.2fK", count / 1_000.0)
         else -> count.toString()
     }.replace(".0", "")
 }

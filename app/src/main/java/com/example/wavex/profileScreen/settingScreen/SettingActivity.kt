@@ -76,13 +76,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.wavex.R
 import com.example.wavex.SignIn
 import com.example.wavex.fonts
 import com.example.wavex.googleAuthentication.GoogleSignInManager
 import com.example.wavex.homeScreen.ProfilePrefs
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
@@ -92,6 +93,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -107,6 +109,7 @@ data class UpdateInfo(
     val expectedSizeInBytes: Long
 )
 
+@AndroidEntryPoint
 class SettingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,7 +136,9 @@ class SettingActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Setting_Activity() {
+fun Setting_Activity(
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -513,7 +518,7 @@ fun Setting_Activity() {
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.download_icon),
-                        contentDescription = "Music Icon",
+                        contentDescription = "Download Icon",
                         tint = colorResource(R.color.theme_color),
                         modifier = Modifier
                             .size(26.dp)
@@ -632,7 +637,7 @@ fun Setting_Activity() {
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.delete_icon,
-                    title = "Delete Account",
+                    title = "Reset waveX App",
                     subtitle = "Clear all your data and reset the app to its default state",
                     scale = resetScale,
                     interactionSource = resetInteraction,
@@ -651,7 +656,7 @@ fun Setting_Activity() {
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.delete_account_icon,
-                    title = "Reset waveX App",
+                    title = "Delete Account",
                     subtitle = "Permanently delete your account from the \nwaveX app",
                     scale = deleteScale,
                     interactionSource = deleteInteraction,
@@ -710,7 +715,7 @@ fun Setting_Activity() {
                         title = "Log Out",
                         message = "Are you sure you want to log out? You will need to log in again.",
                         confirmText = "Log Out",
-                        //icon = R.drawable.logout_icon,
+                        icon = R.drawable.logout_icon,
                         onConfirm = {
                             googleSignInManager.signOut {
                                 Toast.makeText(context, "Signed out!", Toast.LENGTH_SHORT).show()
@@ -740,11 +745,17 @@ fun Setting_Activity() {
                         title = "Delete Account",
                         message = "Deleting your account will remove all your data. Do you really want to proceed?",
                         confirmText = "Delete",
-                        //icon = R.drawable.delete_account_icon,
+                        icon = R.drawable.delete_account_icon,
                         onConfirm = {
-                            deleteAccount(context) {
-                                showDeleteDialog = false
-                            }
+                            deleteAccount(
+                                context,
+                                onCacheClear = {
+                                    recentlyPlayedViewModel.clearRecentlyPlayed()
+                                },
+                                onDone = {
+                                    showDeleteDialog = false
+                                }
+                            )
                         },
                         onDismiss = {
                             showDeleteDialog = false
@@ -756,8 +767,8 @@ fun Setting_Activity() {
                     IOSStyleBottomDialog(
                         title = "Reset waveX App",
                         message = "Are you sure you want to clear all app data? This will reset the app completely.",
+                        icon = R.drawable.delete_icon,
                         confirmText = "Reset",
-                        //icon = R.drawable.delete_icon,
                         onConfirm = {
                             clearAppCache (
                                 context,
@@ -773,6 +784,9 @@ fun Setting_Activity() {
                                 onReloadProfile = { uid ->
                                     val profileVM = ProfileViewModel(context.applicationContext as Application)
                                     profileVM.refreshUserData(uid)
+                                },
+                                onCacheClear = {
+                                    recentlyPlayedViewModel.clearRecentlyPlayed()
                                 }
                             )
                         },
@@ -833,6 +847,7 @@ private fun saveStreamingQualityToFirebase(quality: String) {
 private fun clearAppCache(
     context: Context, onDone: () -> Unit,
     onShowMessage: (String) -> Unit,
+    onCacheClear: () -> Unit,
     onReloadProfile: ((String) -> Unit)? = null
 ) {
     try {
@@ -854,7 +869,7 @@ private fun clearAppCache(
             }
 
             CoroutineScope(Dispatchers.IO).launch {
-                RecentlyPlayedManager.clear(context)
+                onCacheClear()
                 ProfilePrefs.clear(context)
 
                 userID.let { onReloadProfile?.invoke(it) }
@@ -886,7 +901,11 @@ private fun deleteDir(dir: File?): Boolean {
     return dir?.delete() ?: false
 }
 
-private fun deleteAccount(context: Context,onDone: () -> Unit) {
+private fun deleteAccount(
+    context: Context,
+    onDone: () -> Unit,
+    onCacheClear : () -> Unit
+) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid
     if (uid == null) {
         Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
@@ -913,7 +932,7 @@ private fun deleteAccount(context: Context,onDone: () -> Unit) {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
-            RecentlyPlayedManager.clear(context)
+            onCacheClear()
             ProfilePrefs.clear(context)
         }
 
@@ -936,6 +955,7 @@ private fun deleteAccount(context: Context,onDone: () -> Unit) {
 fun IOSStyleBottomDialog(
     title: String,
     message: String,
+    icon: Int = R.drawable.alert_icon,
     confirmText: String = "Delete",
     dismissText: String = "Cancel",
     onConfirm: () -> Unit,
@@ -960,10 +980,29 @@ fun IOSStyleBottomDialog(
                 Column(
                     modifier = Modifier.padding(20.dp)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = colorResource(R.color.theme_color).copy(alpha = 0.10f),
+                                shape = RoundedCornerShape(16.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(24.dp),
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                            tint = colorResource(R.color.theme_color)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Text(
                         text = title,
                         fontFamily = fonts,
-                        fontSize = 17.sp, lineHeight = 20.sp,
+                        fontSize = 18.sp, lineHeight = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color),
@@ -974,8 +1013,8 @@ fun IOSStyleBottomDialog(
                     Text(
                         text = message,
                         fontFamily = fonts,
-                        fontSize = 13.sp, lineHeight = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp, lineHeight = 16.sp,
+                        fontWeight = FontWeight.Normal,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color)
                     )
@@ -989,10 +1028,10 @@ fun IOSStyleBottomDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(22.dp))
                                 .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
                                 .clickable { onDismiss() }
-                                .padding(vertical = 14.dp),
+                                .padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -1007,7 +1046,7 @@ fun IOSStyleBottomDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(22.dp))
                                 .background(colorResource(R.color.theme_color))
                                 .clickable { onConfirm() }
                                 .padding(vertical = 16.dp),

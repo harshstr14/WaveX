@@ -370,10 +370,10 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
 
             if (showDeleteDialog) {
                 IOSStyleBottomDialog(
-                    title = "Delete All Artists",
-                    message = "Do you want to delete all favourite artists?",
+                    title = "Delete All Artists?",
+                    message = "Do you want to delete all favourite artists.",
                     confirmText = "Delete",
-                    //icon = R.drawable.delete_icon,
+                    icon = R.drawable.delete_icon,
                     onConfirm = {
                         viewModel.deleteAllArtists()
                         showDeleteDialog = false

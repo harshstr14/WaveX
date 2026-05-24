@@ -10,7 +10,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -93,6 +92,7 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -104,20 +104,19 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.playlistScreen.formatTotalDuration
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongViewModel
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
@@ -125,9 +124,11 @@ import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
 import com.example.wavex.shareComponent.ShareAlbum_Playlist
 import com.example.wavex.ui.theme.WaveXTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+@AndroidEntryPoint
 class LikedSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,13 +143,9 @@ class LikedSongsActivity : ComponentActivity() {
             )
         )
 
-        val downloadViewModel: DownloadViewModel by viewModels {
-            DownloadViewModelFactory(AppContainer.downloadRepository)
-        }
-
         setContent {
             WaveXTheme {
-                Liked_Songs_Activity(downloadViewModel)
+                Liked_Songs_Activity()
             }
         }
     }
@@ -157,8 +154,9 @@ class LikedSongsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Liked_Songs_Activity(
-    downloadViewModel: DownloadViewModel,
-    viewModel: FavouriteSongViewModel = viewModel()
+    downloadViewModel: DownloadViewModel = hiltViewModel(),
+    viewModel: FavouriteSongViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -470,31 +468,30 @@ fun Liked_Songs_Activity(
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.headset_icon),
-                                                contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
-                                            )
+//                                            Icon(
+//                                                painter = painterResource(R.drawable.headset_icon),
+//                                                contentDescription = "Headset Icon",
+//                                                tint = colorResource(R.color.secondary_text_color),
+//                                                modifier = Modifier.size(18.dp)
+//                                            )
 
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
-                                                text = "${likedSongs.size}",
-                                                fontSize = 12.sp,
+                                                text = "${likedSongs.size} Tracks",
+                                                fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
-
                                             Box(
                                                 modifier = Modifier
+                                                    .padding(horizontal = 8.dp)
                                                     .width(1.8.dp)
                                                     .height(10.dp)
                                                     .background(
@@ -503,23 +500,21 @@ fun Liked_Songs_Activity(
                                                     )
                                             )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
+//                                            Icon(
+//                                                painter = painterResource(R.drawable.clock_icon),
+//                                                contentDescription = "Clock Icon",
+//                                                tint = colorResource(R.color.secondary_text_color),
+//                                                modifier = Modifier.size(18.dp)
+//                                            )
 
-                                            Icon(
-                                                painter = painterResource(R.drawable.clock_icon),
-                                                contentDescription = "Clock Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
                                                 text = formatTotalDuration(totalDuration),
-                                                fontSize = 12.sp,
+                                                fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -829,9 +824,9 @@ fun Liked_Songs_Activity(
 
                                                     ContextCompat.startForegroundService(context, intent)
 
-                                                    scope.launch {
-                                                        RecentlyPlayedManager.add(context, song)
-                                                    }
+                                                    recentlyPlayedViewModel.onSongPlayed(
+                                                        song.toRecentlyPlayedEntity()
+                                                    )
                                                 },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {

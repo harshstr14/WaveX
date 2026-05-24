@@ -9,7 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -84,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavType
@@ -100,9 +100,6 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
-import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.HomeScreen
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
@@ -116,6 +113,7 @@ import com.example.wavex.navigation.BottomNavRoute
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.checkForUpdate
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.searchScreen.SearchSource
@@ -123,6 +121,7 @@ import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.updateAppScreen.UpdateAppActivity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -198,7 +197,7 @@ suspend fun requestWithFallback(endpoint: String): String =
 
         throw Exception("All APIs failed")
     }
-
+@AndroidEntryPoint
 class MainScreen : ComponentActivity() {
     private var deepLinkType: String? = null
     private var deepLinkId: String? = null
@@ -222,15 +221,9 @@ class MainScreen : ComponentActivity() {
                 scrim = 0xFFF6F6F6.toInt()
             )
         )
-
-        val downloadViewModel: DownloadViewModel by viewModels {
-            DownloadViewModelFactory(AppContainer.downloadRepository)
-        }
-
         setContent {
             WaveXTheme {
                 Main_Screen(
-                    downloadViewModel,
                     deepLinkType = deepLinkType,
                     deepLinkId = deepLinkId,
                     deepLinkUrl = deepLinkUrl
@@ -261,7 +254,7 @@ class MainScreen : ComponentActivity() {
 
 @Composable
 fun Main_Screen(
-    downloadViewModel: DownloadViewModel,
+    downloadViewModel: DownloadViewModel = hiltViewModel(),
     deepLinkType: String?,
     deepLinkId: String?,
     deepLinkUrl: String?

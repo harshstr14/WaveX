@@ -204,7 +204,8 @@ class AlbumRepository {
                                     id = artist.optString("browseId"),
                                     name = artist.optString("name"),
                                     role = "Artist",
-                                    image = ""
+                                    image = "",
+                                    searchSource = SearchSource.YTMUSIC.name
                                 )
                             )
                         }
@@ -215,7 +216,8 @@ class AlbumRepository {
                                 id = artistData.optString("browseId"),
                                 name = artistData.optString("name"),
                                 role = "Artist",
-                                image = ""
+                                image = "",
+                                searchSource = SearchSource.YTMUSIC.name
                             )
                         )
                     }
@@ -231,10 +233,7 @@ class AlbumRepository {
                             .optJSONObject(i)
                             ?: continue
 
-                        val durationSeconds =
-                            parseDuration(
-                                item.optString("duration")
-                            )
+                        val durationSeconds = parseDuration(item.optString("duration"))
 
                         add(
                             SongItem(

@@ -11,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -111,6 +110,7 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
@@ -126,19 +126,18 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.downloadSong.downloadedSongScreen.rememberNetworkState
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModel
-import com.example.wavex.downloadSong.viewmodel.DownloadViewModelFactory
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.AppContainer
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.RecentlyPlayedManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
+import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
+import com.example.wavex.profileScreen.downloadedSongScreen.rememberNetworkState
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
@@ -152,9 +151,11 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@AndroidEntryPoint
 class PlaylistActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -173,22 +174,19 @@ class PlaylistActivity : ComponentActivity() {
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
         val playlistSource = intent.getStringExtra("playlist_source")
         val gradientColors = intent.getIntegerArrayListExtra("playlist_gradient")
+        val rectangularImage = intent.getBooleanExtra("rectangular_image", false)
 
         val gradient = gradientColors?.map { Color(it) } ?: emptyList()
         val playlistTitle = intent.getStringExtra("playlist_title") ?: ""
 
-        val downloadViewModel: DownloadViewModel by viewModels {
-            DownloadViewModelFactory(AppContainer.downloadRepository)
-        }
-
         setContent {
             WaveXTheme {
                 Playlist_Activity(
-                    downloadViewModel = downloadViewModel,
                     playlistId = playlistId,
                     playlistImageUrl = playlistImageUrl,
                     playlistSource = playlistSource,
                     playlistTitle = playlistTitle,
+                    rectangularImage = rectangularImage,
                     gradient = gradient
                 )
             }
@@ -199,12 +197,14 @@ class PlaylistActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Playlist_Activity(
-    downloadViewModel: DownloadViewModel,
+    downloadViewModel: DownloadViewModel = hiltViewModel(),
     playlistId: String?, playlistImageUrl: String?,
     playlistSource: String?,
     playlistTitle: String?,
     gradient: List<Color>,
-    viewModel: PlaylistViewModel = viewModel()
+    rectangularImage: Boolean,
+    viewModel: PlaylistViewModel = viewModel(),
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
 )  {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -633,6 +633,7 @@ fun Playlist_Activity(
                                                     .padding(16.dp),
                                                 fontSize = 20.sp,
                                                 lineHeight = 20.sp,
+                                                maxLines = 2,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colorResource(R.color.off_white)
@@ -689,54 +690,55 @@ fun Playlist_Activity(
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        Text(
-                                            modifier = Modifier
-                                                .animateContentSize(
-                                                    animationSpec = spring(
-                                                        stiffness = Spring.StiffnessLow
-                                                    )
-                                                ),
-                                            text = htmlToText(playlists.description),
-                                            fontSize = 13.sp,
-                                            lineHeight = 16.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.secondary_text_color),
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        if (playlists.description.isNotEmpty()) {
+                                            Text(
+                                                modifier = Modifier
+                                                    .animateContentSize(
+                                                        animationSpec = spring(
+                                                            stiffness = Spring.StiffnessLow
+                                                        )
+                                                    ),
+                                                text = htmlToText(playlists.description),
+                                                fontSize = 13.sp,
+                                                lineHeight = 16.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.secondary_text_color),
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.headset_icon),
-                                                contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
-                                            )
+//                                            Icon(
+//                                                painter = painterResource(R.drawable.headset_icon),
+//                                                contentDescription = "Headset Icon",
+//                                                tint = colorResource(R.color.secondary_text_color),
+//                                                modifier = Modifier.size(18.dp)
+//                                            )
 
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
-                                                text = playlists.songCount,
-                                                fontSize = 12.sp,
+                                                text = "${playlists.songCount} Tracks",
+                                                fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
-
                                             Box(
                                                 modifier = Modifier
+                                                    .padding(horizontal = 8.dp)
                                                     .width(1.8.dp)
                                                     .height(10.dp)
                                                     .background(
@@ -745,23 +747,21 @@ fun Playlist_Activity(
                                                     )
                                             )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
+//                                            Icon(
+//                                                painter = painterResource(R.drawable.clock_icon),
+//                                                contentDescription = "Clock Icon",
+//                                                tint = colorResource(R.color.secondary_text_color),
+//                                                modifier = Modifier.size(18.dp)
+//                                            )
 
-                                            Icon(
-                                                painter = painterResource(R.drawable.clock_icon),
-                                                contentDescription = "Clock Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
                                                 text = formatTotalDuration(playlists.totalDuration),
-                                                fontSize = 12.sp,
+                                                fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Normal,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -873,10 +873,10 @@ fun Playlist_Activity(
                                 item {
                                     Text(
                                         modifier = Modifier.padding(top = 20.dp, start = 24.dp),
-                                        text = "Featured Artists", fontSize = 17.sp, fontFamily = fonts,
-                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                                        letterSpacing = 1.5.sp,
-                                        color = colorResource(R.color.primary_text_color), lineHeight = 18.sp
+                                        text = "Featured Artists", fontSize = 18.sp, fontFamily = fonts,
+                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        letterSpacing = 1.sp,
+                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
                                 }
 
@@ -956,10 +956,10 @@ fun Playlist_Activity(
                             if (playlists.songs.isNotEmpty()) {
                                 item {
                                     Text(
-                                        modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 10.dp),
+                                        modifier = Modifier.padding(top = 15.dp, start = 24.dp, bottom = 5.dp),
                                         text = "Tracks", fontSize = 18.sp, fontFamily = fonts,
-                                        letterSpacing = 1.5.sp,
-                                        fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                                        letterSpacing = 1.sp,
+                                        fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                         color = colorResource(R.color.primary_text_color), lineHeight = 20.sp
                                     )
                                 }
@@ -1024,9 +1024,9 @@ fun Playlist_Activity(
 
                                                     ContextCompat.startForegroundService(context, intent)
 
-                                                    scope.launch {
-                                                        RecentlyPlayedManager.add(context, song)
-                                                    }
+                                                    recentlyPlayedViewModel.onSongPlayed(
+                                                        song.toRecentlyPlayedEntity()
+                                                    )
                                                 },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
@@ -1044,7 +1044,15 @@ fun Playlist_Activity(
                                                 },
                                                 contentDescription = null,
                                                 modifier = Modifier
-                                                    .size(64.dp)
+                                                    .then(
+                                                        if (rectangularImage) {
+                                                            Modifier
+                                                                .width(100.dp)
+                                                                .height(64.dp)
+                                                        } else {
+                                                            Modifier.size(64.dp)
+                                                        }
+                                                    )
                                                     .clip(RoundedCornerShape(12.dp)),
                                                 contentScale = ContentScale.Crop
                                             )
@@ -1093,17 +1101,19 @@ fun Playlist_Activity(
 
                                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                                Text(
-                                                    text = formatDuration(song.duration),
-                                                    fontSize = 12.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontStyle = FontStyle.Normal,
-                                                    color = colorResource(R.color.secondary_text_color),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
+                                                if (song.duration > 0) {
+                                                    Text(
+                                                        text = formatDuration(song.duration),
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 14.sp,
+                                                        fontFamily = fonts,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontStyle = FontStyle.Normal,
+                                                        color = colorResource(R.color.secondary_text_color),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
 
                                             Spacer(modifier = Modifier.width(14.dp))
