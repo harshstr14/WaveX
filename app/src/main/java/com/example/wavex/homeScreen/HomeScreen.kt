@@ -99,6 +99,7 @@ import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.R
@@ -434,21 +435,53 @@ fun HomeScreen (
         }
     }
 
-    PullToRefreshBox(
-        state = pullRefreshState,
-        isRefreshing = isRefreshing,
-        onRefresh = { refreshAll() },
-        indicator = {
-            PullToRefreshDefaults.Indicator(
-                state = pullRefreshState,
-                isRefreshing = isLoading,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 10.dp),
-                color = colorResource(R.color.theme_color),
-                containerColor = colorResource(R.color.primary_text_color)
-            )
-        }
+//    PullToRefreshBox(
+//        state = pullRefreshState,
+//        isRefreshing = isRefreshing,
+//        onRefresh = { refreshAll() },
+//        indicator = {
+//            val composition by rememberLottieComposition(
+//                LottieCompositionSpec.RawRes(R.raw.astronaut_loading)
+//            )
+//
+//            val progress by animateLottieCompositionAsState(
+//                composition = composition,
+//                isPlaying = isLoading,
+//                iterations = LottieConstants.IterateForever
+//            )
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(top = 15.dp)
+//                    .size(60.dp)
+//                    .clip(RectangleShape),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                LottieAnimation(
+//                    composition = composition,
+//                    progress = {progress},
+//                    modifier = Modifier
+//                        .size(60.dp)
+//                        .graphicsLayer {
+//                            scaleX = 1.2f
+//                            scaleY = 1.2f
+//                        }
+//                )
+//            }
+////            PullToRefreshDefaults.Indicator(
+////                state = pullRefreshState,
+////                isRefreshing = isLoading,
+////                modifier = Modifier
+////                    .align(Alignment.TopCenter)
+////                    .padding(top = 10.dp),
+////                color = colorResource(R.color.theme_color),
+////                containerColor = colorResource(R.color.primary_text_color)
+////            )
+//        }
+//    )
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
         ConstraintLayout(modifier = Modifier.fillMaxSize()
             .graphicsLayer {

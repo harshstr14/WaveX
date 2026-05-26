@@ -1093,7 +1093,7 @@ private fun AddWaveXPlaylistBottomSheet(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
@@ -1300,7 +1300,7 @@ private fun AddSpotifyPlaylistBottomSheet(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
@@ -1543,7 +1543,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(
@@ -1821,7 +1821,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Box(

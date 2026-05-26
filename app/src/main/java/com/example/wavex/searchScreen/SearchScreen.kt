@@ -1271,25 +1271,49 @@ private fun SearchSongs(
                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp)
                                 .hideKeyboardOnClick {
                                     scope.launch {
+                                        try {
+                                            val playableSong =
+                                                if (song.songSource == SearchSource.YTMUSIC.toString()) {
 
-                                        Log.d("STREAM_URL", "${song.downloadUrl}")
-                                        PlayerManager.currentPlaylist = listOf(song)
-                                        PlayerManager.currentIndex = 0
+                                                    val streamData = viewModel.fetchYTStreamData(
+                                                        songId = song.id,
+                                                        baseUrl = BuildConfig.YT_STREAM_URL
+                                                    )
 
-                                        val intent = Intent(
-                                            context,
-                                            MusicPlayerService::class.java
-                                        ).apply {
-                                            action = MusicPlayerService.ACTION_PLAY_NEW
-                                            putExtra("index", 0)
-                                            putExtra("from_search", true)
+                                                    if (streamData != null) {
+                                                        song.copy(
+                                                            duration = streamData.duration,
+                                                            downloadUrl = streamData.downloadUrl
+                                                        )
+                                                    } else {
+                                                        song
+                                                    }
+                                                } else {
+                                                    song
+                                                }
+
+                                            Log.d("STREAM_URL", "${playableSong.downloadUrl}")
+
+                                            PlayerManager.currentPlaylist = listOf(playableSong)
+                                            PlayerManager.currentIndex = 0
+
+                                            val intent = Intent(
+                                                context,
+                                                MusicPlayerService::class.java
+                                            ).apply {
+                                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                                putExtra("index", 0)
+                                                putExtra("from_search", true)
+                                            }
+
+                                            ContextCompat.startForegroundService(context, intent)
+
+                                            recentlyPlayedViewModel.onSongPlayed(
+                                                playableSong.toRecentlyPlayedEntity()
+                                            )
+                                        } catch (e: Exception) {
+                                            Log.e("PLAYER_ERROR", "Failed to play song", e)
                                         }
-
-                                        ContextCompat.startForegroundService(context, intent)
-
-                                        recentlyPlayedViewModel.onSongPlayed(
-                                            song.toRecentlyPlayedEntity()
-                                        )
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically

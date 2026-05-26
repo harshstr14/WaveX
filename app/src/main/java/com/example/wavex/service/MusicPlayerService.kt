@@ -55,11 +55,11 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.wavex.R
-import com.example.wavex.homeScreen.localDB.entity.DownloadedSongEntity
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.homeScreen.localDB.entity.DownloadedSongEntity
 import com.example.wavex.homeScreen.repository.RecentlyPlayedRepository
 import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.playerScreen.PlayerActivityScreen
@@ -369,22 +369,28 @@ class  MusicPlayerService : LifecycleService() {
             )
             .build()
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("com.google.android.youtube/19.09.37 (Linux; U; Android 12)")
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15000)
-            .setReadTimeoutMs(15000)
-            .setDefaultRequestProperties(
-                mapOf(
-                    "Referer" to "https://www.youtube.com/",
-                    "Origin" to "https://www.youtube.com"
+        val httpDataSourceFactory =
+            DefaultHttpDataSource.Factory()
+                .setUserAgent(
+                    "com.google.android.youtube/20.12.46 (Linux; U; Android 14)"
                 )
-            )
+                .setAllowCrossProtocolRedirects(true)
+                .setConnectTimeoutMs(30000)
+                .setReadTimeoutMs(30000)
+                .setKeepPostFor302Redirects(true)
+                .setDefaultRequestProperties(
+                    mapOf(
+                        "Referer" to "https://www.youtube.com/",
+                        "Origin" to "https://www.youtube.com",
+                        "Accept" to "*/*"
+                    )
+                )
 
-        val dataSourceFactory = DefaultDataSource.Factory(
-            this,
-            httpDataSourceFactory
-        )
+        val dataSourceFactory =
+            DefaultDataSource.Factory(
+                this,
+                httpDataSourceFactory
+            )
 
         player = ExoPlayer.Builder(this)
             .setWakeMode(C.WAKE_MODE_LOCAL)
@@ -684,6 +690,7 @@ class  MusicPlayerService : LifecycleService() {
 
             isOnline -> {
                 if (downloadUrl.isEmpty()) {
+                    Log.d("URL", "Empty url")
                     return Uri.EMPTY
                 }
 
@@ -791,7 +798,7 @@ class  MusicPlayerService : LifecycleService() {
             }
 
 //            val uri = withContext(Dispatchers.IO) {
-//                getAudioUrl(song.id)
+//                getFreshAudioUrl(song.id)
 //            }
 
             Log.d("STREAM_URI", "$uri")
@@ -1564,4 +1571,26 @@ class  MusicPlayerService : LifecycleService() {
                 .replace(normalRegex, "500x500")
         }
     }
+
+//    suspend fun getFreshAudioUrl(videoId: String): String {
+//        return try {
+//            val link = "https://www.youtube.com/watch?v=$videoId"
+//
+//            val extractor =
+//                ServiceList.YouTube
+//                    .getStreamExtractor(link)
+//
+//            extractor.fetchPage()
+//
+//            extractor.audioStreams
+//                .filter { it.averageBitrate > 0 }
+//                .maxByOrNull { it.averageBitrate }
+//                ?.content ?: ""
+//
+//        } catch (e: Exception) {
+//            Log.e("STREAM_ERROR",Log.getStackTraceString(e))
+//
+//            ""
+//        }
+//    }
 }

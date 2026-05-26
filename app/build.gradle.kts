@@ -99,6 +99,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.newpipeextractor)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
