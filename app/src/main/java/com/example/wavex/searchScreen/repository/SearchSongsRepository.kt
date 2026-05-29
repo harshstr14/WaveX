@@ -1,14 +1,16 @@
 package com.example.wavex.searchScreen.repository
 
 import android.util.Log
+import androidx.core.net.toUri
 import com.example.wavex.HttpClientProvider
-import com.example.wavex.songData.Artists
-import com.example.wavex.songData.Download
-import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.requestWithFallback
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.songData.Album
+import com.example.wavex.songData.Artists
+import com.example.wavex.songData.Download
+import com.example.wavex.songData.Image
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
@@ -184,9 +186,18 @@ class SearchSongsRepository {
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
 
+                val qualityString = obj.optString("quality")
+
+                val quality = when (qualityString.lowercase()) {
+                    "12kbps", "48kbps" -> Quality.LOW
+                    "96kbps", "160kbps" -> Quality.MEDIUM
+                    "320kbps" -> Quality.HIGH
+                    else -> Quality.MEDIUM
+                }
+
                 add(
                     Download(
-                        quality = obj.optString("quality"),
+                        quality = quality,
                         url = obj.optString("url")
                     )
                 )
@@ -351,25 +362,34 @@ class SearchSongsRepository {
 
                 val mimeType = obj.optString("type")
 
-                // Only audio streams
                 if (!mimeType.contains("audio")) {
                     continue
                 }
 
+                val url = obj.optString("directUrl")
+
+                val uri = url.toUri()
+
+                val itag = uri.getQueryParameter("itag")?.toIntOrNull()
+
+                val expire = uri.getQueryParameter("expire")?.toLongOrNull()
+
+                val quality = when (itag) {
+                    249 -> Quality.LOW
+                    250 -> Quality.MEDIUM
+                    140 -> Quality.HIGH
+                    251 -> Quality.LOSSLESS
+
+                    else -> Quality.MEDIUM
+                }
+
                 add(
                     Download(
-                        quality = obj.optString("audioQuality"),
-                        url = obj.optString("url")
+                        quality = quality,
+                        url = url,
+                        expiresAt = expire
                     )
                 )
-            }
-        }.sortedBy { download ->
-            when {
-                download.url.contains("itag=140") -> 0
-                download.url.contains("itag=249") -> 1
-                download.url.contains("itag=250") -> 2
-                download.url.contains("itag=251") -> 3
-                else -> Int.MAX_VALUE
             }
         }
     }

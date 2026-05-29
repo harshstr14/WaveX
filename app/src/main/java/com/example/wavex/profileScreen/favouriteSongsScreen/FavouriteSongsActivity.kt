@@ -112,6 +112,8 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
+import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
+import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
@@ -654,8 +656,15 @@ fun Favourite_Songs_Activity(
                                             ) {
                                                 IconButton(
                                                     onClick = {
-                                                        val qualityIndex = musicService?.downloadQualityIndex
-                                                        val url = song.downloadUrl[qualityIndex ?: 4].url
+                                                        val qualityPreference = musicService?.downloadQualityPreference
+                                                            ?: AudioStreamQualityPreference.HIGH
+                                                        val selectedDownload =
+                                                            DownloadQualitySelector.selectDownload(
+                                                                downloads = song.downloadUrl,
+                                                                preference = qualityPreference
+                                                            )
+
+                                                        val downloadUrl = selectedDownload?.url
 
                                                         when {
                                                             isDownloaded -> {
@@ -676,7 +685,7 @@ fun Favourite_Songs_Activity(
                                                             state == ParallelDownloader.DownloadState.PAUSED -> {
                                                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                                     action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                                    putExtra("url", url)
+                                                                    putExtra("url", downloadUrl)
                                                                     putExtra("fileName", song.name)
                                                                     putExtra("songId", song.id)
                                                                     putExtra("song", song)
@@ -688,7 +697,7 @@ fun Favourite_Songs_Activity(
                                                             else -> {
                                                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                                     action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                                    putExtra("url", url)
+                                                                    putExtra("url", downloadUrl)
                                                                     putExtra("fileName", song.name)
                                                                     putExtra("songId", song.id)
                                                                     putExtra("song", song)
@@ -805,8 +814,15 @@ fun Favourite_Songs_Activity(
                                     likedViewModel.toggleLike(song)
                                 },
                                 onToggleDownload = { song ->
-                                    val qualityIndex = musicService?.downloadQualityIndex
-                                    val url = song.downloadUrl[qualityIndex ?: 4].url
+                                    val qualityPreference = musicService?.downloadQualityPreference
+                                        ?: AudioStreamQualityPreference.HIGH
+                                    val selectedDownload =
+                                        DownloadQualitySelector.selectDownload(
+                                            downloads = song.downloadUrl,
+                                            preference = qualityPreference
+                                        )
+
+                                    val downloadUrl = selectedDownload?.url
                                     val state = ParallelDownloader.downloadStates[song.id]
 
                                     when {
@@ -823,7 +839,7 @@ fun Favourite_Songs_Activity(
                                         state == ParallelDownloader.DownloadState.PAUSED -> {
                                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                 action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                putExtra("url", url)
+                                                putExtra("url", downloadUrl)
                                                 putExtra("fileName", song.name)
                                                 putExtra("songId", song.id)
                                                 putExtra("song", song)
@@ -835,7 +851,7 @@ fun Favourite_Songs_Activity(
                                         state == ParallelDownloader.DownloadState.FAILED -> {
                                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                 action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                putExtra("url", url)
+                                                putExtra("url", downloadUrl)
                                                 putExtra("fileName", song.name)
                                                 putExtra("songId", song.id)
                                                 putExtra("song", song)
@@ -847,7 +863,7 @@ fun Favourite_Songs_Activity(
                                         else -> {
                                             val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                 action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                putExtra("url", url)
+                                                putExtra("url", downloadUrl)
                                                 putExtra("fileName", song.name)
                                                 putExtra("songId", song.id)
                                                 putExtra("song", song)

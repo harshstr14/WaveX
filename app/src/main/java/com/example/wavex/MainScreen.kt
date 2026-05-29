@@ -114,6 +114,8 @@ import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
+import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
+import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.profileScreen.settingScreen.checkForUpdate
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.searchScreen.SearchSource
@@ -368,7 +370,8 @@ fun Main_Screen(
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
         ?: remember { mutableIntStateOf(-1) }
 
-    val qualityIndex = musicService?.downloadQualityIndex
+    val qualityPreference = musicService?.downloadQualityPreference
+            ?: AudioStreamQualityPreference.HIGH
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
@@ -543,13 +546,17 @@ fun Main_Screen(
                 )  // ⬅ current Home UI
             }
             composable(BottomNavRoute.Discover.route) {
-                DiscoverScreen(downloadViewModel = downloadViewModel, qualityIndex = qualityIndex,
-                    navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
+                DiscoverScreen(
+                    downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
+                    navController = navController, snackBarHostState = snackBarHostState,
+                    showSheet = showSheet
                 )
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen(downloadViewModel = downloadViewModel, qualityIndex = qualityIndex,
-                    navController = navController, snackBarHostState = snackBarHostState, showSheet = showSheet
+                SearchScreen(
+                    downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
+                    navController = navController, snackBarHostState = snackBarHostState,
+                    showSheet = showSheet
                 )
             }
             composable(
@@ -622,8 +629,13 @@ fun Main_Screen(
                 likedViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
-                val qualityIndex = musicService?.downloadQualityIndex
-                val url = song.downloadUrl[qualityIndex ?: 4].url
+                val selectedDownload =
+                    DownloadQualitySelector.selectDownload(
+                        downloads = song.downloadUrl,
+                        preference = qualityPreference
+                    )
+
+                val downloadUrl = selectedDownload?.url
                 val state = ParallelDownloader.downloadStates[song.id]
 
                 when {
@@ -640,7 +652,7 @@ fun Main_Screen(
                     state == ParallelDownloader.DownloadState.PAUSED -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)
@@ -652,7 +664,7 @@ fun Main_Screen(
                     state == ParallelDownloader.DownloadState.FAILED -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_START
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)
@@ -664,7 +676,7 @@ fun Main_Screen(
                     else -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_START
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)

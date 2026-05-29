@@ -3,6 +3,7 @@ package com.example.wavex.albumScreen
 import android.util.Log
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.requestWithFallback
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.songData.Album
@@ -332,10 +333,18 @@ class AlbumRepository {
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
 
+                val qualityString = obj.optString("quality")
+
+                val quality = when (qualityString.lowercase()) {
+                    "12kbps", "48kbps" -> Quality.LOW
+                    "96kbps", "160kbps" -> Quality.MEDIUM
+                    "320kbps" -> Quality.HIGH
+                    else -> Quality.MEDIUM
+                }
+
                 add(
                     Download(
-                        quality = obj.optString("quality"),
-
+                        quality = quality,
                         url = obj.optString("url")
                     )
                 )

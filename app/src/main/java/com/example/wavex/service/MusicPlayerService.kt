@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
@@ -64,16 +63,12 @@ import com.example.wavex.homeScreen.repository.RecentlyPlayedRepository
 import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadRepository
+import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
+import com.example.wavex.profileScreen.settingScreen.StreamQualitySelector
+import com.example.wavex.profileScreen.settingScreen.repository.SettingsRepository
 import com.example.wavex.recommendation.MusicHistoryRepository
 import com.example.wavex.recommendation.dataClass.PlayedSong
-import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -125,20 +120,13 @@ class  MusicPlayerService : LifecycleService() {
     private val progressRefreshMs = 100L
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
-    var qualityIndex = 4
-    var downloadQualityIndex = 4
+    private var streamQualityPreference = AudioStreamQualityPreference.HIGH
+    var downloadQualityPreference = AudioStreamQualityPreference.HIGH
+        private set
 
     private val ytMusicRegex = Regex("w\\d+-h\\d+")
     private val normalRegex = Regex("\\d+x\\d+")
 
-    private val prefsListener =
-        SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-            if (key == "download_quality_index") {
-                downloadQualityIndex = prefs.getInt(key, 4)
-            }
-        }
-
-    private lateinit var qualityRef: DatabaseReference
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val imageLoader by lazy {
         ImageLoader.Builder(this)
@@ -174,9 +162,14 @@ class  MusicPlayerService : LifecycleService() {
     private var currentIndex = -1
     private var playJob: Job? = null
     private var artLoadJob: Job? = null
+    private var qualityJob: Job? = null
+    private var downloadQualityJob: Job? = null
     private val artCache = LruCache<String, Bitmap>(30)
     private val historyRepository = MusicHistoryRepository()
     private var isHistorySaved = false
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
     @Inject
     lateinit var recentlyPlayedRepository: RecentlyPlayedRepository
     @Inject
@@ -238,20 +231,6 @@ class  MusicPlayerService : LifecycleService() {
         ServiceLocator.musicService = this
         createNotificationChannel()
 
-        val prefs = getSharedPreferences("player_settings", MODE_PRIVATE)
-        downloadQualityIndex = prefs.getInt("download_quality_index", 4)
-
-        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
-
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        qualityRef = FirebaseDatabase.getInstance()
-            .getReference("Users")
-            .child(userId)
-            .child("streamingQuality")
-
-        listenForQualityChanges()
-
         val placeholderNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("WaveX is starting…")
             .setContentText("Preparing your music")
@@ -261,6 +240,8 @@ class  MusicPlayerService : LifecycleService() {
 
         initPlayer()
         initMediaSession()
+        observeStreamQuality()
+        observeDownloadQuality()
 
         serviceScope.launch {
             isOnlineFlow
@@ -275,6 +256,36 @@ class  MusicPlayerService : LifecycleService() {
                 .filterNotNull()
                 .collect { song ->
                     handleSongChange(song)
+                }
+        }
+    }
+
+    private fun observeStreamQuality() {
+        qualityJob?.cancel()
+        qualityJob = serviceScope.launch {
+            settingsRepository
+                .streamQualityFlow
+                .distinctUntilChanged()
+                .collectLatest { preference ->
+                    if (streamQualityPreference != preference) {
+                        setQuality(preference)
+                    }
+                }
+        }
+    }
+
+    private fun observeDownloadQuality() {
+        downloadQualityJob?.cancel()
+
+        downloadQualityJob = serviceScope.launch {
+            settingsRepository
+                .downloadQualityFlow
+                .distinctUntilChanged()
+                .collectLatest { preference ->
+
+                    if (downloadQualityPreference != preference) {
+                        setDownloadQuality(preference)
+                    }
                 }
         }
     }
@@ -477,29 +488,6 @@ class  MusicPlayerService : LifecycleService() {
         })
     }
 
-    private fun listenForQualityChanges() {
-        qualityRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val quality = snapshot.getValue(String::class.java) ?: return
-
-                val index = when (quality) {
-                    "Low" -> 2
-                    "Normal" -> 3
-                    "High" -> 4
-                    else -> 4
-                }
-
-                if (qualityIndex != index) {
-                    setQuality(index)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("MusicService", "Quality listener cancelled: ${error.message}")
-            }
-        })
-    }
-
     private fun initMediaSession() {
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {})
@@ -694,23 +682,13 @@ class  MusicPlayerService : LifecycleService() {
                     return Uri.EMPTY
                 }
 
-                val safeIndex = if (songSource == SearchSource.YTMUSIC.name) {
-                    when (qualityIndex) {
-                        2 -> 1 // first url
-                        3 -> 2 // second url
-                        4 -> 3 // third url
-                        else -> 0
-                    }.coerceIn(0, downloadUrl.lastIndex)
-                } else {
-                    when (qualityIndex) {
-                        2 -> 2
-                        3 -> 3
-                        4 -> 4
-                        else -> 0
-                    }.coerceIn(0, downloadUrl.lastIndex)
-                }
+                val selectedStream =
+                    StreamQualitySelector.selectPlaybackStream(
+                        streams = downloadUrl,
+                        preference = streamQualityPreference
+                    )
 
-                downloadUrl[safeIndex].url.toUri()
+                selectedStream?.url?.toUri() ?: Uri.EMPTY
             }
             else -> Uri.EMPTY
         }
@@ -796,6 +774,21 @@ class  MusicPlayerService : LifecycleService() {
             } else {
                 song.getBestUri(_isOnline.value)
             }
+
+//            Log.d(
+//                "STREAM_URI",
+//                """
+//                    Scheme : ${uri.scheme}
+//                    Host   : ${uri.host}
+//                    Path   : ${uri.path}
+//                    Itag   : ${uri.getQueryParameter("itag")}
+//                    Mime   : ${uri.getQueryParameter("mime")}
+//                    Dur    : ${uri.getQueryParameter("dur")}
+//                    Source : ${uri.getQueryParameter("source")}
+//                    Expire : ${uri.getQueryParameter("expire")}
+//                    Ip     : ${uri.getQueryParameter("ip")}
+//                    """.trimIndent()
+//            )
 
 //            val uri = withContext(Dispatchers.IO) {
 //                getFreshAudioUrl(song.id)
@@ -1094,25 +1087,48 @@ class  MusicPlayerService : LifecycleService() {
         _upNextFlow.value = combined
     }
 
-    fun setQuality(index: Int) {
-        qualityIndex = index
+    fun setQuality(preference: AudioStreamQualityPreference) {
+        streamQualityPreference = preference
 
         val currentSong = _currentSong.value ?: return
+
         val currentPosition = player.currentPosition
+
         val wasPlaying = player.isPlaying
 
-        val uri = if (!currentSong.localPath.isNullOrEmpty()) {
-            currentSong.localPath!!.toUri()
-        } else {
-            currentSong.downloadUrl[qualityIndex].url.toUri()
-        }
+        val selectedStream =
+            StreamQualitySelector.selectPlaybackStream(
+                streams = currentSong.downloadUrl,
+                preference = preference
+            ) ?: return
 
-        val mediaItem = MediaItem.fromUri(uri)
+        val uri =
+            if (!currentSong.localPath.isNullOrEmpty()) {
+                currentSong.localPath!!.toUri()
+            } else {
+                selectedStream.url.toUri()
+            }
 
-        player.setMediaItem(mediaItem, currentPosition)
+        val currentUri = player.currentMediaItem
+                            ?.localConfiguration
+                            ?.uri
+
+        if (currentUri == uri) { return }
+
+        player.setMediaItem(
+            MediaItem.fromUri(uri),
+            currentPosition
+        )
+
         player.prepare()
 
-        if (wasPlaying) player.play()
+        if (wasPlaying) { player.play() }
+    }
+
+    fun setDownloadQuality(
+        preference: AudioStreamQualityPreference
+    ) {
+        downloadQualityPreference = preference
     }
 
     fun addToQueue(song: SongItem) {
@@ -1198,8 +1214,6 @@ class  MusicPlayerService : LifecycleService() {
         try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Exception) {}
         serviceScope.cancel()
         ServiceLocator.musicService = null
-        val prefs = getSharedPreferences("player_settings", MODE_PRIVATE)
-        prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         super.onDestroy()
     }
 

@@ -13,6 +13,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.songData.Album
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
@@ -75,7 +76,22 @@ class NewReleasesSongsViewModel : ViewModel() {
             song.optJSONArray("downloadUrl")?.let { arr ->
                 for (j in 0 until arr.length()) {
                     val obj = arr.getJSONObject(j)
-                    download.add(Download(obj.optString("quality"), obj.optString("url")))
+
+                    val qualityString = obj.optString("quality")
+
+                    val quality = when (qualityString.lowercase()) {
+                        "12kbps", "48kbps" -> Quality.LOW
+                        "96kbps", "160kbps" -> Quality.MEDIUM
+                        "320kbps" -> Quality.HIGH
+                        else -> Quality.MEDIUM
+                    }
+
+                    download.add(
+                        Download(
+                            quality = quality,
+                            url = obj.optString("url")
+                        )
+                    )
                 }
             }
 

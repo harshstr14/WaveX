@@ -138,6 +138,8 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
+import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.seachHistory.SearchHistoryViewModel
 import com.example.wavex.searchScreen.uiState.SearchAlbumsUiState
 import com.example.wavex.searchScreen.uiState.SearchArtistsUiState
@@ -166,7 +168,7 @@ enum class SearchSource {
 @Composable
 fun SearchScreen(
     downloadViewModel: DownloadViewModel,
-    qualityIndex: Int?,
+    qualityPreference: AudioStreamQualityPreference,
     navController: NavController,
     snackBarHostState: SnackbarHostState,
     showSheet: Boolean,
@@ -402,7 +404,13 @@ fun SearchScreen(
                 likedViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
-                val url = song.downloadUrl[qualityIndex ?: 4].url
+                val selectedDownload =
+                    DownloadQualitySelector.selectDownload(
+                        downloads = song.downloadUrl,
+                        preference = qualityPreference
+                    )
+
+                val downloadUrl = selectedDownload?.url
                 val state = ParallelDownloader.downloadStates[song.id]
 
                 when {
@@ -419,7 +427,7 @@ fun SearchScreen(
                     state == ParallelDownloader.DownloadState.PAUSED -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)
@@ -431,7 +439,7 @@ fun SearchScreen(
                     state == ParallelDownloader.DownloadState.FAILED -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_START
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)
@@ -443,7 +451,7 @@ fun SearchScreen(
                     else -> {
                         val intent = Intent(context, MusicPlayerService::class.java).apply {
                             action = MusicPlayerService.ACTION_DOWNLOAD_START
-                            putExtra("url", url)
+                            putExtra("url", downloadUrl)
                             putExtra("fileName", song.name)
                             putExtra("songId", song.id)
                             putExtra("song", song)
@@ -1394,11 +1402,16 @@ private fun SearchSongs(
                             ) {
                                 IconButton(
                                     onClick = {
-                                        val qualityIndex = musicService?.downloadQualityIndex
-                                        val url = song.downloadUrl
-                                            .getOrNull(qualityIndex ?: 4)
-                                            ?.url
-                                        if (url == null) {
+                                        val qualityPreference = musicService?.downloadQualityPreference
+                                            ?: AudioStreamQualityPreference.HIGH
+                                        val selectedDownload =
+                                            DownloadQualitySelector.selectDownload(
+                                                downloads = song.downloadUrl,
+                                                preference = qualityPreference
+                                            )
+
+                                        val downloadUrl = selectedDownload?.url
+                                        if (downloadUrl == null) {
                                             scope.launch {
                                                 snackBarHostState.showSnackbar(
                                                     "Download unavailable"
@@ -1426,7 +1439,7 @@ private fun SearchSongs(
                                             state == ParallelDownloader.DownloadState.PAUSED -> {
                                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                     action = MusicPlayerService.ACTION_DOWNLOAD_RESUME
-                                                    putExtra("url", url)
+                                                    putExtra("url", downloadUrl)
                                                     putExtra("fileName", song.name)
                                                     putExtra("songId", song.id)
                                                     putExtra("song", song)
@@ -1438,7 +1451,7 @@ private fun SearchSongs(
                                             else -> {
                                                 val intent = Intent(context, MusicPlayerService::class.java).apply {
                                                     action = MusicPlayerService.ACTION_DOWNLOAD_START
-                                                    putExtra("url", url)
+                                                    putExtra("url", downloadUrl)
                                                     putExtra("fileName", song.name)
                                                     putExtra("songId", song.id)
                                                     putExtra("song", song)

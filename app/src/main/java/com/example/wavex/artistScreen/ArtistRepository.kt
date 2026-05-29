@@ -7,6 +7,7 @@ import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.DataItem
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.requestWithFallback
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.songData.Album
@@ -389,9 +390,18 @@ class ArtistRepository {
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
 
+                val qualityString = obj.optString("quality")
+
+                val quality = when (qualityString.lowercase()) {
+                    "12kbps", "48kbps" -> Quality.LOW
+                    "96kbps", "160kbps" -> Quality.MEDIUM
+                    "320kbps" -> Quality.HIGH
+                    else -> Quality.MEDIUM
+                }
+
                 add(
                     Download(
-                        quality = obj.optString("quality"),
+                        quality = quality,
                         url = obj.optString("url")
                     )
                 )

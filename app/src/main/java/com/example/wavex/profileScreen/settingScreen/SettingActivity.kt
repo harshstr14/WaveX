@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -51,7 +50,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,8 +73,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.wavex.R
 import com.example.wavex.SignIn
@@ -84,8 +85,9 @@ import com.example.wavex.googleAuthentication.GoogleSignInManager
 import com.example.wavex.homeScreen.ProfilePrefs
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
+import com.example.wavex.profileScreen.settingScreen.viewmodel.SettingsViewModel
 import com.example.wavex.service.MusicPlayerService
-import com.example.wavex.service.ServiceLocator
+import com.example.wavex.songData.Download
 import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.updateAppScreen.UpdateAppActivity
 import com.google.firebase.Firebase
@@ -94,10 +96,201 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+
+val Context.settingsDataStore by preferencesDataStore(
+    name = "settings"
+)
+
+object SettingsKeys {
+    val STREAM_QUALITY = stringPreferencesKey("stream_quality")
+    val DOWNLOAD_QUALITY = stringPreferencesKey("download_quality")
+}
+
+enum class AudioStreamQualityPreference(val label: String) {
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High");
+
+    companion object {
+        fun fromLabel(value: String?): AudioStreamQualityPreference {
+            return when (
+                value?.trim()?.lowercase()
+            ) {
+                "low" -> LOW
+                "high" -> HIGH
+                else -> MEDIUM
+            }
+        }
+    }
+}
+
+enum class Quality {
+    LOW,
+    MEDIUM,
+    HIGH,
+    LOSSLESS
+}
+
+object StreamQualitySelector {
+    private val playbackFallbackOrder =
+        mapOf(
+            AudioStreamQualityPreference.LOW to listOf(
+                Quality.LOW,
+                Quality.MEDIUM,
+                Quality.HIGH,
+                Quality.LOSSLESS
+            ),
+
+            AudioStreamQualityPreference.MEDIUM to listOf(
+                Quality.MEDIUM,
+                Quality.HIGH,
+                Quality.LOW,
+                Quality.LOSSLESS
+            ),
+
+            AudioStreamQualityPreference.HIGH to listOf(
+                Quality.HIGH,
+                Quality.LOSSLESS,
+                Quality.MEDIUM,
+                Quality.LOW
+            )
+        )
+
+    fun selectPlaybackStream(
+        streams: List<Download>,
+        preference: AudioStreamQualityPreference
+    ): Download? {
+        val usable = streams.filter { isUsable(it) }
+
+        if (usable.isEmpty()) {
+            return null
+        }
+
+        val fallbackOrder = playbackFallbackOrder[preference] ?: emptyList()
+
+        for (quality in fallbackOrder) {
+            usable.lastOrNull {
+                it.quality == quality
+            }?.let {
+                return it
+            }
+        }
+
+        return usable.lastOrNull()
+    }
+
+    private fun isUsable(stream: Download): Boolean {
+        val url = stream.url.trim()
+
+        if (url.isEmpty()) {
+            return false
+        }
+
+        val uri = url.toUri()
+        val scheme = uri.scheme ?: return false
+
+        if (
+            scheme != "http" &&
+            scheme != "https" &&
+            scheme != "file"
+        ) {
+            return false
+        }
+
+        val expiresAt = stream.expiresAt ?: return true
+        val now = System.currentTimeMillis() / 1000
+
+        return expiresAt > now
+    }
+}
+
+object DownloadQualitySelector {
+    private val downloadFallbackOrder =
+        mapOf(
+            AudioStreamQualityPreference.LOW to listOf(
+                Quality.LOW,
+                Quality.MEDIUM,
+                Quality.HIGH,
+                Quality.LOSSLESS
+            ),
+
+            AudioStreamQualityPreference.MEDIUM to listOf(
+                Quality.MEDIUM,
+                Quality.HIGH,
+                Quality.LOW,
+                Quality.LOSSLESS
+            ),
+
+            AudioStreamQualityPreference.HIGH to listOf(
+                Quality.LOSSLESS,
+                Quality.HIGH,
+                Quality.MEDIUM,
+                Quality.LOW
+            )
+        )
+
+    fun selectDownload(
+        downloads: List<Download>,
+        preference: AudioStreamQualityPreference
+    ): Download? {
+
+        val fallbackOrder = downloadFallbackOrder[preference] ?: emptyList()
+
+        for (quality in fallbackOrder) {
+            downloads.lastOrNull {
+                it.quality == quality
+            }?.let {
+                return it
+            }
+        }
+
+        return downloads.lastOrNull()
+    }
+}
+
+@Singleton
+class SettingsDataStore @Inject constructor(
+    @param:ApplicationContext
+    private val context: Context
+) {
+    val streamQualityFlow: Flow<AudioStreamQualityPreference> =
+        context.settingsDataStore.data.map { prefs ->
+            val stored = prefs[SettingsKeys.STREAM_QUALITY]
+            AudioStreamQualityPreference.fromLabel(stored)
+        }
+
+    suspend fun setStreamQuality(preference: AudioStreamQualityPreference) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[SettingsKeys.STREAM_QUALITY] = preference.label
+        }
+    }
+
+    val downloadQualityFlow =
+        context.settingsDataStore.data.map { preferences ->
+            AudioStreamQualityPreference.valueOf(
+                preferences[SettingsKeys.DOWNLOAD_QUALITY]
+                    ?: AudioStreamQualityPreference.MEDIUM.name
+            )
+        }
+
+    suspend fun setDownloadQuality(
+        preference: AudioStreamQualityPreference
+    ) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[SettingsKeys.DOWNLOAD_QUALITY] =
+                preference.name
+        }
+    }
+}
 
 private lateinit var googleSignInManager: GoogleSignInManager
 
@@ -137,15 +330,14 @@ class SettingActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Setting_Activity(
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
-    val prefs = context.getSharedPreferences("player_settings", Context.MODE_PRIVATE)
 
     var showLogOutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -165,37 +357,9 @@ fun Setting_Activity(
     var streamingExpanded by remember { mutableStateOf(false) }
     var downloadExpanded by remember { mutableStateOf(false) }
 
-    var selectedStreamingQuality by remember { mutableStateOf("High") }
-    var selectedDownloadQuality by remember { mutableStateOf("Normal") }
-
-    val qualities = listOf("Low", "Normal", "High")
-
-    LaunchedEffect(Unit) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
-
-        val reference = FirebaseDatabase.getInstance()
-            .getReference("Users")
-            .child(uid)
-            .child("streamingQuality")
-
-        reference.get().addOnSuccessListener { snapshot ->
-            val savedQuality = snapshot.getValue(String::class.java)
-            if (savedQuality != null) {
-                selectedStreamingQuality = savedQuality
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val savedIndex = prefs.getInt("download_quality_index", 3)
-
-        selectedDownloadQuality = when (savedIndex) {
-            2 -> "Low"
-            3 -> "Normal"
-            4 -> "High"
-            else -> "Normal"
-        }
-    }
+    val selectedStreamingQuality by settingsViewModel.streamQuality.collectAsState()
+    val selectedDownloadQuality by settingsViewModel.downloadQuality.collectAsState()
+    val qualities = AudioStreamQualityPreference.entries
 
     val versionName = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -211,12 +375,6 @@ fun Setting_Activity(
         }
     } catch (_: Exception) {
         "1.0"
-    }
-
-    val musicService = ServiceLocator.musicService
-
-    LaunchedEffect(musicService?.downloadQualityIndex) {
-        Log.d("QualityIndex", "${musicService?.downloadQualityIndex}")
     }
 
     Scaffold(
@@ -449,7 +607,7 @@ fun Setting_Activity(
                             }
                         ) {
                             Text(
-                                text = selectedStreamingQuality,
+                                text = selectedStreamingQuality.label,
                                 fontSize = 14.sp,
                                 fontFamily = fonts,
                                 fontWeight = FontWeight.SemiBold,
@@ -471,29 +629,23 @@ fun Setting_Activity(
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = quality,
+                                                text = quality.label,
                                                 fontSize = 14.sp,
+                                                lineHeight = 16.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = if (quality == selectedStreamingQuality)
-                                                    colorResource(R.color.theme_color)
-                                                else colorResource(R.color.background_color)
+                                                color =
+                                                    if (quality == selectedStreamingQuality)
+                                                        colorResource(R.color.theme_color)
+                                                    else
+                                                        colorResource(R.color.background_color)
                                             )
                                         },
+
                                         onClick = {
-                                            selectedStreamingQuality = quality
-                                            saveStreamingQualityToFirebase(quality)
                                             streamingExpanded = false
-
-                                            val index = when (quality) {
-                                                "Low" -> 2
-                                                "Normal" -> 3
-                                                "High" -> 4
-                                                else -> 4
-                                            }
-
-                                            musicService?.setQuality(index)
+                                            settingsViewModel.setStreamQuality(quality)
                                         }
                                     )
                                 }
@@ -571,7 +723,7 @@ fun Setting_Activity(
                             }
                         ) {
                             Text(
-                                text = selectedDownloadQuality,
+                                text = selectedDownloadQuality.label,
                                 fontSize = 14.sp,
                                 fontFamily = fonts,
                                 fontWeight = FontWeight.SemiBold,
@@ -593,30 +745,23 @@ fun Setting_Activity(
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = quality,
+                                                text = quality.label,
                                                 fontSize = 14.sp,
+                                                lineHeight = 16.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = if (quality == selectedDownloadQuality)
-                                                    colorResource(R.color.theme_color)
-                                                else colorResource(R.color.background_color)
+                                                color =
+                                                    if (quality == selectedDownloadQuality)
+                                                        colorResource(R.color.theme_color)
+                                                    else
+                                                        colorResource(R.color.background_color)
                                             )
                                         },
+
                                         onClick = {
-                                            selectedDownloadQuality = quality
                                             downloadExpanded = false
-
-                                            val index = when (quality) {
-                                                "Low" -> 2
-                                                "Normal" -> 3
-                                                "High" -> 4
-                                                else -> 4
-                                            }
-
-                                            prefs.edit {
-                                                    putInt("download_quality_index", index)
-                                                }
+                                            settingsViewModel.setDownloadQuality(quality)
                                         }
                                     )
                                 }
@@ -831,17 +976,6 @@ fun Setting_Activity(
             }
         }
     }
-}
-
-private fun saveStreamingQualityToFirebase(quality: String) {
-    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-    val reference = FirebaseDatabase.getInstance()
-        .getReference("Users")
-        .child(uid)
-        .child("streamingQuality")
-
-    reference.setValue(quality)
 }
 
 private fun clearAppCache(

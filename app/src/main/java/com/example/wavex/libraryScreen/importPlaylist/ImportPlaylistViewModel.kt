@@ -3,6 +3,7 @@ package com.example.wavex.libraryScreen.importPlaylist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.songData.Album
 import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
@@ -262,10 +263,24 @@ class ImportPlaylistViewModel : ViewModel() {
 
     private fun parseDownloads(array: JSONArray?): List<Download> {
         if (array == null) return emptyList()
-        return List(array.length()) {
-            val obj = array.getJSONObject(it)
+
+        return List(array.length()) { index ->
+            val obj = array.getJSONObject(index)
+
+            val quality = when (obj.optString("quality")) {
+                "96kbps" -> Quality.LOW
+
+                "160kbps" -> Quality.MEDIUM
+
+                "320kbps" -> Quality.HIGH
+
+                "48kbps" -> Quality.LOSSLESS
+
+                else -> Quality.MEDIUM
+            }
+
             Download(
-                quality = obj.optString("quality"),
+                quality = quality,
                 url = obj.optString("url")
             )
         }

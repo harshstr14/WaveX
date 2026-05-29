@@ -4,6 +4,7 @@ import com.example.wavex.songData.Artists
 import com.example.wavex.songData.Download
 import com.example.wavex.songData.Image
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.profileScreen.settingScreen.Quality
 import com.example.wavex.requestWithFallback
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.songData.Album
@@ -90,10 +91,20 @@ class AllSongsRepository {
 
     private fun parseDownloads(array: JSONArray?): List<Download> {
         if (array == null) return emptyList()
-        return List(array.length()) {
-            val obj = array.getJSONObject(it)
+
+        return List(array.length()) { index ->
+            val obj = array.getJSONObject(index)
+            val qualityString = obj.optString("quality")
+
+            val quality = when (qualityString.lowercase()) {
+                "12kbps", "48kbps" -> Quality.LOW
+                "96kbps", "160kbps" -> Quality.MEDIUM
+                "320kbps" -> Quality.HIGH
+                else -> Quality.MEDIUM
+            }
+
             Download(
-                quality = obj.optString("quality"),
+                quality = quality,
                 url = obj.optString("url")
             )
         }
