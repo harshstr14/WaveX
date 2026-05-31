@@ -40,8 +40,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,9 +85,6 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -99,7 +94,6 @@ import coil.request.ImageRequest
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.R
@@ -126,8 +120,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -258,60 +250,11 @@ object ParallelDownloader {
     }
 }
 
-object ProfilePrefs {
-    private const val DATASTORE_NAME = "profile"
-
-    val Context.dataStore by preferencesDataStore(
-        name = DATASTORE_NAME
-    )
-
-    private val PROFILE_URL =
-        stringPreferencesKey("profile_url")
-
-    private val USER_NAME =
-        stringPreferencesKey("user_name")
-
-    suspend fun saveProfileUrl(
-        context: Context,
-        url: String
-    ) {
-        context.dataStore.edit { prefs ->
-            prefs[PROFILE_URL] = url
-        }
-    }
-
-    suspend fun saveUserName(
-        context: Context,
-        name: String
-    ) {
-        context.dataStore.edit { prefs ->
-            prefs[USER_NAME] = name
-        }
-    }
-
-    fun getProfileUrl(context: Context): Flow<String?> {
-        return context.dataStore.data.map { prefs ->
-            prefs[PROFILE_URL]
-        }
-    }
-
-    fun getUserName(context: Context): Flow<String?> {
-        return context.dataStore.data.map { prefs ->
-            prefs[USER_NAME]
-        }
-    }
-
-    suspend fun clear(context: Context) {
-        context.dataStore.edit { prefs ->
-            prefs.clear()
-        }
-    }
-}
-
 @Composable
 fun HomeScreen (
     showSheet: Boolean,
-    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
+    onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit,
+    profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
     val isPreview = LocalInspectionMode.current
 
@@ -336,12 +279,10 @@ fun HomeScreen (
 
     val pullRefreshState = rememberPullToRefreshState()
 
-    val viewModel: ProfileViewModel = viewModel()
-
-    val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
+    val imageUrl by profileViewModel.profileImageUrl.collectAsStateWithLifecycle()
 
     LaunchedEffect(userID) {
-        userID?.let { viewModel.refreshUserData(it) }
+        userID?.let { profileViewModel.refreshUserData(it) }
     }
 
     var isScrollingDown by remember { mutableStateOf(false) }
@@ -427,7 +368,7 @@ fun HomeScreen (
             albumsVM.fetchAlbumByQuery("latest","results")
             artistsVM.refreshArtists()
 
-            userID?.let { viewModel.refreshUserData(it) }
+            userID?.let { profileViewModel.refreshUserData(it) }
 
             delay(1000)
 
@@ -634,7 +575,6 @@ fun HomeScreen (
 
                         RecentlyPlayedSongs(
                             recentlyPlayed = recentlyPlayed,
-                            viewModel = recentlyPlayedViewModel,
                             modifier = Modifier
                                 .constrainAs(recentlyPlayedSection) {
                                     top.linkTo(recentlyPlayedTitle.bottom, margin = 15.dp)
@@ -928,7 +868,6 @@ fun Playlist(
 @Composable
 fun RecentlyPlayedSongs(
     recentlyPlayed: List<RecentlyPlayedEntity>,
-    viewModel: RecentlyPlayedViewModel,
     modifier: Modifier,
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
@@ -940,6 +879,17 @@ fun RecentlyPlayedSongs(
 
     val columns = remember(songLists) {
         songLists.chunked(3)
+    }
+
+    songLists.forEach {
+        Log.d(
+            "RECENT",
+            """
+        Id       : ${it.id}
+        Title    : ${it.name}
+        Duration : ${it.duration}
+        """.trimIndent()
+        )
     }
 
     LazyRow(
@@ -975,10 +925,6 @@ fun RecentlyPlayedSongs(
                                     PlayerManager.currentIndex = songIndex
 
                                     ContextCompat.startForegroundService(context, intent)
-
-                                    viewModel.onSongPlayed(
-                                        song.toRecentlyPlayedEntity()
-                                    )
                                 },
                                 onLongClick = {
                                     val songIndex = songLists.indexOfFirst { it.id == song.id }
@@ -1074,7 +1020,6 @@ fun RecentlyPlayedSongs(
 fun NewReleasesSongs(
     playlistId: String, root: String, modifier: Modifier,
     viewModel: NewReleasesSongsViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
     val songs by viewModel.songs
@@ -1111,10 +1056,6 @@ fun NewReleasesSongs(
                             PlayerManager.currentIndex = songIndex
 
                             ContextCompat.startForegroundService(context, intent)
-
-                            recentlyPlayedViewModel.onSongPlayed(
-                                song.toRecentlyPlayedEntity()
-                            )
                         },
                         onLongClick = {
                             val songIndex = songs.indexOfFirst { it.id == song.id }
@@ -1238,7 +1179,6 @@ fun TrendingSongs(
     playlistId: String, root: String,
     modifier: Modifier,
     viewModel: TrendingSongsViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onSongLongPress: (List<SongItem>, SongItem, Int) -> Unit
 ) {
     val songs by viewModel.songs
@@ -1275,10 +1215,6 @@ fun TrendingSongs(
                             PlayerManager.currentIndex = songIndex
 
                             ContextCompat.startForegroundService(context, intent)
-
-                            recentlyPlayedViewModel.onSongPlayed(
-                                song.toRecentlyPlayedEntity()
-                            )
                         },
                         onLongClick = {
                             val songIndex = songs.indexOfFirst { it.id == song.id }
@@ -1557,7 +1493,7 @@ private fun LoadingEffect() {
     }
 }
 
-private fun RecentlyPlayedEntity.toSongItem(): SongItem {
+fun RecentlyPlayedEntity.toSongItem(): SongItem {
     return SongItem(
         id = id,
         name = name,

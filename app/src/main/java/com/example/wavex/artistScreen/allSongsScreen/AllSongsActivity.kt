@@ -98,7 +98,6 @@ import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
@@ -425,10 +424,6 @@ private fun All_Songs_Activity(
                                                 PlayerManager.currentIndex = index
 
                                                 ContextCompat.startForegroundService(context, intent)
-
-                                                recentlyPlayedViewModel.onSongPlayed(
-                                                    song.toRecentlyPlayedEntity()
-                                                )
                                             },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {

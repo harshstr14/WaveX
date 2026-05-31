@@ -122,11 +122,9 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.example.wavex.BuildConfig
 import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
@@ -138,6 +136,7 @@ import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.seachHistory.SearchHistoryViewModel
@@ -1146,7 +1145,6 @@ private fun SearchSongs(
     modifier: Modifier,
     downloadedIds: Set<String>,
     viewModel: SearchSongsViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     listState: LazyListState,
     onMoreClick: (SongItem, List<SongItem>, Int) -> Unit,
     snackBarHostState: SnackbarHostState
@@ -1280,29 +1278,7 @@ private fun SearchSongs(
                                 .hideKeyboardOnClick {
                                     scope.launch {
                                         try {
-                                            val playableSong =
-                                                if (song.songSource == SearchSource.YTMUSIC.toString()) {
-
-                                                    val streamData = viewModel.fetchYTStreamData(
-                                                        songId = song.id,
-                                                        baseUrl = BuildConfig.YT_STREAM_URL
-                                                    )
-
-                                                    if (streamData != null) {
-                                                        song.copy(
-                                                            duration = streamData.duration,
-                                                            downloadUrl = streamData.downloadUrl
-                                                        )
-                                                    } else {
-                                                        song
-                                                    }
-                                                } else {
-                                                    song
-                                                }
-
-                                            Log.d("STREAM_URL", "${playableSong.downloadUrl}")
-
-                                            PlayerManager.currentPlaylist = listOf(playableSong)
+                                            PlayerManager.currentPlaylist = listOf(song)
                                             PlayerManager.currentIndex = 0
 
                                             val intent = Intent(
@@ -1315,10 +1291,6 @@ private fun SearchSongs(
                                             }
 
                                             ContextCompat.startForegroundService(context, intent)
-
-                                            recentlyPlayedViewModel.onSongPlayed(
-                                                playableSong.toRecentlyPlayedEntity()
-                                            )
                                         } catch (e: Exception) {
                                             Log.e("PLAYER_ERROR", "Failed to play song", e)
                                         }

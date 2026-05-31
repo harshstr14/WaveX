@@ -2,6 +2,7 @@ package com.example.wavex.homeScreen.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.localDB.entity.RecentlyPlayedEntity
 import com.example.wavex.homeScreen.repository.RecentlyPlayedRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,5 +33,11 @@ class RecentlyPlayedViewModel @Inject constructor(
         viewModelScope.launch {
             repository.clearRecentlyPlayed()
         }
+    }
+
+    suspend fun getPlayableSong(
+        song: SongItem
+    ): SongItem {
+        return repository.getPlayableSong(song)
     }
 }

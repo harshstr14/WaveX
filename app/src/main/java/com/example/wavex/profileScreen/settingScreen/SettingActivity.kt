@@ -1,12 +1,12 @@
 package com.example.wavex.profileScreen.settingScreen
 
 import android.app.Activity
-import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -82,7 +82,6 @@ import com.example.wavex.R
 import com.example.wavex.SignIn
 import com.example.wavex.fonts
 import com.example.wavex.googleAuthentication.GoogleSignInManager
-import com.example.wavex.homeScreen.ProfilePrefs
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.profileScreen.settingScreen.viewmodel.SettingsViewModel
@@ -113,6 +112,8 @@ val Context.settingsDataStore by preferencesDataStore(
 object SettingsKeys {
     val STREAM_QUALITY = stringPreferencesKey("stream_quality")
     val DOWNLOAD_QUALITY = stringPreferencesKey("download_quality")
+    val PROFILE_URL = stringPreferencesKey("profile_url")
+    val USER_NAME = stringPreferencesKey("user_name")
 }
 
 enum class AudioStreamQualityPreference(val label: String) {
@@ -169,9 +170,33 @@ object StreamQualitySelector {
         streams: List<Download>,
         preference: AudioStreamQualityPreference
     ): Download? {
+        Log.d(
+            "PLAY_FLOW",
+            "Preferred Quality = $preference"
+        )
+
         val usable = streams.filter { isUsable(it) }
 
+        Log.d(
+            "PLAY_FLOW",
+            "Usable Streams = ${usable.size}"
+        )
+
+        usable.forEach {
+            Log.d(
+                "PLAY_FLOW",
+                """
+            Quality : ${it.quality}
+            Expire  : ${it.expiresAt}
+            """.trimIndent()
+            )
+        }
+
         if (usable.isEmpty()) {
+            Log.e(
+                "PLAY_FLOW",
+                "No usable streams found"
+            )
             return null
         }
 
@@ -181,6 +206,14 @@ object StreamQualitySelector {
             usable.lastOrNull {
                 it.quality == quality
             }?.let {
+                Log.d(
+                    "PLAY_FLOW",
+                    """
+                Selected Stream
+                Quality : ${it.quality}
+                """.trimIndent()
+                )
+
                 return it
             }
         }
@@ -231,8 +264,8 @@ object DownloadQualitySelector {
             ),
 
             AudioStreamQualityPreference.HIGH to listOf(
-                Quality.LOSSLESS,
                 Quality.HIGH,
+                Quality.LOSSLESS,
                 Quality.MEDIUM,
                 Quality.LOW
             )
@@ -290,6 +323,35 @@ class SettingsDataStore @Inject constructor(
                 preference.name
         }
     }
+
+    val profileUrlFlow: Flow<String?> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[SettingsKeys.PROFILE_URL]
+        }
+
+    val userNameFlow: Flow<String?> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[SettingsKeys.USER_NAME]
+        }
+
+    suspend fun saveProfileUrl(url: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[SettingsKeys.PROFILE_URL] = url
+        }
+    }
+
+    suspend fun saveUserName(name: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[SettingsKeys.USER_NAME] = name
+        }
+    }
+
+    suspend fun clearProfile() {
+        context.settingsDataStore.edit { prefs ->
+            prefs.remove(SettingsKeys.PROFILE_URL)
+            prefs.remove(SettingsKeys.USER_NAME)
+        }
+    }
 }
 
 private lateinit var googleSignInManager: GoogleSignInManager
@@ -331,6 +393,7 @@ class SettingActivity : ComponentActivity() {
 @Composable
 fun Setting_Activity(
     recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
+    profileViewModel: ProfileViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -897,6 +960,9 @@ fun Setting_Activity(
                                 onCacheClear = {
                                     recentlyPlayedViewModel.clearRecentlyPlayed()
                                 },
+                                onProfileClear = {
+                                    settingsViewModel.clearProfile()
+                                },
                                 onDone = {
                                     showDeleteDialog = false
                                 }
@@ -927,8 +993,10 @@ fun Setting_Activity(
                                     }
                                 },
                                 onReloadProfile = { uid ->
-                                    val profileVM = ProfileViewModel(context.applicationContext as Application)
-                                    profileVM.refreshUserData(uid)
+                                    profileViewModel.refreshUserData(uid)
+                                },
+                                onProfileClear = {
+                                    settingsViewModel.clearProfile()
                                 },
                                 onCacheClear = {
                                     recentlyPlayedViewModel.clearRecentlyPlayed()
@@ -982,6 +1050,7 @@ private fun clearAppCache(
     context: Context, onDone: () -> Unit,
     onShowMessage: (String) -> Unit,
     onCacheClear: () -> Unit,
+    onProfileClear: suspend () -> Unit,
     onReloadProfile: ((String) -> Unit)? = null
 ) {
     try {
@@ -1004,7 +1073,7 @@ private fun clearAppCache(
 
             CoroutineScope(Dispatchers.IO).launch {
                 onCacheClear()
-                ProfilePrefs.clear(context)
+                onProfileClear()
 
                 userID.let { onReloadProfile?.invoke(it) }
             }
@@ -1038,6 +1107,7 @@ private fun deleteDir(dir: File?): Boolean {
 private fun deleteAccount(
     context: Context,
     onDone: () -> Unit,
+    onProfileClear: suspend () -> Unit,
     onCacheClear : () -> Unit
 ) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid
@@ -1067,7 +1137,7 @@ private fun deleteAccount(
 
         CoroutineScope(Dispatchers.IO).launch {
             onCacheClear()
-            ProfilePrefs.clear(context)
+            onProfileClear()
         }
 
         val intent = Intent(context, SignIn::class.java)

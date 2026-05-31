@@ -27,4 +27,8 @@ class SettingsRepository @Inject constructor(
     ) {
         dataStore.setDownloadQuality(preference)
     }
+
+    suspend fun clearProfile() {
+        dataStore.clearProfile()
+    }
 }

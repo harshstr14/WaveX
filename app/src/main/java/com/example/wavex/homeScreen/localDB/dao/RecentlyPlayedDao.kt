@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.wavex.homeScreen.localDB.entity.RecentlyPlayedEntity
+import com.example.wavex.songData.Download
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -24,10 +25,12 @@ interface RecentlyPlayedDao {
 
     @Query("""
         UPDATE recently_played_songs
-        SET playedAt = :time
+        SET downloadUrl = :downloadUrl,
+            duration = :duration,
+            playedAt = :time
         WHERE id = :songId
     """)
-    suspend fun updateTime(songId: String, time: Long)
+    suspend fun updateStreamData(songId: String, downloadUrl: MutableList<Download>, duration: Int, time: Long)
 
     @Query("""
         DELETE FROM recently_played_songs

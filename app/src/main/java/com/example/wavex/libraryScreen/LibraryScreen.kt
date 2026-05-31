@@ -1013,8 +1013,8 @@ private fun AddWaveXPlaylistBottomSheet(
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1044,7 +1044,7 @@ private fun AddWaveXPlaylistBottomSheet(
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
 
@@ -1221,8 +1221,8 @@ private fun AddSpotifyPlaylistBottomSheet(
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1251,7 +1251,7 @@ private fun AddSpotifyPlaylistBottomSheet(
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
 
@@ -1425,8 +1425,8 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1455,7 +1455,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
             }
@@ -1510,8 +1510,8 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1534,7 +1534,7 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
             }
@@ -1703,8 +1703,8 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1733,7 +1733,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
             }
@@ -1788,8 +1788,8 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                 }
 
                 val selectionColors = TextSelectionColors(
-                    handleColor = Color(0xFF1C1C1C),
-                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                    handleColor = colorResource(R.color.primary_text_color),
+                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                 )
 
                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -1812,7 +1812,7 @@ private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> U
                             color = colorResource(R.color.secondary_text_color)
                         ),
                         singleLine = true,
-                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                     )
                 }
             }

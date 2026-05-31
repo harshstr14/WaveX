@@ -825,10 +825,6 @@ fun Liked_Songs_Activity(
                                                     PlayerManager.currentIndex = index
 
                                                     ContextCompat.startForegroundService(context, intent)
-
-                                                    recentlyPlayedViewModel.onSongPlayed(
-                                                        song.toRecentlyPlayedEntity()
-                                                    )
                                                 },
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {

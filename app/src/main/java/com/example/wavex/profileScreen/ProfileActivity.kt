@@ -72,24 +72,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.R
-import com.example.wavex.profileScreen.downloadedSongScreen.DownloadedSongActivity
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity
 import com.example.wavex.profileScreen.artistsScreen.ArtistsActivity
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadedSongActivity
 import com.example.wavex.profileScreen.favouriteSongsScreen.FavouriteSongsActivity
 import com.example.wavex.profileScreen.playlistsScreen.PlaylistsActivity
 import com.example.wavex.profileScreen.settingScreen.SettingActivity
 import com.example.wavex.profileScreen.yourProfileScreen.YourProfileActivity
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,16 +115,16 @@ class ProfileActivity : ComponentActivity() {
 }
 
 @Composable
-private fun Profile_Activity() {
-    val viewModel: ProfileViewModel = viewModel()
-
-    val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
-    val name by viewModel.userName.collectAsState()
+private fun Profile_Activity(
+    profileViewModel: ProfileViewModel = hiltViewModel()
+) {
+    val imageUrl by profileViewModel.profileImageUrl.collectAsStateWithLifecycle()
+    val name by profileViewModel.userName.collectAsState()
 
     val uid = FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(uid) {
-        uid?.let { viewModel.refreshUserData(it) }
+        uid?.let { profileViewModel.refreshUserData(it) }
     }
 
     ProfileScreen(

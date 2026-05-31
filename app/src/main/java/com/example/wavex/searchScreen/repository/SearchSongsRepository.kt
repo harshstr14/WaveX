@@ -18,8 +18,9 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
+import javax.inject.Inject
 
-class SearchSongsRepository {
+class SearchSongsRepository @Inject constructor() {
     companion object {
         private const val TAG = "SearchSongsRepository"
         private val imageSizeRegex = Regex("w\\d+-h\\d+")
@@ -322,6 +323,15 @@ class SearchSongsRepository {
                         return@withContext null
                     }
 
+                    Log.d(
+                        "YT_STREAM",
+                        """
+                        Response Length: ${body.length}
+                        Response:
+                        $body
+                        """.trimIndent()
+                    )
+
                     parseYTStream(body)
                 }
 
@@ -338,11 +348,26 @@ class SearchSongsRepository {
             return null
         }
 
+        Log.d(
+            "YT_STREAM",
+            "Success = ${json.optBoolean("success")}"
+        )
+
         val metadata = json.optJSONObject("metadata")
             ?: return null
 
+        Log.d(
+            "YT_STREAM",
+            "Metadata null = ${metadata == null}"
+        )
+
         val streams = json.optJSONArray("streamingUrls")
             ?: JSONArray()
+
+        Log.d(
+            "YT_STREAM",
+            "StreamingUrls Count = ${streams?.length() ?: 0}"
+        )
 
         return SongItem(
             duration = metadata.optInt("lengthSeconds"),
@@ -362,7 +387,20 @@ class SearchSongsRepository {
 
                 val mimeType = obj.optString("type")
 
+                Log.d(
+                    "YT_STREAM",
+                    """
+                    Stream[$i]
+                    MimeType : $mimeType
+                    Url Empty: ${obj.optString("directUrl").isEmpty()}
+                    """.trimIndent()
+                )
+
                 if (!mimeType.contains("audio")) {
+                    Log.d(
+                        "YT_STREAM",
+                        "Skipping non-audio stream: $mimeType"
+                    )
                     continue
                 }
 
@@ -382,6 +420,16 @@ class SearchSongsRepository {
 
                     else -> Quality.MEDIUM
                 }
+
+                Log.d(
+                    "YT_STREAM",
+                    """
+                    Added stream
+                    Itag    : $itag
+                    Quality : $quality
+                    Expire  : $expire
+                    """.trimIndent()
+                )
 
                 add(
                     Download(

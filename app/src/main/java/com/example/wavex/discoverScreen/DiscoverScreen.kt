@@ -113,18 +113,17 @@ import com.example.wavex.discoverScreen.viewModel.ExploreAlbumsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
-import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.SearchSource
@@ -869,10 +868,6 @@ fun ExploreSongs(
                                     PlayerManager.currentIndex = index
 
                                     ContextCompat.startForegroundService(context, intent)
-
-                                    recentlyPlayedViewModel.onSongPlayed(
-                                        song.toRecentlyPlayedEntity()
-                                    )
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {

@@ -79,7 +79,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -103,6 +102,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
@@ -122,9 +122,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.yalantis.ucrop.UCrop
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.io.File
 
+@AndroidEntryPoint
 class YourProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -148,11 +150,11 @@ class YourProfileActivity : ComponentActivity() {
 }
 
 @Composable
-fun Your_Profile_Activity() {
-    val viewModel: ProfileViewModel = viewModel()
-
-    val imageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
-    val name by viewModel.userName.collectAsState()
+fun Your_Profile_Activity(
+    profileViewModel: ProfileViewModel = hiltViewModel()
+) {
+    val imageUrl by profileViewModel.profileImageUrl.collectAsStateWithLifecycle()
+    val name by profileViewModel.userName.collectAsState()
     var mail by remember { mutableStateOf("") }
     var phoneNo by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
@@ -170,12 +172,12 @@ fun Your_Profile_Activity() {
                 gender = snapshot.child("gender").getValue(String::class.java) ?: ""
             }
 
-            viewModel.refreshUserData(it)
+            profileViewModel.refreshUserData(it)
         }
     }
 
     YourProfileScreen(
-        viewModel = viewModel,
+        viewModel = profileViewModel,
         imageUrl = imageUrl,
         savedName = name,
         savedEmail = mail,
@@ -570,8 +572,12 @@ private fun YourProfileScreen(
                             top.linkTo(nameLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(12.dp)),
+                        }.padding(horizontal = 25.dp).height(52.dp)
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFFfefefe),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -594,8 +600,8 @@ private fun YourProfileScreen(
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = Color(0xFF1C1C1C),
-                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -612,13 +618,13 @@ private fun YourProfileScreen(
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Normal,
                                             fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            fontSize = 15.sp, lineHeight = 18.sp,
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                                     )
                                 }
                             }
@@ -635,8 +641,12 @@ private fun YourProfileScreen(
                             top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(12.dp)),
+                        }.padding(horizontal = 25.dp)
+                            .height(52.dp).fillMaxWidth()
+                            .background(
+                                color = Color(0xFFfefefe),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -659,8 +669,8 @@ private fun YourProfileScreen(
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = Color(0xFF1C1C1C),
-                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -683,13 +693,13 @@ private fun YourProfileScreen(
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Normal,
                                             fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            fontSize = 15.sp, lineHeight = 18.sp,
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(Color(0xFF1C1C1C)),
+                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color)),
                                         keyboardOptions = KeyboardOptions(
                                             keyboardType = KeyboardType.Number,
                                             imeAction = ImeAction.Done
@@ -732,8 +742,12 @@ private fun YourProfileScreen(
                             top.linkTo(emailLabelRef.bottom, margin = 10.dp)
                             start.linkTo(parent.start)
                             end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp).height(52.dp).fillMaxWidth().background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(12.dp)),
+                        }.padding(horizontal = 25.dp)
+                            .height(52.dp).fillMaxWidth()
+                            .background(
+                                color = Color(0xFFfefefe),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -756,8 +770,8 @@ private fun YourProfileScreen(
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = Color(0xFF1C1C1C),
-                                    backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -775,13 +789,13 @@ private fun YourProfileScreen(
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Normal,
                                             fontStyle = FontStyle.Normal,
-                                            fontSize = 14.sp, lineHeight = 17.sp,
+                                            fontSize = 15.sp, lineHeight = 18.sp,
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
                                     )
                                 }
                             }
@@ -821,9 +835,9 @@ private fun YourProfileScreen(
                                 },
                                 textStyle = TextStyle(
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
-                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    fontSize = 15.sp, lineHeight = 18.sp,
                                     color = colorResource(R.color.secondary_text_color)
                                 ),
                                 trailingIcon = {
@@ -837,8 +851,8 @@ private fun YourProfileScreen(
                                     )
                                 },
                                 colors = ExposedDropdownMenuDefaults.textFieldColors(
-                                    focusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                                    unfocusedContainerColor = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
+                                    focusedContainerColor = Color(0xFFfefefe),
+                                    unfocusedContainerColor = Color(0xFFfefefe),
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent
                                 ),
@@ -855,7 +869,7 @@ private fun YourProfileScreen(
                                 containerColor = Color(0xFF3a3a3a),
                                 tonalElevation = 0.dp,
                                 shadowElevation = 0.dp,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(14.dp)
                             ) {
                                 genderOptions.forEach { option ->
                                     DropdownMenuItem(
@@ -865,7 +879,7 @@ private fun YourProfileScreen(
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                fontSize = 14.sp, lineHeight = 17.sp,
+                                                fontSize = 14.sp, lineHeight = 16.sp,
                                                 color = colorResource(R.color.background_color)
                                             ) },
                                         onClick = {
@@ -883,7 +897,7 @@ private fun YourProfileScreen(
                     bottom.linkTo(parent.bottom, margin = 25.dp)
                 }.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp).shadow(
                     elevation = 26.dp,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(22.dp),
                     ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
                     spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
                 ),
@@ -927,7 +941,7 @@ private fun YourProfileScreen(
                         text = "Update", fontSize = 17.sp,
                         lineHeight = 18.sp, fontFamily = fonts,
                         fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
-                        color = colorResource(R.color.off_white)
+                        color = colorResource(R.color.background_color)
                     )
                 }
             }

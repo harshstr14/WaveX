@@ -22,7 +22,7 @@ import com.example.wavex.homeScreen.localDB.entity.SongEntity
         RecentlyPlayedEntity::class,
         DownloadedSongEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

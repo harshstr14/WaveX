@@ -68,6 +68,7 @@ import com.example.wavex.profileScreen.settingScreen.StreamQualitySelector
 import com.example.wavex.profileScreen.settingScreen.repository.SettingsRepository
 import com.example.wavex.recommendation.MusicHistoryRepository
 import com.example.wavex.recommendation.dataClass.PlayedSong
+import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.searchScreen.repository.SearchSongsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -420,6 +421,17 @@ class  MusicPlayerService : LifecycleService() {
 
         player.addListener(object : Listener {
             override fun onPlaybackStateChanged(state: Int) {
+                Log.d(
+                    "PLAYER_STATE",
+                    when (state) {
+                        Player.STATE_IDLE -> "IDLE"
+                        Player.STATE_BUFFERING -> "BUFFERING"
+                        Player.STATE_READY -> "READY"
+                        Player.STATE_ENDED -> "ENDED"
+                        else -> "UNKNOWN"
+                    }
+                )
+
                 when(state) {
                     Player.STATE_BUFFERING -> _isBuffering.value = true
 
@@ -462,13 +474,15 @@ class  MusicPlayerService : LifecycleService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                Log.e("PLAYER_ERROR", "Message: ${error.message}")
-                Log.e("PLAYER_ERROR", "Code: ${error.errorCode}")
-                Log.e("PLAYER_ERROR", "Code Name: ${error.errorCodeName}")
-
                 Log.e(
                     "PLAYER_ERROR",
-                    Log.getStackTraceString(error)
+                    """
+                Message : ${error.message}
+                Code    : ${error.errorCode}
+                Name    : ${error.errorCodeName}
+                Cause   : ${error.cause}
+                """.trimIndent(),
+                    error
                 )
 
                 val song = _currentSong.value
@@ -669,10 +683,38 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun SongItem.getBestUri(isOnline: Boolean): Uri {
+        Log.d(
+            "PLAY_FLOW",
+            """
+        ========= GET BEST URI =========
+        Online     : $isOnline
+        Streams    : ${downloadUrl.size}
+        LocalPath  : $localPath
+        =================================
+        """.trimIndent()
+        )
+
+        downloadUrl.forEachIndexed { index, stream ->
+            Log.d(
+                "PLAY_FLOW",
+                """
+            Stream[$index]
+            Quality : ${stream.quality}
+            Expire  : ${stream.expiresAt}
+            Url     : ${stream.url.take(100)}
+            """.trimIndent()
+            )
+        }
+
         val localFile = localPath?.let { File(it) }
 
         return when {
             localFile != null && localFile.exists() -> {
+                Log.d(
+                    "PLAY_FLOW",
+                    "Using local file"
+                )
+
                 localFile.toUri()
             }
 
@@ -688,9 +730,25 @@ class  MusicPlayerService : LifecycleService() {
                         preference = streamQualityPreference
                     )
 
+                Log.d(
+                    "PLAY_FLOW",
+                    """
+                Selected Stream
+                Quality : ${selectedStream?.quality}
+                Url     : ${selectedStream?.url?.take(150)}
+                """.trimIndent()
+                )
+
                 selectedStream?.url?.toUri() ?: Uri.EMPTY
             }
-            else -> Uri.EMPTY
+            else -> {
+                Log.d(
+                    "PLAY_FLOW",
+                    "Offline and no local file"
+                )
+
+                Uri.EMPTY
+            }
         }
     }
 
@@ -763,17 +821,53 @@ class  MusicPlayerService : LifecycleService() {
     private fun prepareAndPlay(song: SongItem) {
         playJob?.cancel()
 
-        playJob = serviceScope.launch {
-            val downloadedSong = downloadedSongsRepository.getSongById(song.id)
+        Log.d(
+            "PLAY_FLOW",
+            """
+        ========= PLAY REQUEST =========
+        Song Id   : ${song.id}
+        Title     : ${song.name}
+        Source    : ${song.songSource}
+        Online    : ${_isOnline.value}
+        =================================
+        """.trimIndent()
+        )
 
-            val uri = if (
-                downloadedSong != null &&
-                File(downloadedSong.localPath).exists()
-            ) {
-                Uri.fromFile(File(downloadedSong.localPath))
-            } else {
-                song.getBestUri(_isOnline.value)
-            }
+        playJob = serviceScope.launch {
+            val playableSong =
+                if (song.songSource == SearchSource.YTMUSIC.name) {
+                    recentlyPlayedRepository.getPlayableSong(song)
+                } else {
+                    song
+                }
+
+            Log.d(
+                "PLAY_FLOW",
+                """
+            ========= PLAYABLE SONG =========
+            Song Id   : ${playableSong.id}
+            Duration  : ${playableSong.duration}
+            Streams   : ${playableSong.downloadUrl.size}
+            =================================
+            """.trimIndent()
+            )
+
+            val downloadedSong = downloadedSongsRepository.getSongById(playableSong.id)
+
+            val uri =
+                if (
+                    downloadedSong != null &&
+                    File(downloadedSong.localPath).exists()
+                ) {
+                    Log.d(
+                        "PLAY_FLOW",
+                        "Using downloaded file: ${downloadedSong.localPath}"
+                    )
+
+                    Uri.fromFile(File(downloadedSong.localPath))
+                } else {
+                    playableSong.getBestUri(_isOnline.value)
+                }
 
 //            Log.d(
 //                "STREAM_URI",
@@ -790,23 +884,56 @@ class  MusicPlayerService : LifecycleService() {
 //                    """.trimIndent()
 //            )
 
-//            val uri = withContext(Dispatchers.IO) {
-//                getFreshAudioUrl(song.id)
-//            }
+            Log.d(
+                "PLAY_FLOW",
+                """
+            ========= FINAL URI =========
+            Uri     : $uri
+            Scheme  : ${uri.scheme}
+            Host    : ${uri.host}
+            Path    : ${uri.path}
+            Itag    : ${uri.getQueryParameter("itag")}
+            Expire  : ${uri.getQueryParameter("expire")}
+            =================================
+            """.trimIndent()
+            )
 
-            Log.d("STREAM_URI", "$uri")
             if (uri == Uri.EMPTY) {
+                Log.e("PLAY_FLOW", "URI EMPTY - Playback aborted")
                 _isBuffering.value = false
                 return@launch
             }
 
-            val mediaItem = MediaItem.Builder()
-                .setUri(uri)
-                .setMediaId(song.id)
-                .build()
+            Log.d(
+                "PLAY_FLOW",
+                """
+                Saving song
+                Id    : ${playableSong.id}
+                Title : ${playableSong.name}
+                Duration : ${playableSong.duration}
+                """.trimIndent()
+            )
 
-            player.setMediaItem(mediaItem)
+            recentlyPlayedRepository.addSong(
+                playableSong.toRecentlyPlayedEntity()
+            )
+
+            recentlyPlayedRepository.addSong(
+                playableSong.toRecentlyPlayedEntity()
+            )
+
+            player.setMediaItem(
+                MediaItem.Builder()
+                    .setUri(uri)
+                    .setMediaId(playableSong.id)
+                    .build()
+            )
+
+            Log.d("PLAY_FLOW", "Calling player.prepare()")
+
             player.prepare()
+
+            Log.d("PLAY_FLOW", "Setting playWhenReady=true")
             player.playWhenReady = true
         }
     }

@@ -47,4 +47,10 @@ class SettingsViewModel @Inject constructor(
             repository.setDownloadQuality(preference)
         }
     }
+
+    fun clearProfile() {
+        viewModelScope.launch {
+            repository.clearProfile()
+        }
+    }
 }
