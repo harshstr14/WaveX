@@ -53,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -119,9 +118,10 @@ class AllAlbumsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun All_Albums_Screen(artistId: String?, viewModel: AllAlbumsViewModel = viewModel()) {
+private fun All_Albums_Screen(
+    artistId: String?, viewModel: AllAlbumsViewModel = viewModel()
+) {
     val snackBarHostState = remember { SnackbarHostState() }
-    rememberCoroutineScope()
     val albumsGridState = rememberLazyGridState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -505,11 +505,10 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 
@@ -524,7 +523,8 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         ) {
             Text(
                 text = "Retry",
-                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.background_color)
             )
         }

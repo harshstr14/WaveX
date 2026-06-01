@@ -112,7 +112,6 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -131,9 +130,7 @@ import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
@@ -488,10 +485,9 @@ private fun SearchBar(
     viewModel: SearchHistoryViewModel = viewModel(),
 ) {
     val selectionColors = TextSelectionColors(
-        handleColor = Color(0xFF1C1C1C),
-        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+        handleColor = colorResource(R.color.primary_text_color).copy(alpha = 0.88f),
+        backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
     )
-
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.isImeVisible
 
@@ -541,7 +537,7 @@ private fun SearchBar(
             },
             modifier = modifier
                 .border(
-                    width = if (isKeyboardVisible) 1.dp else 0.dp,
+                    width = if (isKeyboardVisible) 1.1.dp else 0.dp,
                     color = if (isKeyboardVisible)
                         colorResource(R.color.theme_color).copy(alpha = 0.60f)
                     else
@@ -554,7 +550,7 @@ private fun SearchBar(
                 unfocusedContainerColor = Color(0xFFfefefe),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color(0xFF121212)
+                cursorColor = colorResource(R.color.primary_text_color).copy(alpha = 0.88f)
             ),
             textStyle = TextStyle(
                 fontFamily = fonts,
@@ -590,8 +586,8 @@ fun SourceSelectorUI(
 
     val scrollState = rememberScrollState()
 
-    val selectedBorder = Color(0xFF71c287)
-    val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.20f)
+    val selectedBorder = colorResource(R.color.theme_color)
+    val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.10f)
     val unselectedBg = colorResource(R.color.secondary_text_color).copy(alpha = 0.20f)
     val textColor = colorResource(R.color.background_color)
 
@@ -654,7 +650,7 @@ fun SourceSelectorUI(
                     )
 
                     val textAnimatedColor by animateColorAsState(
-                        targetValue = if (isSelected) Color(0xFFc2e5cb) else textColor,
+                        targetValue = if (isSelected) colorResource(R.color.theme_color) else textColor,
                         label = ""
                     )
 
@@ -1862,11 +1858,10 @@ private fun ErrorState(message: String) {
             )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }

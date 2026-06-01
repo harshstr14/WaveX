@@ -15,15 +15,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,8 +41,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +73,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -117,6 +113,7 @@ import com.cloudinary.android.callback.UploadCallback
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.libraryScreen.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
@@ -124,6 +121,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import org.schabi.newpipe.extractor.timeago.patterns.fa
 import java.io.File
 
 @AndroidEntryPoint
@@ -224,6 +222,8 @@ private fun YourProfileScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val (backInteraction, backScale) = pressScale()
     val (editInteraction, editScale) = pressScale()
 
     var name by remember { mutableStateOf("") }
@@ -235,6 +235,10 @@ private fun YourProfileScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     var expanded by remember { mutableStateOf(false) }
     val genderOptions = listOf("Male", "Female", "Other")
+
+    var nameFocused by remember { mutableStateOf(false) }
+    var phoneNoFocused by remember { mutableStateOf(false) }
+    var emailFocused by remember { mutableStateOf(false) }
 
     val isUploading by viewModel.isUploading.collectAsState()
 
@@ -257,17 +261,6 @@ private fun YourProfileScreen(
         gender = savedGender
     }
 
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
-
     val cropLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -276,7 +269,8 @@ private fun YourProfileScreen(
             resultUri?.let { uri ->
                 // Upload to Cloudinary and save URL
                 val database = FirebaseDatabase.getInstance().getReference("Users")
-                uploadToCloudinary(uri, database,
+                uploadToCloudinary(
+                    uri, database,
                     viewModel,
                     onShowMessage = { message ->
                         scope.launch {
@@ -360,7 +354,7 @@ private fun YourProfileScreen(
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -373,8 +367,8 @@ private fun YourProfileScreen(
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -468,18 +462,20 @@ private fun YourProfileScreen(
             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                 val (formContainerRef, updateProfileButtonRef) = createRefs()
 
-                Column(modifier = Modifier
-                    .constrainAs(formContainerRef) {
-                        top.linkTo(parent.top)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                        bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
-                        height = Dimension.fillToConstraints
-                    }.verticalScroll(rememberScrollState())
-                    .padding(bottom = 25.dp)
+                Column(
+                    modifier = Modifier
+                        .constrainAs(formContainerRef) {
+                            top.linkTo(parent.top)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                            bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
+                            height = Dimension.fillToConstraints
+                        }.verticalScroll(rememberScrollState())
+                        .padding(bottom = 25.dp)
                 ) {
                     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                        val (genderLabelRef, genderDropdownRef, profileImageRef, editProfileImageRef,
+                        val (
+                            genderLabelRef, genderDropdownRef, profileImageRef, editProfileImageRef,
                             nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,
                             emailLabelRef, emailFieldContainerRef
                         ) = createRefs()
@@ -492,7 +488,8 @@ private fun YourProfileScreen(
                             contentDescription = "Profile Image",
                             onSuccess = { result ->
                                 val drawable = result.result.drawable
-                                val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
+                                val bitmap =
+                                    (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
 
                                 Palette.from(bitmap).generate { palette ->
                                     palette?.dominantSwatch?.rgb?.let { colorInt ->
@@ -501,11 +498,13 @@ private fun YourProfileScreen(
                                 }
                             },
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.constrainAs(profileImageRef) {
-                                top.linkTo(parent.top)
-                                end.linkTo(parent.end)
-                                start.linkTo(parent.start)
-                            }.padding(top = 25.dp).size(162.dp)
+                            modifier = Modifier
+                                .constrainAs(profileImageRef) {
+                                    top.linkTo(parent.top)
+                                    end.linkTo(parent.end)
+                                    start.linkTo(parent.start)
+                                }
+                                .padding(top = 25.dp).size(162.dp)
                                 .drawBehind {
                                     val glowRadius = (size.minDimension / 2) * shadowScale
                                     val safeBlur = shadowBlur.coerceAtLeast(0.1f)
@@ -533,10 +532,12 @@ private fun YourProfileScreen(
                         )
 
                         Box(
-                            modifier = Modifier.constrainAs(editProfileImageRef) {
-                                bottom.linkTo(profileImageRef.bottom)
-                                end.linkTo(profileImageRef.end, margin = 8.dp)
-                            }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                            modifier = Modifier
+                                .constrainAs(editProfileImageRef) {
+                                    bottom.linkTo(profileImageRef.bottom)
+                                    end.linkTo(profileImageRef.end, margin = 8.dp)
+                                }
+                                .size(36.dp).clip(RoundedCornerShape(20.dp))
                                 .background(colorResource(R.color.theme_color))
                                 .border(
                                     width = 1.5.dp,
@@ -561,47 +562,73 @@ private fun YourProfileScreen(
                             )
                         }
 
-                        Text("Name", modifier = Modifier.constrainAs(nameLabelRef) {
-                            top.linkTo(profileImageRef.bottom, margin = 30.dp)
-                            start.linkTo(parent.start, margin = 28.dp)
-                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        Text(
+                            text = "Name",
+                            modifier = Modifier
+                                .constrainAs(nameLabelRef) {
+                                    top.linkTo(profileImageRef.bottom, margin = 30.dp)
+                                    start.linkTo(parent.start, margin = 28.dp)
+                                },
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(nameFieldContainerRef) {
-                            top.linkTo(nameLabelRef.bottom, margin = 10.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp).height(52.dp)
-                            .fillMaxWidth()
-                            .background(
-                                color = Color(0xFFfefefe),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
+                        Box(
+                            modifier = Modifier
+                                .constrainAs(nameFieldContainerRef) {
+                                    top.linkTo(nameLabelRef.bottom, margin = 10.dp)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                }
+                                .padding(horizontal = 25.dp).height(52.dp)
+                                .fillMaxWidth()
+                                .border(
+                                    width = 1.1.dp,
+                                    color = when {
+                                        nameFocused -> colorResource(R.color.theme_color)
+                                        else -> Color.Transparent
+                                    },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .background(
+                                    color = Color(0xFFfefefe),
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                                 val (inputField, placeholderText) = createRefs()
 
                                 if (name.isEmpty()) {
-                                    Text(modifier = Modifier.constrainAs(placeholderText) {
-                                        top.linkTo(parent.top)
-                                        bottom.linkTo(parent.bottom)
-                                        start.linkTo(parent.start, margin = 15.dp)
-                                        end.linkTo(parent.end, margin = 15.dp)
-                                        width = Dimension.fillToConstraints },
+                                    Text(
+                                        modifier = Modifier
+                                            .constrainAs(placeholderText) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
                                         text = "Enter Name",
                                         fontFamily = fonts,
                                         fontWeight = FontWeight.Normal,
                                         fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        fontSize = 15.sp, lineHeight = 18.sp,
                                         color = colorResource(R.color.secondary_text_color)
                                     )
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = colorResource(R.color.primary_text_color),
-                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.88f
+                                    ),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.3f
+                                    )
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -615,6 +642,9 @@ private fun YourProfileScreen(
                                                 start.linkTo(parent.start, margin = 15.dp)
                                                 end.linkTo(parent.end, margin = 15.dp)
                                                 width = Dimension.fillToConstraints
+                                            }
+                                            .onFocusChanged {
+                                                nameFocused = it.isFocused
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
@@ -624,53 +654,79 @@ private fun YourProfileScreen(
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
+                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color).copy(alpha = 0.88f))
                                     )
                                 }
                             }
                         }
 
-                        Text("Phone Number", modifier = Modifier.constrainAs(phoneLabelRef) {
-                            top.linkTo(nameFieldContainerRef.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 28.dp)
-                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        Text(
+                            text = "Phone Number",
+                            modifier = Modifier
+                                .constrainAs(phoneLabelRef) {
+                                    top.linkTo(nameFieldContainerRef.bottom, margin = 15.dp)
+                                    start.linkTo(parent.start, margin = 28.dp)
+                                },
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(phoneFieldContainerRef) {
-                            top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp)
-                            .height(52.dp).fillMaxWidth()
-                            .background(
-                                color = Color(0xFFfefefe),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
+                        Box(
+                            modifier = Modifier
+                                .constrainAs(phoneFieldContainerRef) {
+                                    top.linkTo(phoneLabelRef.bottom, margin = 10.dp)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                }
+                                .padding(horizontal = 25.dp)
+                                .height(52.dp).fillMaxWidth()
+                                .border(
+                                    width = 1.1.dp,
+                                    color = when {
+                                        phoneNoFocused -> colorResource(R.color.theme_color)
+                                        else -> Color.Transparent
+                                    },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .background(
+                                    color = Color(0xFFfefefe),
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                                 val (inputField, placeholderText, text) = createRefs()
 
                                 if (phoneNo.isEmpty()) {
-                                    Text(modifier = Modifier.constrainAs(placeholderText) {
-                                        top.linkTo(parent.top)
-                                        bottom.linkTo(parent.bottom)
-                                        start.linkTo(parent.start, margin = 15.dp)
-                                        end.linkTo(text.start, margin = 15.dp)
-                                        width = Dimension.fillToConstraints },
+                                    Text(
+                                        modifier = Modifier
+                                            .constrainAs(placeholderText) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(text.start, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
                                         text = "Enter Phone Number",
                                         fontFamily = fonts,
                                         fontWeight = FontWeight.Normal,
                                         fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        fontSize = 15.sp, lineHeight = 18.sp,
                                         color = colorResource(R.color.secondary_text_color)
                                     )
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = colorResource(R.color.primary_text_color),
-                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.88f
+                                    ),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.3f
+                                    )
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -690,6 +746,9 @@ private fun YourProfileScreen(
                                                 start.linkTo(parent.start, margin = 15.dp)
                                                 end.linkTo(text.start, margin = 15.dp)
                                                 width = Dimension.fillToConstraints
+                                            }
+                                            .onFocusChanged {
+                                                phoneNoFocused = it.isFocused
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
@@ -699,12 +758,15 @@ private fun YourProfileScreen(
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color)),
+                                        cursorBrush = SolidColor(
+                                            colorResource(R.color.primary_text_color).copy(
+                                                alpha = 0.88f
+                                            )
+                                        ),
                                         keyboardOptions = KeyboardOptions(
                                             keyboardType = KeyboardType.Number,
                                             imeAction = ImeAction.Done
                                         ),
-
                                         keyboardActions = KeyboardActions(
                                             onDone = {
                                                 keyboardController?.hide()
@@ -714,64 +776,93 @@ private fun YourProfileScreen(
                                     )
                                 }
 
-                                Text(modifier = Modifier.constrainAs(text) {
-                                    top.linkTo(parent.top)
-                                    bottom.linkTo(parent.bottom)
-                                    end.linkTo(parent.end, margin = 15.dp) }
-                                    .clickable {
-                                        isPhoneEditable = !isPhoneEditable
-                                    },
+                                Text(
+                                    modifier = Modifier
+                                        .constrainAs(text) {
+                                            top.linkTo(parent.top)
+                                            bottom.linkTo(parent.bottom)
+                                            end.linkTo(parent.end, margin = 15.dp)
+                                        }
+                                        .clickable {
+                                            isPhoneEditable = !isPhoneEditable
+                                        },
                                     text = if (isPhoneEditable) "Done" else "Change",
                                     fontFamily = fonts,
                                     fontWeight = FontWeight.Normal,
                                     fontStyle = FontStyle.Normal,
-                                    fontSize = 14.sp, lineHeight = 17.sp,
+                                    fontSize = 14.sp, lineHeight = 18.sp,
                                     color = colorResource(R.color.theme_color)
                                 )
                             }
                         }
 
-                        Text("Email", modifier = Modifier.constrainAs(emailLabelRef) {
-                            top.linkTo(phoneFieldContainerRef.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 28.dp)
-                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        Text(
+                            text = "Email",
+                            modifier = Modifier
+                                .constrainAs(emailLabelRef) {
+                                    top.linkTo(phoneFieldContainerRef.bottom, margin = 15.dp)
+                                    start.linkTo(parent.start, margin = 28.dp)
+                                },
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
-                        Box(modifier = Modifier.constrainAs(emailFieldContainerRef) {
-                            top.linkTo(emailLabelRef.bottom, margin = 10.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }.padding(horizontal = 25.dp)
-                            .height(52.dp).fillMaxWidth()
-                            .background(
-                                color = Color(0xFFfefefe),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
+                        Box(
+                            modifier = Modifier
+                                .constrainAs(emailFieldContainerRef) {
+                                    top.linkTo(emailLabelRef.bottom, margin = 10.dp)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                }
+                                .padding(horizontal = 25.dp)
+                                .height(52.dp).fillMaxWidth()
+                                .border(
+                                    width = 1.1.dp,
+                                    color = when {
+                                        emailFocused -> colorResource(R.color.theme_color)
+                                        else -> Color.Transparent
+                                    },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .background(
+                                    color = Color(0xFFfefefe),
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             ConstraintLayout(modifier = Modifier.fillMaxSize()) {
                                 val (inputField, placeholderText) = createRefs()
 
                                 if (email.isEmpty()) {
-                                    Text(modifier = Modifier.constrainAs(placeholderText) {
-                                        top.linkTo(parent.top)
-                                        bottom.linkTo(parent.bottom)
-                                        start.linkTo(parent.start, margin = 15.dp)
-                                        end.linkTo(parent.end, margin = 15.dp)
-                                        width = Dimension.fillToConstraints },
+                                    Text(
+                                        modifier = Modifier
+                                            .constrainAs(placeholderText) {
+                                                top.linkTo(parent.top)
+                                                bottom.linkTo(parent.bottom)
+                                                start.linkTo(parent.start, margin = 15.dp)
+                                                end.linkTo(parent.end, margin = 15.dp)
+                                                width = Dimension.fillToConstraints
+                                            },
                                         text = "Enter Email",
                                         fontFamily = fonts,
                                         fontWeight = FontWeight.Normal,
                                         fontStyle = FontStyle.Normal,
-                                        fontSize = 14.sp, lineHeight = 17.sp,
+                                        fontSize = 15.sp, lineHeight = 18.sp,
                                         color = colorResource(R.color.secondary_text_color)
                                     )
                                 }
 
                                 val selectionColors = TextSelectionColors(
-                                    handleColor = colorResource(R.color.primary_text_color),
-                                    backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
+                                    handleColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.88f
+                                    ),
+                                    backgroundColor = colorResource(R.color.primary_text_color).copy(
+                                        alpha = 0.3f
+                                    )
                                 )
 
                                 CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -786,6 +877,9 @@ private fun YourProfileScreen(
                                                 start.linkTo(parent.start, margin = 15.dp)
                                                 end.linkTo(parent.end, margin = 15.dp)
                                                 width = Dimension.fillToConstraints
+                                            }
+                                            .onFocusChanged {
+                                                emailFocused = it.isFocused
                                             },
                                         textStyle = TextStyle(
                                             fontFamily = fonts,
@@ -795,31 +889,45 @@ private fun YourProfileScreen(
                                             color = colorResource(R.color.secondary_text_color)
                                         ),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(colorResource(R.color.primary_text_color))
+                                        cursorBrush = SolidColor(
+                                            colorResource(R.color.primary_text_color).copy(
+                                                alpha = 0.88f
+                                            )
+                                        )
                                     )
                                 }
                             }
                         }
 
-                        Text("Gender", modifier = Modifier.constrainAs(genderLabelRef) {
-                            top.linkTo(emailFieldContainerRef.bottom, margin = 20.dp)
-                            start.linkTo(parent.start, margin = 28.dp)
-                        }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                        Text(
+                            text = "Gender",
+                            modifier = Modifier
+                                .constrainAs(genderLabelRef) {
+                                    top.linkTo(emailFieldContainerRef.bottom, margin = 15.dp)
+                                    start.linkTo(parent.start, margin = 28.dp)
+                                },
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold,
+                            fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color)
                         )
 
                         ExposedDropdownMenuBox(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.constrainAs(genderDropdownRef) {
-                                top.linkTo(genderLabelRef.bottom, margin = 10.dp)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                            }.padding(horizontal = 25.dp)
+                            modifier = Modifier
+                                .constrainAs(genderDropdownRef) {
+                                    top.linkTo(genderLabelRef.bottom, margin = 10.dp)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                }
+                                .padding(horizontal = 25.dp)
                                 .fillMaxWidth().zIndex(1f)
                         ) {
                             TextField(
-                                value = gender.ifEmpty{ "" },
+                                value = gender.ifEmpty { "" },
                                 onValueChange = {},
                                 readOnly = true,
                                 placeholder = {
@@ -856,7 +964,7 @@ private fun YourProfileScreen(
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent
                                 ),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
                                     .menuAnchor()
                                     .height(52.dp)
@@ -881,7 +989,8 @@ private fun YourProfileScreen(
                                                 fontStyle = FontStyle.Normal,
                                                 fontSize = 14.sp, lineHeight = 16.sp,
                                                 color = colorResource(R.color.background_color)
-                                            ) },
+                                            )
+                                        },
                                         onClick = {
                                             gender = option
                                             expanded = false
@@ -893,53 +1002,54 @@ private fun YourProfileScreen(
                     }
                 }
 
-                Button(modifier = Modifier.constrainAs(updateProfileButtonRef) {
-                    bottom.linkTo(parent.bottom, margin = 25.dp)
-                }.fillMaxWidth().padding(horizontal = 20.dp).height(54.dp).shadow(
-                    elevation = 26.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                    spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-                ),
-                    onClick = {
-                        when {
-                            phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
+                Box(
+                    modifier = Modifier
+                        .constrainAs(updateProfileButtonRef) {
+                            bottom.linkTo(parent.bottom, margin = 25.dp)
+                        }
+                        .fillMaxWidth().padding(horizontal = 20.dp).height(54.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(colorResource(R.color.theme_color))
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            when {
+                                phoneNo.isNotEmpty() && phoneNo.length != 10 -> {
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            message = "Phone number must be 10 digits",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                    return@clickable
+                                }
+
+                                name.isBlank() -> {
+                                    scope.launch {
+                                        snackBarHostState.showSnackbar(
+                                            message = "Please enter your name",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                    return@clickable
+                                }
+                            }
+
+                            onUpdateClick(name, phoneNo, gender) { message ->
                                 scope.launch {
                                     snackBarHostState.showSnackbar(
-                                        message = "Phone number must be 10 digits",
+                                        message = message,
                                         duration = SnackbarDuration.Short
                                     )
                                 }
-                                return@Button
                             }
-
-                            name.isBlank() -> {
-                                scope.launch {
-                                    snackBarHostState.showSnackbar(
-                                        message = "Please enter your name",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                                return@Button
-                            }
-                        }
-
-                        onUpdateClick(name, phoneNo, gender) { message ->
-                            scope.launch {
-                                snackBarHostState.showSnackbar(
-                                    message = message,
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
-                        }
-                    }, colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.theme_color),
-                        contentColor = colorResource(R.color.off_white)
-                    ) , shape = RoundedCornerShape(14.dp)) {
-
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = "Update", fontSize = 17.sp,
-                        lineHeight = 18.sp, fontFamily = fonts,
+                        lineHeight = 20.sp, fontFamily = fonts,
                         fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.background_color)
                     )
@@ -1078,25 +1188,6 @@ private fun uploadToCloudinary(
             }
         })
         .dispatch()
-}
-
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

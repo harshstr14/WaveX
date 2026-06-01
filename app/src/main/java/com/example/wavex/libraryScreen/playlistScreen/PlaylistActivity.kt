@@ -28,7 +28,6 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -110,13 +109,12 @@ import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.libraryScreen.PlaylistImageGrid
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.playlistScreen.formatTotalDuration
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
@@ -159,8 +157,7 @@ class PlaylistActivity : ComponentActivity() {
 private fun Playlist_Activity(
     downloadViewModel: DownloadViewModel = hiltViewModel(),
     playlistId: String?,
-    viewModel: PlaylistViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+    viewModel: PlaylistViewModel = viewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -1288,33 +1285,13 @@ private fun ErrorState(message: String) {
             )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }
-}
-
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
 }
 
 @Preview(showBackground = true)

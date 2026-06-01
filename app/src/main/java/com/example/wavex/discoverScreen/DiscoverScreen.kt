@@ -96,7 +96,6 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.ContextCompat
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -120,7 +119,6 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
@@ -770,8 +768,7 @@ fun ExploreSongs(
     viewModel: ExploreSongsViewModel = viewModel(),
     listState: LazyListState,
     onMoreClick: (SongItem, Int, List<SongItem>) -> Unit,
-    snackBarHostState: SnackbarHostState,
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+    snackBarHostState: SnackbarHostState
 ) {
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -1397,11 +1394,10 @@ private fun ErrorState() {
             )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = "No results found",
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }

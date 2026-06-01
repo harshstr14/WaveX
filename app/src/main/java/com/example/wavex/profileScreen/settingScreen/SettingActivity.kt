@@ -559,7 +559,7 @@ fun Setting_Activity(
             ) {
                 SettingsItem(
                     modifier = Modifier
-                        .padding(top = 8.dp)
+                        .padding(top = 10.dp)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.update_icon,
                     title = "Updates",
@@ -900,7 +900,7 @@ fun Setting_Activity(
 
                 SettingsItem(
                     modifier = Modifier
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 10.dp)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.github_icon,
                     title = "Git Hub",
@@ -1217,8 +1217,8 @@ fun IOSStyleBottomDialog(
                     Text(
                         text = message,
                         fontFamily = fonts,
-                        fontSize = 13.sp, lineHeight = 16.sp,
-                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp, lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color)
                     )

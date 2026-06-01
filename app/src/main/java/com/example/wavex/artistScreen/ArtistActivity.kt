@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,9 +106,9 @@ import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
@@ -165,8 +164,7 @@ private fun Artist_Activity(
     downloadViewModel: DownloadViewModel = hiltViewModel(),
     artistId: String?, artistImageUrl: String?,
     artistSource: String?,
-    viewModel: ArtistViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+    viewModel: ArtistViewModel = viewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -201,13 +199,8 @@ private fun Artist_Activity(
     val favouriteReference = FirebaseDatabase.getInstance().getReference().child("Users")
         .child(userID!!).child("Favourites").child("Artists").child(artistId.toString())
 
-    var invalidSource by remember {
-        mutableStateOf(false)
-    }
-
     LaunchedEffect(artistId, artistSource) {
         if (artistId.isNullOrBlank()) {
-            invalidSource = true
             return@LaunchedEffect
         }
 
@@ -217,12 +210,7 @@ private fun Artist_Activity(
 
             SearchSource.YTMUSIC.name ->
                 viewModel.loadYTArtist(artistId)
-
-            "Unknown" ->
-                invalidSource = true
         }
-
-        invalidSource = false
     }
 
     var isLiked by remember { mutableStateOf(false) }
@@ -539,8 +527,21 @@ private fun Artist_Activity(
                     )
                 }
 
-                artistSource == "Unknown" -> {
-                    invalidSource = true
+                artistId.isNullOrBlank() -> {
+                    ErrorState(
+                        message = "Invalid artist source",
+                        onRetry = {
+                            when(artistSource) {
+                                SearchSource.JIOSAAVN.name -> {
+                                    viewModel.loadArtist(artistId ?: "")
+                                }
+
+                                SearchSource.YTMUSIC.name -> {
+                                    viewModel.loadYTArtist(artistId ?: "")
+                                }
+                            }
+                        }
+                    )
                 }
 
                 else -> {
@@ -1368,25 +1369,6 @@ private fun Artist_Activity(
                     }
                 )
             }
-
-            if (invalidSource) {
-                ErrorState(
-                    message = "Invalid artist source",
-                    onRetry = {
-                        when(artistSource) {
-                            SearchSource.JIOSAAVN.name -> {
-                                viewModel.loadArtist(artistId ?: "")
-                                invalidSource = false
-                            }
-
-                            SearchSource.YTMUSIC.name -> {
-                                viewModel.loadYTArtist(artistId ?: "")
-                                invalidSource = false
-                            }
-                        }
-                    }
-                )
-            }
         }
     }
 }
@@ -1422,11 +1404,10 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = message,
-            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 
@@ -1441,7 +1422,8 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         ) {
             Text(
                 text = "Retry",
-                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.background_color)
             )
         }
@@ -1481,25 +1463,6 @@ private fun LoadingEffect() {
                 }
         )
     }
-}
-
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)

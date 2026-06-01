@@ -10,15 +10,12 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,6 +77,7 @@ import coil.request.ImageRequest
 import com.example.wavex.R
 import com.example.wavex.fonts
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.albumsScreen.AlbumsActivity
 import com.example.wavex.profileScreen.artistsScreen.ArtistsActivity
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadedSongActivity
@@ -304,7 +302,8 @@ private fun PortraitMode(
                 .fillMaxWidth()
                 .wrapContentHeight()
         ) {
-            val (profileImageRef, yourProfileRowRef, userNameTextRef, profileEditIconRef, downloadedSongsRowRwf
+            val (
+                profileImageRef, yourProfileRowRef, userNameTextRef, profileEditIconRef, downloadedSongsRowRwf
             ) = createRefs()
 
             AsyncImage(
@@ -325,11 +324,13 @@ private fun PortraitMode(
                     }
                 },
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.constrainAs(profileImageRef) {
-                    top.linkTo(parent.top, margin = 15.dp)
-                    end.linkTo(parent.end)
-                    start.linkTo(parent.start)
-                }.padding(top = 10.dp).size(162.dp)
+                modifier = Modifier
+                    .constrainAs(profileImageRef) {
+                        top.linkTo(parent.top, margin = 15.dp)
+                        end.linkTo(parent.end)
+                        start.linkTo(parent.start)
+                    }
+                    .padding(top = 10.dp).size(162.dp)
                     .drawBehind {
                         val glowRadius = (size.minDimension / 2) * shadowScale
                         val safeBlur = shadowBlur.coerceAtLeast(0.1f)
@@ -357,10 +358,12 @@ private fun PortraitMode(
             )
 
             Box(
-                modifier = Modifier.constrainAs(profileEditIconRef) {
-                    bottom.linkTo(profileImageRef.bottom)
-                    end.linkTo(profileImageRef.end, margin = 8.dp)
-                }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                modifier = Modifier
+                    .constrainAs(profileEditIconRef) {
+                        bottom.linkTo(profileImageRef.bottom)
+                        end.linkTo(profileImageRef.end, margin = 8.dp)
+                    }
+                    .size(36.dp).clip(RoundedCornerShape(20.dp))
                     .background(colorResource(R.color.theme_color))
                     .border(
                         width = 1.5.dp,
@@ -392,11 +395,12 @@ private fun PortraitMode(
 
             Text(
                 text = name,
-                modifier = Modifier.constrainAs(userNameTextRef) {
-                    top.linkTo(profileImageRef.bottom, margin = 20.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                },
+                modifier = Modifier
+                    .constrainAs(userNameTextRef) {
+                        top.linkTo(profileImageRef.bottom, margin = 20.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
                 fontSize = 20.sp,
                 fontFamily = fonts,
                 fontWeight = FontWeight.Bold,
@@ -417,7 +421,7 @@ private fun PortraitMode(
             ) {
                 ProfileItem(
                     modifier = Modifier
-                        .padding(top = 8.dp)
+                        .padding(top = 10.dp)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     icon = R.drawable.user_icon,
                     title = "Your Profile",
@@ -555,7 +559,7 @@ private fun PortraitMode(
 
                 ProfileItem(
                     modifier = Modifier
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 10.dp)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     icon = R.drawable.setting_icon,
                     title = "Settings",
@@ -631,25 +635,6 @@ private fun ProfileItem(
                 }
         )
     }
-}
-
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
 }
 
 @Preview(showSystemUi = true)
