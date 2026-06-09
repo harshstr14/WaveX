@@ -43,10 +43,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -179,30 +180,28 @@ fun ShareSong(
                                 val cornerRadius = 18.dp.toPx()
 
                                 drawIntoCanvas { canvas ->
-                                    val paint = Paint().apply {
-                                        color = shadowColor.copy(alpha = shadowAlpha)
-                                        asFrameworkPaint().apply {
-                                            isAntiAlias = true
+                                    val frameworkPaint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        color = shadowColor.copy(alpha = shadowAlpha).toArgb()
 
-                                            maskFilter = if (shadowBlur > 0f) {
-                                                android.graphics.BlurMaskFilter(
-                                                    safeBlur,
-                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                )
-                                            } else {
-                                                null
-                                            }
+                                        maskFilter = if (shadowBlur > 0f) {
+                                            android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
+                                        } else {
+                                            null
                                         }
                                     }
 
-                                    canvas.drawRoundRect(
+                                    canvas.nativeCanvas.drawRoundRect(
                                         0f,
                                         0f,
                                         size.width,
                                         size.height,
                                         cornerRadius,
                                         cornerRadius,
-                                        paint
+                                        frameworkPaint
                                     )
                                 }
                             }
@@ -310,7 +309,11 @@ fun ShareSong(
 
                                 snackBarHostState.showSnackbar("Link copied")
                             }
-                        },
+                        }
+                        .graphicsLayer(
+                            scaleX = copyLinkScale,
+                            scaleY = copyLinkScale
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -359,7 +362,12 @@ fun ShareSong(
                         icon = R.drawable.whatsapp_icon,
                         iconBackground = Color(0xFF123A24),
                         iconTint = Color(0xFF25D366),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer(
+                                scaleY = whatsAppScale,
+                                scaleX = whatsAppScale
+                            ),
                         interactionSource = whatsAppInteraction,
                         onClick = {
                             val link = generateShareLink(song)
@@ -385,7 +393,12 @@ fun ShareSong(
                         icon = R.drawable.message_icon,
                         iconBackground = Color(0xFF132B4A),
                         iconTint = Color(0xFF3B82F6),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer(
+                                scaleX = messageScale,
+                                scaleY = messageScale
+                            ),
                         interactionSource = messageInteraction,
                         onClick = {
                             val link = generateShareLink(song)

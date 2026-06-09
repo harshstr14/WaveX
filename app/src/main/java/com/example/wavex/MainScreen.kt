@@ -201,9 +201,10 @@ suspend fun requestWithFallback(endpoint: String): String =
 
 @AndroidEntryPoint
 class MainScreen : ComponentActivity() {
-    private var deepLinkType: String? = null
-    private var deepLinkId: String? = null
-    private var deepLinkUrl: String? = null
+    private var deepLinkType by mutableStateOf<String?>(null)
+    private var deepLinkId by mutableStateOf<String?>(null)
+    private var deepLinkUrl by mutableStateOf<String?>(null)
+    private var deepLinkSource by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -223,12 +224,14 @@ class MainScreen : ComponentActivity() {
                 scrim = 0xFFF6F6F6.toInt()
             )
         )
+
         setContent {
             WaveXTheme {
                 Main_Screen(
                     deepLinkType = deepLinkType,
                     deepLinkId = deepLinkId,
-                    deepLinkUrl = deepLinkUrl
+                    deepLinkUrl = deepLinkUrl,
+                    deepLinkSource = deepLinkSource
                 )
             }
         }
@@ -236,6 +239,8 @@ class MainScreen : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+
+        setIntent(intent)
         handleDeepLink(intent)
     }
 
@@ -243,12 +248,9 @@ class MainScreen : ComponentActivity() {
         val uri = intent?.data ?: return
 
         deepLinkUrl = uri.toString()
-
-        val segments = uri.pathSegments
-        if (segments.size >= 2) {
-            deepLinkType = segments[0]
-            deepLinkId = segments[1]
-        }
+        deepLinkType = uri.pathSegments.getOrNull(0)
+        deepLinkSource = uri.pathSegments.getOrNull(1)
+        deepLinkId = uri.pathSegments.getOrNull(2)
 
         Log.d("DeepLink", "Type: $deepLinkType  Id: $deepLinkId")
     }
@@ -259,7 +261,8 @@ fun Main_Screen(
     downloadViewModel: DownloadViewModel = hiltViewModel(),
     deepLinkType: String?,
     deepLinkId: String?,
-    deepLinkUrl: String?
+    deepLinkUrl: String?,
+    deepLinkSource: String?
 ) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -297,16 +300,15 @@ fun Main_Screen(
         }
     }
 
-    var handled by remember { mutableStateOf(false) }
+    var lastHandledUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(deepLinkType, deepLinkId) {
-        if (handled) return@LaunchedEffect
-        if (deepLinkType == null || deepLinkId == null) return@LaunchedEffect
+        if (deepLinkUrl == null) return@LaunchedEffect
+        if (deepLinkUrl == lastHandledUrl) return@LaunchedEffect
 
-        handled = true
+        lastHandledUrl = deepLinkUrl
 
         when (deepLinkType) {
-
             "song" -> {
                 val intent = Intent(context, PlayerActivityScreen::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -319,6 +321,7 @@ fun Main_Screen(
                 val intent = Intent(context, AlbumActivity::class.java).apply {
                     putExtra("album_id", deepLinkId)
                     putExtra("album_imageUrl", "")
+                    putExtra("album_source", deepLinkSource)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 context.startActivity(intent)
@@ -328,6 +331,7 @@ fun Main_Screen(
                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                     putExtra("playlist_id", deepLinkId)
                     putExtra("playlist_imageUrl", "")
+                    putExtra("playlist_source", deepLinkSource)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 context.startActivity(intent)
@@ -337,6 +341,7 @@ fun Main_Screen(
                 val intent = Intent(context, ArtistActivity::class.java).apply {
                     putExtra("artist_id", deepLinkId)
                     putExtra("artist_imageUrl", "")
+                    putExtra("artist_source", deepLinkSource)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 context.startActivity(intent)

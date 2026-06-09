@@ -44,10 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -81,7 +82,8 @@ data class ShareAlbumPlaylistItem(
     val songCount: String,
     val totalDuration: String,
     val image: String?,
-    val type: ShareType
+    val type: ShareType,
+    val source: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -182,30 +184,28 @@ fun ShareAlbum_Playlist(
                                 val cornerRadius = 18.dp.toPx()
 
                                 drawIntoCanvas { canvas ->
-                                    val paint = Paint().apply {
-                                        color = shadowColor.copy(alpha = shadowAlpha)
-                                        asFrameworkPaint().apply {
-                                            isAntiAlias = true
+                                    val frameworkPaint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        color = shadowColor.copy(alpha = shadowAlpha).toArgb()
 
-                                            maskFilter = if (shadowBlur > 0f) {
-                                                android.graphics.BlurMaskFilter(
-                                                    safeBlur,
-                                                    android.graphics.BlurMaskFilter.Blur.NORMAL
-                                                )
-                                            } else {
-                                                null
-                                            }
+                                        maskFilter = if (shadowBlur > 0f) {
+                                            android.graphics.BlurMaskFilter(
+                                                safeBlur,
+                                                android.graphics.BlurMaskFilter.Blur.NORMAL
+                                            )
+                                        } else {
+                                            null
                                         }
                                     }
 
-                                    canvas.drawRoundRect(
+                                    canvas.nativeCanvas.drawRoundRect(
                                         0f,
                                         0f,
                                         size.width,
                                         size.height,
                                         cornerRadius,
                                         cornerRadius,
-                                        paint
+                                        frameworkPaint
                                     )
                                 }
                             }
@@ -636,10 +636,10 @@ fun ShareAlbum_Playlist(
 
 private fun generateShareLink(item: ShareAlbumPlaylistItem): String {
     return when (item.type) {
-        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.id}"
-        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.id}"
-        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.id}"
-        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.id}"
+        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.source}/${item.id}"
+        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.source}/${item.id}"
+        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.source}/${item.id}"
+        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.source}/${item.id}"
     }
 }
 
@@ -654,7 +654,8 @@ private fun ShowShareAlbumPlaylist() {
         songCount = "",
         totalDuration = "",
         image = "",
-        type = ShareType.ALBUM
+        type = ShareType.ALBUM,
+        source = ""
     )
 
     ShareAlbum_Playlist(

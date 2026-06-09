@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -127,6 +128,11 @@ import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
+import com.google.firebase.Firebase
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 
 data class BrowseItem(
@@ -573,87 +579,106 @@ fun ExploreGrid(
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: remember { mutableStateOf(null) }
 
-    val exploreList = listOf(
-        BrowseItem(
-            title = "Made\nFor You",
-            subtitle = "fresh picks",
-            playlistId = "RDCLAK5uy_n9Fbdw7e6ap-98_A-8JYBmPv64v-Uaq1g",
-            gradient = listOf(
-                Color(0xFFF9A26C),
-                Color(0xFFD63384)
-            )
-        ),
+    val remoteConfig = Firebase.remoteConfig
+    val configSettings = remoteConfigSettings {
+        minimumFetchIntervalInSeconds = 0
+    }
+    remoteConfig.setConfigSettingsAsync(configSettings)
+    remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
 
-        BrowseItem(
-            title = "New\nReleases",
-            subtitle = "this week",
-            playlistId = "PLO7-VO1D0_6NmK47v6tpOcxurcxdW-hZa",
-            gradient = listOf(
-                Color(0xFFFFB347),
-                Color(0xFFFF6B35)
-            )
-        ),
+    var exploreList by remember { mutableStateOf<List<BrowseItem>>(emptyList()) }
 
-        BrowseItem(
-            title = "Top\nCharts",
-            subtitle = "India 100",
-            playlistId = "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i",
-            gradient = listOf(
-                Color(0xFFA18CD1),
-                Color(0xFFFBC2EB)
-            )
-        ),
+    remoteConfig.fetchAndActivate().addOnSuccessListener {
+        val json = remoteConfig.getString("playlistsID_json")
+        val type = object : TypeToken<Map<String, String>>() {}.type
 
-        BrowseItem(
-            title = "Hindi",
-            subtitle = "100 songs",
-            playlistId = "PL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX",
-            gradient = listOf(
-                Color(0xFFC471ED),
-                Color(0xFF6A11CB)
-            )
-        ),
+        val playlistIds: Map<String, String> =
+            Gson().fromJson(json, type) ?: emptyMap()
 
-        BrowseItem(
-            title = "Haryanvi",
-            subtitle = "100 songs",
-            playlistId = "PL4fGSI1pDJn4tiNLMZVGGt2Kghgw__2u0",
-            gradient = listOf(
-                Color(0xFF434343),
-                Color(0xFF5B4BFF)
-            )
-        ),
+        Log.d("PLAYLIST_ID'S", "$playlistIds")
 
-        BrowseItem(
-            title = "Punjabi",
-            subtitle = "100 songs",
-            playlistId = "PL4fGSI1pDJn5JXkyIohg2RstsbL2SnRew",
-            gradient = listOf(
-                Color(0xFFFF9966),
-                Color(0xFFFF5E62)
-            )
-        ),
+        exploreList = listOf(
+            BrowseItem(
+                title = "Made\nFor You",
+                subtitle = "fresh picks",
+                playlistId = playlistIds["made_for_you"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFF9A26C),
+                    Color(0xFFD63384)
+                )
+            ),
 
-        BrowseItem(
-            title = "Workout",
-            subtitle = "gym vibes",
-            playlistId = "PLf_ANWupyE3bhSLCyaRhSoRnj3QbOhzXn",
-            gradient = listOf(
-                Color(0xFFF9A26C),
-                Color(0xFFD63384)
-            )
-        ),
+            BrowseItem(
+                title = "New\nReleases",
+                subtitle = "this week",
+                playlistId = playlistIds["new_releases"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFFFB347),
+                    Color(0xFFFF6B35)
+                )
+            ),
 
-        BrowseItem(
-            title = "Romantic",
-            subtitle = "love hits",
-            playlistId = "RDCLAK5uy_miAacfMxVybbt7ketqqnPPbH9LDn1TavU",
-            gradient = listOf(
-                Color(0xFFFFB347),
-                Color(0xFFFF6B35)
+            BrowseItem(
+                title = "Top\nCharts",
+                subtitle = "India 100",
+                playlistId = playlistIds["top_charts"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFA18CD1),
+                    Color(0xFFFBC2EB)
+                )
+            ),
+
+            BrowseItem(
+                title = "Hindi",
+                subtitle = "100 songs",
+                playlistId = playlistIds["hindi"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFC471ED),
+                    Color(0xFF6A11CB)
+                )
+            ),
+
+            BrowseItem(
+                title = "Haryanvi",
+                subtitle = "100 songs",
+                playlistId = playlistIds["haryanvi"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFF434343),
+                    Color(0xFF5B4BFF)
+                )
+            ),
+
+            BrowseItem(
+                title = "Punjabi",
+                subtitle = "100 songs",
+                playlistId = playlistIds["punjabi"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFFF9966),
+                    Color(0xFFFF5E62)
+                )
+            ),
+
+            BrowseItem(
+                title = "Workout",
+                subtitle = "gym vibes",
+                playlistId = playlistIds["workout"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFF9A26C),
+                    Color(0xFFD63384)
+                )
+            ),
+
+            BrowseItem(
+                title = "Romantic",
+                subtitle = "love hits",
+                playlistId = playlistIds["romantic"].orEmpty(),
+                gradient = listOf(
+                    Color(0xFFFFB347),
+                    Color(0xFFFF6B35)
+                )
             )
         )
-    )
+    }
 
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(2),

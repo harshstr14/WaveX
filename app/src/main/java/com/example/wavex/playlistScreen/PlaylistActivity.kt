@@ -172,7 +172,7 @@ class PlaylistActivity : ComponentActivity() {
 
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
-        val playlistSource = intent.getStringExtra("playlist_source")
+        val playlistSource = intent.getStringExtra("playlist_source") ?: "unknown"
         val gradientColors = intent.getIntegerArrayListExtra("playlist_gradient")
         val rectangularImage = intent.getBooleanExtra("rectangular_image", false)
 
@@ -556,6 +556,24 @@ fun Playlist_Activity(
                     LoadingEffect()
                 }
 
+                playlistSource == "unknown" -> {
+                    ErrorState(
+                        message = "Invalid playlist source",
+                        onRetry = {
+                            when (playlistSource) {
+                                SearchSource.JIOSAAVN.name -> {
+                                    viewModel.loadPlaylist(playlistId ?: "")
+                                }
+
+                                SearchSource.YTMUSIC.name -> {
+                                    viewModel.loadYTPlaylist(playlistId ?: "")
+                                }
+                            }
+                        }
+                    )
+
+                }
+
                 playlists.isError -> {
                     ErrorState(
                         message = playlists.errorMessage,
@@ -575,7 +593,7 @@ fun Playlist_Activity(
 
                 playlistId.isNullOrBlank() ->
                     ErrorState(
-                        message = "Invalid album source",
+                        message = "Invalid playlist source",
                         onRetry = {
                             when (playlistSource) {
                                 SearchSource.JIOSAAVN.name -> {
@@ -610,254 +628,258 @@ fun Playlist_Activity(
                             contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 15.dp)
                         ) {
                             item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 10.dp, start = 24.dp, end = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (gradient.isNotEmpty()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size((screenWidth * 0.4f).coerceAtMost(220.dp))
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .background(
-                                                    Brush.verticalGradient(gradient)
-                                                )
-                                                .zIndex(10f)
-                                        ) {
-                                            Text(
-                                                text = playlistTitle ?: "",
+                                if (playlists.name.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 10.dp, start = 24.dp, end = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (gradient.isNotEmpty()) {
+                                            Box(
                                                 modifier = Modifier
-                                                    .align(Alignment.BottomStart)
-                                                    .padding(16.dp),
-                                                fontSize = 20.sp,
-                                                lineHeight = 20.sp,
-                                                maxLines = 2,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colorResource(R.color.off_white)
+                                                    .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                    .clip(RoundedCornerShape(16.dp))
+                                                    .background(
+                                                        Brush.verticalGradient(gradient)
+                                                    )
+                                                    .zIndex(10f)
+                                            ) {
+                                                Text(
+                                                    text = playlistTitle ?: "",
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomStart)
+                                                        .padding(16.dp),
+                                                    fontSize = 20.sp,
+                                                    lineHeight = 20.sp,
+                                                    maxLines = 2,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colorResource(R.color.off_white)
+                                                )
+                                            }
+                                        } else {
+                                            AsyncImage(
+                                                model = imageToLoad,
+                                                contentDescription = "Playlist Image",
+                                                contentScale = ContentScale.Crop,
+                                                error = painterResource(R.drawable.default_image),
+                                                modifier = Modifier
+                                                    .size((screenWidth * 0.4f).coerceAtMost(220.dp))
+                                                    .clip(RoundedCornerShape(16.dp))
+                                                    .zIndex(10f)
                                             )
                                         }
-                                    } else {
-                                        AsyncImage(
-                                            model = imageToLoad,
-                                            contentDescription = "Playlist Image",
-                                            contentScale = ContentScale.Crop,
-                                            error = painterResource(R.drawable.default_image),
-                                            modifier = Modifier
-                                                .size((screenWidth * 0.4f).coerceAtMost(220.dp))
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .zIndex(10f)
-                                        )
-                                    }
 
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(start = 15.dp)
-                                            .animateContentSize(),
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            text = "PLAYLIST",
-                                            fontSize = 12.sp,
-                                            lineHeight = 14.sp,
-                                            letterSpacing = 1.5.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.theme_color),
-                                            maxLines = 1
-                                        )
-
-                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                        Text(
-                                            text = if (!playlistTitle.isNullOrEmpty()) {
-                                                playlistTitle
-                                            } else {
-                                                htmlToText(playlists.name)
-                                            },
-                                            fontSize = 25.sp,
-                                            lineHeight = 26.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.Bold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        if (playlists.description.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(start = 15.dp)
+                                                .animateContentSize(),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
                                             Text(
-                                                modifier = Modifier
-                                                    .animateContentSize(
-                                                        animationSpec = spring(
-                                                            stiffness = Spring.StiffnessLow
-                                                        )
-                                                    ),
-                                                text = htmlToText(playlists.description),
-                                                fontSize = 13.sp,
-                                                lineHeight = 16.sp,
+                                                text = "PLAYLIST",
+                                                fontSize = 12.sp,
+                                                lineHeight = 14.sp,
+                                                letterSpacing = 1.5.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.secondary_text_color),
+                                                color = colorResource(R.color.theme_color),
+                                                maxLines = 1
+                                            )
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Text(
+                                                text = if (!playlistTitle.isNullOrEmpty()) {
+                                                    playlistTitle
+                                                } else {
+                                                    htmlToText(playlists.name)
+                                                },
+                                                fontSize = 25.sp,
+                                                lineHeight = 26.sp,
+                                                fontFamily = fonts,
+                                                fontWeight = FontWeight.Bold,
+                                                fontStyle = FontStyle.Normal,
+                                                color = colorResource(R.color.primary_text_color),
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                        }
 
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                            Spacer(modifier = Modifier.height(8.dp))
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Spacer(modifier = Modifier.width(3.dp))
+                                            if (playlists.description.isNotEmpty()) {
+                                                Text(
+                                                    modifier = Modifier
+                                                        .animateContentSize(
+                                                            animationSpec = spring(
+                                                                stiffness = Spring.StiffnessLow
+                                                            )
+                                                        ),
+                                                    text = htmlToText(playlists.description),
+                                                    fontSize = 13.sp,
+                                                    lineHeight = 16.sp,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.secondary_text_color),
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
 
-                                            Text(
-                                                text = "${playlists.songCount} Tracks",
-                                                fontSize = 12.sp,
-                                                lineHeight = 14.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Medium,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.secondary_text_color),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
 
-                                            Box(
-                                                modifier = Modifier
-                                                    .padding(horizontal = 8.dp)
-                                                    .width(1.8.dp)
-                                                    .height(10.dp)
-                                                    .background(
-                                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                                                        shape = RoundedCornerShape(12.dp)
-                                                    )
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Spacer(modifier = Modifier.width(3.dp))
 
-                                            Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    text = "${playlists.songCount} Tracks",
+                                                    fontSize = 12.sp,
+                                                    lineHeight = 14.sp,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.secondary_text_color),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
 
-                                            Text(
-                                                text = formatTotalDuration(playlists.totalDuration),
-                                                fontSize = 12.sp,
-                                                lineHeight = 14.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.Medium,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.secondary_text_color),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(horizontal = 8.dp)
+                                                        .width(1.8.dp)
+                                                        .height(10.dp)
+                                                        .background(
+                                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                                            shape = RoundedCornerShape(12.dp)
+                                                        )
+                                                )
+
+                                                Spacer(modifier = Modifier.width(3.dp))
+
+                                                Text(
+                                                    text = formatTotalDuration(playlists.totalDuration),
+                                                    fontSize = 12.sp,
+                                                    lineHeight = 14.sp,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.secondary_text_color),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
 
                             item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 25.dp, start = 24.dp, end = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
+                                if (playlists.name.isNotEmpty()) {
+                                    Row(
                                         modifier = Modifier
-                                            .weight(1.2f)
-                                            .height(60.dp)
-                                            .shadow(
-                                                elevation = 25.dp,
-                                                shape = RoundedCornerShape(22.dp),
-                                                ambientColor = colorResource(R.color.theme_color),
-                                                spotColor = colorResource(R.color.theme_color)
-                                            )
-                                            .clip(RoundedCornerShape(22.dp))
-                                            .background(colorResource(R.color.theme_color))
-                                            .clickable(
-                                                interactionSource = playPlaylistInteraction,
-                                                indication = null
-                                            ) {
-                                                PlayerManager.currentPlaylist = playlists.songs
-                                                ServiceLocator.musicService?.setPlaylist(playlists.songs, 0)
-                                            }
-                                            .graphicsLayer(
-                                                scaleX = playPlaylistScale,
-                                                scaleY = playPlaylistScale
-                                            )
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
+                                            .fillMaxWidth()
+                                            .padding(top = 25.dp, start = 24.dp, end = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1.2f)
+                                                .height(60.dp)
+                                                .shadow(
+                                                    elevation = 25.dp,
+                                                    shape = RoundedCornerShape(22.dp),
+                                                    ambientColor = colorResource(R.color.theme_color),
+                                                    spotColor = colorResource(R.color.theme_color)
+                                                )
+                                                .clip(RoundedCornerShape(22.dp))
+                                                .background(colorResource(R.color.theme_color))
+                                                .clickable(
+                                                    interactionSource = playPlaylistInteraction,
+                                                    indication = null
+                                                ) {
+                                                    PlayerManager.currentPlaylist = playlists.songs
+                                                    ServiceLocator.musicService?.setPlaylist(playlists.songs, 0)
+                                                }
+                                                .graphicsLayer(
+                                                    scaleX = playPlaylistScale,
+                                                    scaleY = playPlaylistScale
+                                                )
+                                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.notificationplaybutton),
-                                                contentDescription = "Play Icon",
-                                                tint = colorResource(R.color.background_color),
-                                                modifier = Modifier.size(24.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(8.dp))
-
-                                            Text(
-                                                text = "Play playlist",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts,
-                                                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.background_color)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(0.9f)
-                                            .height(60.dp)
-                                            .clip(RoundedCornerShape(22.dp))
-                                            .clip(RoundedCornerShape(22.dp))
-                                            .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
-                                            .clickable(
-                                                interactionSource = shuffleInteraction,
-                                                indication = null
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                PlayerManager.currentPlaylist = playlists.songs
+                                                Icon(
+                                                    painter = painterResource(R.drawable.notificationplaybutton),
+                                                    contentDescription = "Play Icon",
+                                                    tint = colorResource(R.color.background_color),
+                                                    modifier = Modifier.size(24.dp)
+                                                )
 
-                                                ServiceLocator.musicService?.let { service ->
-                                                    service.setPlaylist(playlists.songs, 0)
-                                                    if (!service.isShuffle.value) {
-                                                        service.shuffleToggle()
+                                                Spacer(modifier = Modifier.width(8.dp))
+
+                                                Text(
+                                                    text = "Play playlist",
+                                                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                                    fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.background_color)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(0.9f)
+                                                .height(60.dp)
+                                                .clip(RoundedCornerShape(22.dp))
+                                                .clip(RoundedCornerShape(22.dp))
+                                                .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
+                                                .clickable(
+                                                    interactionSource = shuffleInteraction,
+                                                    indication = null
+                                                ) {
+                                                    PlayerManager.currentPlaylist = playlists.songs
+
+                                                    ServiceLocator.musicService?.let { service ->
+                                                        service.setPlaylist(playlists.songs, 0)
+                                                        if (!service.isShuffle.value) {
+                                                            service.shuffleToggle()
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            .graphicsLayer(
-                                                scaleX = shuffleScale,
-                                                scaleY = shuffleScale
-                                            )
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
+                                                .graphicsLayer(
+                                                    scaleX = shuffleScale,
+                                                    scaleY = shuffleScale
+                                                )
+                                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.shuffle_icon),
-                                                contentDescription = "Shuffle Icon",
-                                                tint = colorResource(R.color.background_color),
-                                                modifier = Modifier.size(22.dp)
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.shuffle_icon),
+                                                    contentDescription = "Shuffle Icon",
+                                                    tint = colorResource(R.color.background_color),
+                                                    modifier = Modifier.size(22.dp)
+                                                )
 
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
 
-                                            Text(
-                                                text = "Shuffle",
-                                                fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.background_color)
-                                            )
+                                                Text(
+                                                    text = "Shuffle",
+                                                    fontSize = 16.sp, lineHeight = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.background_color)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1304,7 +1326,8 @@ fun Playlist_Activity(
                         songCount = playlists.songCount,
                         totalDuration = formatTotalDuration(playlists.totalDuration),
                         image = imageToLoad,
-                        type = ShareType.PLAYLIST
+                        type = ShareType.PLAYLIST,
+                        source = playlistSource.toString()
                     ),
                     onDismiss = { showShareSheet = false }
                 )

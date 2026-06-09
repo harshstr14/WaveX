@@ -144,7 +144,7 @@ class ArtistActivity : ComponentActivity() {
 
         val artistId = intent.getStringExtra("artist_id")
         val artistImageUrl = intent.getStringExtra("artist_imageUrl")
-        val artistSource = intent.getStringExtra("artist_source")
+        val artistSource = intent.getStringExtra("artist_source") ?: "unknown"
 
         setContent {
             WaveXTheme {
@@ -512,6 +512,24 @@ private fun Artist_Activity(
                     LoadingEffect()
                 }
 
+                artistSource == "unknown" -> {
+                    ErrorState(
+                        message = "Invalid artist source",
+                        onRetry = {
+                            when(artistSource) {
+                                SearchSource.JIOSAAVN.name -> {
+                                    viewModel.loadArtist(artistId ?: "")
+                                }
+
+                                SearchSource.YTMUSIC.name -> {
+                                    viewModel.loadYTArtist(artistId ?: "")
+                                }
+                            }
+                        }
+                    )
+
+                }
+
                 artists.isError -> {
                     ErrorState(
                         message = artists.errorMessage,
@@ -558,102 +576,104 @@ private fun Artist_Activity(
                             contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 5.dp)
                         ) {
                             item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 10.dp, start = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box {
-                                        AsyncImage(
-                                            model = imageToLoad,
-                                            contentDescription = "Artist Image",
-                                            contentScale = ContentScale.Crop,
-                                            modifier =  Modifier
-                                                .size(120.dp)
-                                                .clip(CircleShape)
-                                        )
-
-                                        if (artists.isVerified) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.verified_icon),
-                                                contentDescription = "Verified Icon",
-                                                tint = Color.Unspecified,
-                                                modifier = Modifier
-                                                    .padding(end = 6.dp, bottom = 4.dp)
-                                                    .align(Alignment.BottomEnd)
-                                                    .size(26.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Column (
-                                        modifier = Modifier.padding(horizontal = 15.dp),
-                                        verticalArrangement = Arrangement.Center
+                                if (artists.name.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 10.dp, start = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = htmlToText(artists.name),
-                                            maxLines = 1,
-                                            fontSize = 22.sp,
-                                            fontFamily = fonts,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontStyle = FontStyle.Normal,
-                                            color = colorResource(R.color.primary_text_color),
-                                            lineHeight = 24.sp
-                                        )
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.followers_icon),
-                                                contentDescription = "Followers Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
+                                        Box {
+                                            AsyncImage(
+                                                model = imageToLoad,
+                                                contentDescription = "Artist Image",
+                                                contentScale = ContentScale.Crop,
+                                                modifier =  Modifier
+                                                    .size(120.dp)
+                                                    .clip(CircleShape)
                                             )
 
-                                            Spacer(modifier = Modifier.width(4.dp))
-
-                                            Text(
-                                                text = "Followers : ${formatCount(artists.followerCount.toLong())}",
-                                                fontSize = 13.sp,
-                                                fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.secondary_text_color),
-                                                lineHeight = 16.sp,
-                                                maxLines = 1,
-                                            )
+                                            if (artists.isVerified) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.verified_icon),
+                                                    contentDescription = "Verified Icon",
+                                                    tint = Color.Unspecified,
+                                                    modifier = Modifier
+                                                        .padding(end = 6.dp, bottom = 4.dp)
+                                                        .align(Alignment.BottomEnd)
+                                                        .size(26.dp)
+                                                )
+                                            }
                                         }
 
-                                        Spacer(modifier = Modifier.height(6.dp))
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        Column (
+                                            modifier = Modifier.padding(horizontal = 15.dp),
+                                            verticalArrangement = Arrangement.Center
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.headset_icon),
-                                                contentDescription = "Headset Icon",
-                                                tint = colorResource(R.color.secondary_text_color),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(4.dp))
-
                                             Text(
-                                                text = "Listeners : ${formatCount(artists.fanCount.toLongOrNull() ?: 0L)}",
-                                                fontSize = 13.sp,
+                                                text = htmlToText(artists.name),
+                                                maxLines = 1,
+                                                fontSize = 22.sp,
                                                 fontFamily = fonts,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontStyle = FontStyle.Normal,
-                                                color = colorResource(R.color.secondary_text_color),
-                                                lineHeight = 16.sp,
-                                                maxLines = 1,
+                                                color = colorResource(R.color.primary_text_color),
+                                                lineHeight = 24.sp
                                             )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.followers_icon),
+                                                    contentDescription = "Followers Icon",
+                                                    tint = colorResource(R.color.secondary_text_color),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+
+                                                Spacer(modifier = Modifier.width(4.dp))
+
+                                                Text(
+                                                    text = "Followers : ${formatCount(artists.followerCount.toLong())}",
+                                                    fontSize = 13.sp,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.secondary_text_color),
+                                                    lineHeight = 16.sp,
+                                                    maxLines = 1,
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.headset_icon),
+                                                    contentDescription = "Headset Icon",
+                                                    tint = colorResource(R.color.secondary_text_color),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+
+                                                Spacer(modifier = Modifier.width(4.dp))
+
+                                                Text(
+                                                    text = "Listeners : ${formatCount(artists.fanCount.toLongOrNull() ?: 0L)}",
+                                                    fontSize = 13.sp,
+                                                    fontFamily = fonts,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontStyle = FontStyle.Normal,
+                                                    color = colorResource(R.color.secondary_text_color),
+                                                    lineHeight = 16.sp,
+                                                    maxLines = 1,
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1281,7 +1301,8 @@ private fun Artist_Activity(
                         isVerified = artists.isVerified,
                         topSongs = artists.topSongs,
                         image = imageToLoad,
-                        type = ShareType.ARTIST
+                        type = ShareType.ARTIST,
+                        source = artistSource.toString()
                     ),
                     onDismiss = { showShareSheet = false }
                 )

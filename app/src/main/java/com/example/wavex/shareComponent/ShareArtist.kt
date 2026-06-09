@@ -70,7 +70,8 @@ data class ShareArtistItem(
     val isVerified: Boolean,
     val topSongs: List<SongItem> = emptyList(),
     val image: String?,
-    val type: ShareType
+    val type: ShareType,
+    val source: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -393,7 +394,11 @@ fun ShareArtist(
 
                                 snackBarHostState.showSnackbar("Link copied")
                             }
-                        },
+                        }
+                        .graphicsLayer(
+                            scaleX = copyLinkScale,
+                            scaleY = copyLinkScale
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -442,7 +447,11 @@ fun ShareArtist(
                         icon = R.drawable.whatsapp_icon,
                         iconBackground = Color(0xFF123A24),
                         iconTint = Color(0xFF25D366),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
+                            .graphicsLayer(
+                                scaleX = whatsAppScale,
+                                scaleY = whatsAppScale
+                            ),
                         interactionSource = whatsAppInteraction,
                         onClick = {
                             val link = generateShareLink(artist)
@@ -468,7 +477,11 @@ fun ShareArtist(
                         icon = R.drawable.message_icon,
                         iconBackground = Color(0xFF132B4A),
                         iconTint = Color(0xFF3B82F6),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
+                            .graphicsLayer(
+                                scaleX = messageScale,
+                                scaleY = messageScale
+                            ),
                         interactionSource = messageInteraction,
                         onClick = {
                             val link = generateShareLink(artist)
@@ -590,10 +603,10 @@ fun ShareArtist(
 
 private fun generateShareLink(item: ShareArtistItem): String {
     return when (item.type) {
-        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.id}"
-        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.id}"
-        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.id}"
-        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.id}"
+        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.source}/${item.id}"
+        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.source}/${item.id}"
+        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.source}/${item.id}"
+        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.source}/${item.id}"
     }
 }
 
@@ -608,7 +621,8 @@ private fun ShowShareArtist() {
         isVerified = false,
         topSongs = emptyList(),
         image = "",
-        type = ShareType.ARTIST
+        type = ShareType.ARTIST,
+        source = ""
     )
     ShareArtist(
         artist = sampleArtist,
