@@ -204,7 +204,8 @@ fun LibraryScreen(
                                 sheetState.hide()
                                 showBottomSheet.value = false
                             }
-                        }, onShowMessage = { message ->
+                        },
+                        onShowMessage = { message ->
                             scope.launch {
                                 snackBarHostState.showSnackbar(
                                     message = message,
@@ -217,8 +218,8 @@ fun LibraryScreen(
 
                 SheetType.ADD_SPOTIFY_PLAYLIST -> {
                     AddSpotifyPlaylistBottomSheet(
-                        spotifyApiUrl,
-                        importViewModel,
+                        apiUrl = spotifyApiUrl,
+                        viewModel = importViewModel,
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
@@ -230,8 +231,8 @@ fun LibraryScreen(
 
                 SheetType.ADD_WAVEX_PLAYLIST -> {
                     AddWaveXPlaylistBottomSheet(
-                        waveXApiUrl,
-                        importViewModel,
+                        apiUrl = waveXApiUrl,
+                        viewModel = importViewModel,
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
@@ -250,7 +251,8 @@ fun LibraryScreen(
                                 sheetState.hide()
                                 showBottomSheet.value = false
                             }
-                        }, onShowMessage = { message ->
+                        },
+                        onShowMessage = { message ->
                             scope.launch {
                                 snackBarHostState.showSnackbar(
                                     message = message,
@@ -303,12 +305,13 @@ fun LibraryScreen(
             val(backButton, titleText, addButton, importLogo, playlistList) = createRefs()
 
             Text(
-                text = "Library", modifier = Modifier
-                .constrainAs(titleText) {
-                    top.linkTo(parent.top, margin = 22.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                },
+                text = "Library",
+                modifier = Modifier
+                    .constrainAs(titleText) {
+                        top.linkTo(parent.top, margin = 22.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
                 fontSize = 20.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
             )
@@ -347,27 +350,29 @@ fun LibraryScreen(
                 )
             }
 
-            Box(modifier = Modifier
-                .constrainAs(addButton) {
-                    top.linkTo(titleText.top)
-                    bottom.linkTo(titleText.bottom)
-                    end.linkTo(parent.end, margin = 25.dp)
-                }
-                .size(36.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .clickable(
-                    interactionSource = addInteraction,
-                    indication = null
-                ) {
-                    currentSheet.value = SheetType.CREATE_PLAYLIST
-                    showBottomSheet.value = true
-                    scope.launch { sheetState.show() }
-                }, contentAlignment = Alignment.Center
+            Box(
+                modifier = Modifier
+                    .constrainAs(addButton) {
+                        top.linkTo(titleText.top)
+                        bottom.linkTo(titleText.bottom)
+                        end.linkTo(parent.end, margin = 25.dp)
+                    }
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable(
+                        interactionSource = addInteraction,
+                        indication = null
+                    ) {
+                        currentSheet.value = SheetType.CREATE_PLAYLIST
+                        showBottomSheet.value = true
+                        scope.launch { sheetState.show() }
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.plus_icon),
@@ -382,25 +387,27 @@ fun LibraryScreen(
                 )
             }
 
-            Box(modifier = Modifier
-                .constrainAs(importLogo) {
-                    top.linkTo(titleText.top)
-                    bottom.linkTo(titleText.bottom)
-                    end.linkTo(addButton.start, margin = 15.dp)
-                }
-                .size(36.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .clickable(
-                    interactionSource = spotifyInteraction,
-                    indication = null
-                ) {
-                    menuExpanded = true
-                }, contentAlignment = Alignment.Center
+            Box(
+                modifier = Modifier
+                    .constrainAs(importLogo) {
+                        top.linkTo(titleText.top)
+                        bottom.linkTo(titleText.bottom)
+                        end.linkTo(addButton.start, margin = 15.dp)
+                    }
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable(
+                        interactionSource = spotifyInteraction,
+                        indication = null
+                    ) {
+                        menuExpanded = true
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.file_import_icon),
@@ -531,8 +538,8 @@ fun LibraryScreen(
                         LazyColumn (
                             state = playlistState,
                             contentPadding = PaddingValues(start = 22.dp, end = 12.dp, bottom = if (currentSong != null) 168.dp else 100.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             item {
                                 Row (
                                     modifier = Modifier
@@ -1210,9 +1217,9 @@ private fun AddSpotifyPlaylistBottomSheet(
                 .height(52.dp)
                 .fillMaxWidth()
                 .border(
-                    width = 1.1.dp,
-                    color = when {
-                        urlError -> Color.Red
+                            width = 1.1.dp,
+                            color = when {
+                                urlError -> Color.Red
                         urlFocused -> colorResource(R.color.theme_color)
                         else -> Color.Transparent
                     },

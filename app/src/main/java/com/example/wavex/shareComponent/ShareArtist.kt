@@ -258,7 +258,7 @@ fun ShareArtist(
                                 lineHeight = 14.sp,
                                 fontFamily = fonts,
                                 letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Normal,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                             )
 
@@ -278,7 +278,7 @@ fun ShareArtist(
                                 lineHeight = 14.sp,
                                 fontFamily = fonts,
                                 letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Normal,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                             )
                         }
@@ -296,13 +296,13 @@ fun ShareArtist(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = String.format("%02d", index + 1),
+                                    text = (index + 1).toString().padStart(2, '0'),
                                     color = colorResource(R.color.theme_color),
                                     fontSize = 14.sp,
                                     lineHeight = 16.sp,
                                     fontFamily = fonts,
                                     fontStyle = FontStyle.Normal,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = FontWeight.Medium,
                                     modifier = Modifier.width(36.dp)
                                 )
 
@@ -330,7 +330,7 @@ fun ShareArtist(
                                     fontSize = 12.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = FontWeight.Medium,
                                     fontStyle = FontStyle.Normal,
                                 )
                             }

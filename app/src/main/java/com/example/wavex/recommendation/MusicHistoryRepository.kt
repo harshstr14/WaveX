@@ -7,9 +7,7 @@ import com.google.firebase.database.FirebaseDatabase
 class MusicHistoryRepository {
     private val auth = FirebaseAuth.getInstance()
 
-    private val database = FirebaseDatabase
-        .getInstance()
-        .reference
+    private val database = FirebaseDatabase.getInstance().reference
 
     fun getUserHistory(
         onResult: (List<PlayedSong>) -> Unit

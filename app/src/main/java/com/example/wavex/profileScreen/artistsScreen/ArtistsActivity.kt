@@ -291,19 +291,22 @@ private fun Artists_Activity(viewModel: FavouriteArtistViewModel = viewModel()) 
                 }
 
                 else -> {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         val (artistsGrid) = createRefs()
 
                         LazyVerticalGrid(
                             state = artistsGridState,
                             columns = GridCells.Adaptive(minSize = 110.dp),
-                            modifier = Modifier.constrainAs(artistsGrid){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(artistsGrid){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)

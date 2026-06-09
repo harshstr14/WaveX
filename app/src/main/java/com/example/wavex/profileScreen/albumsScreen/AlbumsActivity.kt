@@ -294,13 +294,14 @@ private fun Albums_Activity(viewModel: FavouriteAlbumViewModel = viewModel()) {
                         LazyVerticalGrid(
                             state = albumsGridState,
                             columns = GridCells.Fixed(3),
-                            modifier = Modifier.constrainAs(albumsGrid){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(albumsGrid){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)

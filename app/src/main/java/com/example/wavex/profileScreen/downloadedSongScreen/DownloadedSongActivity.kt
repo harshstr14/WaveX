@@ -100,7 +100,6 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -114,6 +113,7 @@ import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.NetworkMonitor
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -369,13 +369,14 @@ fun Downloaded_Song_Activity(
 
                         LazyColumn (
                             state = songsListState,
-                            modifier = Modifier.constrainAs(songList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(songList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -561,10 +562,8 @@ fun Downloaded_Song_Activity(
                                                     .weight(1f),
                                                 verticalArrangement = Arrangement.Center
                                             ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
-                                                    text = songName,
+                                                    text = htmlToText(song.name),
                                                     fontSize = 15.sp,
                                                     lineHeight = 16.sp,
                                                     fontFamily = fonts,
@@ -582,10 +581,8 @@ fun Downloaded_Song_Activity(
                                                     ?.joinToString(", ") { it.name }
                                                     ?: "Unknown Artist"
 
-                                                val artistsName = htmlToText(artistsList)
-
                                                 Text(
-                                                    text = artistsName,
+                                                    text = htmlToText(artistsList),
                                                     fontSize = 13.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
@@ -603,7 +600,7 @@ fun Downloaded_Song_Activity(
                                                     fontSize = 12.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Medium,
                                                     fontStyle = FontStyle.Normal,
                                                     color = colorResource(R.color.secondary_text_color),
                                                     maxLines = 1,
@@ -720,11 +717,13 @@ fun Downloaded_Song_Activity(
                                                     }
                                                 }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSheet = true
-                                                }) {
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSheet = true
+                                                    }
+                                                ) {
                                                     Icon(
                                                         modifier = Modifier.size(20.dp),
                                                         painter = painterResource(R.drawable.three_dots_icon),
@@ -872,6 +871,7 @@ fun rememberNetworkState(): Boolean {
 
     return isOnline
 }
+
 fun DownloadedSongEntity.toSongItem(): SongItem {
     return SongItem(
         id = id,

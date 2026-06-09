@@ -14,5 +14,6 @@ data class PlayedSong(
     var duration: Int = 0,
     var playCount: Int = 0,
     var downloadUrl: MutableList<Download> = mutableListOf(),
-    val lastPlayed: Long = 0L
+    val lastPlayed: Long = 0L,
+    val songSource: String ?= null
 )

@@ -9,21 +9,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -60,13 +61,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -101,7 +100,6 @@ import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.discoverScreen.DiscoverScreen
 import com.example.wavex.homeScreen.HomeScreen
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
@@ -120,6 +118,7 @@ import com.example.wavex.profileScreen.settingScreen.checkForUpdate
 import com.example.wavex.searchScreen.SearchScreen
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.updateAppScreen.UpdateAppActivity
@@ -199,6 +198,7 @@ suspend fun requestWithFallback(endpoint: String): String =
 
         throw Exception("All APIs failed")
     }
+
 @AndroidEntryPoint
 class MainScreen : ComponentActivity() {
     private var deepLinkType: String? = null
@@ -543,8 +543,9 @@ fun Main_Screen(
                         selectedPlaylist = playlist
                         showSheet = true
                     }
-                )  // ⬅ current Home UI
+                )
             }
+
             composable(BottomNavRoute.Discover.route) {
                 DiscoverScreen(
                     downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
@@ -552,6 +553,7 @@ fun Main_Screen(
                     showSheet = showSheet
                 )
             }
+
             composable(BottomNavRoute.Search.route) {
                 SearchScreen(
                     downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
@@ -559,6 +561,7 @@ fun Main_Screen(
                     showSheet = showSheet
                 )
             }
+
             composable(
                 route = "library?openSheet={openSheet}&url={url}",
                 arguments = listOf(
@@ -999,37 +1002,37 @@ private fun BottomNavBar(navController: NavController) {
         )
     )
 
-    Box(modifier = Modifier
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 18.dp, end = 18.dp, bottom = 8.dp)
-            .navigationBarsPadding().height(68.dp).shadow(
+            .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
+            .navigationBarsPadding().height(68.dp)
+            .shadow(
                 elevation = 28.dp,
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(22.dp),
                 ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
                 spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
-            ).background(Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFF2C2C2C).copy(alpha = 0.98f),
-                    Color(0xFF2C2C2C).copy(alpha = 1f)
-                )
-            ), shape = RoundedCornerShape(28.dp)),
+            ).background(
+                color = Color(0xFF2C2C2C),
+                shape = RoundedCornerShape(22.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             items.forEach { item ->
                 val selected = currentRoute?.startsWith(item.route) == true
-                val animatedPadding by animateDpAsState(
-                    targetValue = if (selected) 14.dp else 22.dp,
-                    label = "paddingAnim"
+                val weight by animateFloatAsState(
+                    targetValue = if (selected) 1.6f else 1f,
+                    animationSpec = tween(800),
+                    label = "tabWeight"
                 )
 
                 Row(
                     modifier = Modifier
+                        .weight(weight)
                         .clip(RoundedCornerShape(18.dp))
                         .background(
                             brush = if (selected)
@@ -1053,10 +1056,7 @@ private fun BottomNavBar(navController: NavController) {
                                 }
                             }
                         }
-                        .padding(
-                            horizontal = animatedPadding,
-                            vertical = 9.dp
-                        ),
+                        .padding(vertical = 9.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1069,34 +1069,32 @@ private fun BottomNavBar(navController: NavController) {
                         modifier = Modifier.size(24.dp)
                     )
 
-                    Box(modifier = Modifier
-                            .padding(start = 6.dp)
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 420,
-                                    easing = FastOutSlowInEasing
-                                )
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = expandHorizontally(
+                            expandFrom = Alignment.Start,
+                            animationSpec = tween(
+                                durationMillis = 400,
+                                easing = FastOutSlowInEasing
                             )
-                            .clipToBounds()
+                        ) + fadeIn(),
+                        exit = shrinkHorizontally(
+                            shrinkTowards = Alignment.Start,
+                            animationSpec = tween(
+                                durationMillis = 300,
+                                easing = FastOutSlowInEasing
+                            )
+                        ) + fadeOut()
                     ) {
-                        if (selected) {
-                            Text(
-                                text = item.label,
-                                modifier = Modifier.graphicsLayer {
-                                    scaleX = 1f
-                                    scaleY = 1f
-                                    alpha = 1f
-                                    transformOrigin = TransformOrigin(0f, 0.5f)
-                                },
-                                color = Color(0xFFF6F6F6),
-                                fontSize = 14.sp,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                softWrap = false,
-                                lineHeight = 16.sp
-                            )
-                        }
+                        Text(
+                            text = item.label,
+                            modifier = Modifier.padding(start = 6.dp),
+                            color = Color(0xFFF6F6F6),
+                            fontSize = 14.sp,
+                            lineHeight = 16.sp,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

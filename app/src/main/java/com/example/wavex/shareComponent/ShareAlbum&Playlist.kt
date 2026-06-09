@@ -264,47 +264,44 @@ fun ShareAlbum_Playlist(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Spacer(modifier = Modifier.width(2.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
 
                             Text(
                                 text = "${album.songCount.takeIf { it.isNotBlank() }
                                     ?: "0"} Tracks",
                                 fontSize = 12.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
                                 maxLines = 1,
                             )
 
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp)
+                                    .width(1.8.dp)
+                                    .height(10.dp)
+                                    .background(
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                            )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.clock_icon),
-                                    contentDescription = "Clock Icon",
-                                    tint = colorResource(R.color.secondary_text_color),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            Spacer(modifier = Modifier.width(3.dp))
 
-                                Spacer(modifier = Modifier.width(4.dp))
-
-                                Text(
-                                    text = album.totalDuration.takeIf { it.isNotBlank() }
-                                        ?: "0",
-                                    fontSize = 12.sp,
-                                    fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.secondary_text_color),
-                                    lineHeight = 16.sp,
-                                    maxLines = 1,
-                                )
-                            }
+                            Text(
+                                text = album.totalDuration.takeIf { it.isNotBlank() }
+                                    ?: "0",
+                                fontSize = 12.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.Medium,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
@@ -339,7 +336,7 @@ fun ShareAlbum_Playlist(
                                     lineHeight = 16.sp,
                                     fontFamily = fonts,
                                     fontStyle = FontStyle.Normal,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = FontWeight.Medium,
                                     modifier = Modifier.width(36.dp)
                                 )
 
@@ -367,7 +364,7 @@ fun ShareAlbum_Playlist(
                                     fontSize = 12.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.Normal,
+                                    fontWeight = FontWeight.Medium,
                                     fontStyle = FontStyle.Normal,
                                 )
                             }
@@ -399,7 +396,7 @@ fun ShareAlbum_Playlist(
                                     fontFamily = fonts,
                                     fontStyle = FontStyle.Normal,
                                     letterSpacing = 2.sp,
-                                    fontWeight = FontWeight.Normal
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }

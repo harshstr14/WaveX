@@ -21,7 +21,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -113,7 +112,6 @@ import com.example.wavex.discoverScreen.viewModel.ExploreArtistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExplorePlaylistsViewModel
 import com.example.wavex.discoverScreen.viewModel.ExploreSongsViewModel
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -121,11 +119,13 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.launch
 
@@ -144,8 +144,6 @@ fun DiscoverScreen(
     showSheet: Boolean,
     snackBarHostState: SnackbarHostState
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -154,14 +152,7 @@ fun DiscoverScreen(
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (backInteraction, backScale) = pressScale()
 
     var showSongSheet by remember { mutableStateOf(false) }
 
@@ -187,58 +178,64 @@ fun DiscoverScreen(
         ?: remember { mutableStateOf(null) }
 
     ConstraintLayout(
-        modifier = Modifier.fillMaxSize()
-        .graphicsLayer {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
-                renderEffect = RenderEffect
-                    .createBlurEffect(
-                        animatedBlur,
-                        animatedBlur,
-                        Shader.TileMode.CLAMP
-                    ).asComposeRenderEffect()
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                    renderEffect = RenderEffect
+                        .createBlurEffect(
+                            animatedBlur,
+                            animatedBlur,
+                            Shader.TileMode.CLAMP
+                        ).asComposeRenderEffect()
+                }
             }
-        }
     ) {
         val(backButton, titleText, categoryTabs, contentPager) = createRefs()
 
         Text(
-            text = "Explore", modifier = Modifier.constrainAs(titleText) {
-                top.linkTo(parent.top, margin = 22.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            },
+            text = "Explore",
+            modifier = Modifier
+                .constrainAs(titleText) {
+                    top.linkTo(parent.top, margin = 22.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                },
             fontSize = 20.sp, fontFamily = fonts,
             fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.primary_text_color), lineHeight = 22.sp
         )
 
         Box(
-            modifier = Modifier.constrainAs(backButton) {
-                top.linkTo(titleText.top)
-                bottom.linkTo(titleText.bottom)
-                start.linkTo(parent.start, margin = 25.dp)
-            }
-            .size(36.dp).clip(RoundedCornerShape(20.dp))
-            .border(
-                width = 1.5.dp,
-                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                shape = RoundedCornerShape(20.dp)
-            ).clickable(
-                    interactionSource = interactionSource,
-                    indication = null
+            modifier = Modifier
+                .constrainAs(backButton) {
+                    top.linkTo(titleText.top)
+                    bottom.linkTo(titleText.bottom)
+                    start.linkTo(parent.start, margin = 25.dp)
+                }
+                .size(36.dp).clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.5.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .clickable(
+                        interactionSource = backInteraction,
+                        indication = null
                 ) {
-                    navController.popBackStack()
+                   navController.popBackStack()
                 },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_icon),
-                contentDescription = "Add Icon",
+                contentDescription = "Back Icon",
                 tint = colorResource(R.color.primary_text_color),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
+                        scaleX = backScale
+                        scaleY = backScale
                     }
             )
         }
@@ -266,11 +263,12 @@ fun DiscoverScreen(
 
         LazyRow(
             state = listState,
-            modifier = Modifier.constrainAs(categoryTabs) {
-                top.linkTo(titleText.bottom, margin = 22.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            },
+            modifier = Modifier
+                .constrainAs(categoryTabs) {
+                    top.linkTo(titleText.bottom, margin = 22.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                },
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -385,13 +383,14 @@ fun DiscoverScreen(
             state = pagerState,
             key = { categoriesList[it] },
             flingBehavior = PagerDefaults.flingBehavior(pagerState),
-            modifier = Modifier.constrainAs(contentPager) {
-                top.linkTo(categoryTabs.bottom, margin = 8.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                bottom.linkTo(parent.bottom)
-                height = Dimension.fillToConstraints
-            }
+            modifier = Modifier
+                .constrainAs(contentPager) {
+                    top.linkTo(categoryTabs.bottom, margin = 8.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    bottom.linkTo(parent.bottom)
+                    height = Dimension.fillToConstraints
+                }
         ) { page ->
             when(categoriesList[page]) {
                 "Suggested" -> {
@@ -403,7 +402,7 @@ fun DiscoverScreen(
 
                 "Songs" -> {
                     ExploreSongs(
-                        "946682072", "songs",
+                        playlistId = "946682072", root = "songs",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp),
                         listState = songsListState,
                         downloadedIds = downloadedIds,
@@ -420,21 +419,21 @@ fun DiscoverScreen(
 
                 "Artists" -> {
                     ExploreArtists(
-                        "trending artists", "results",
+                        query = "trending artists", root = "results",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp), gridState = artistsGridState
                     )
                 }
 
                 "Albums" -> {
                     ExploreAlbums(
-                        "popular", "results",
+                        query = "popular", root = "results",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp), gridState = albumsGridState
                     )
                 }
 
                 "Playlists" -> {
                     ExplorePlaylist(
-                        "Top", "results",
+                        query = "Top", root = "results",
                         modifier = Modifier.fillMaxSize().padding(top = 3.dp), gridState = playlistsGridState
                     )
                 }
@@ -701,7 +700,7 @@ fun ExploreGrid(
                         brush = Brush.verticalGradient(item.gradient)
                     )
             ) {
-                if (index == 0 || index == 1 || index == 4) {
+                if (index == 0 || index == 1) {
                     val badgeText = when (index) {
                         0 -> "DAILY"
                         1 -> "NEW"
@@ -885,10 +884,8 @@ fun ExploreSongs(
                                     .weight(1f),
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                val songName = htmlToText(song.name)
-
                                 Text(
-                                    text = songName,
+                                    text = htmlToText(song.name),
                                     fontSize = 15.sp,
                                     lineHeight = 16.sp,
                                     fontFamily = fonts,
@@ -906,10 +903,8 @@ fun ExploreSongs(
                                     ?.joinToString(", ") { it.name }
                                     ?: "Unknown Artist"
 
-                                val artistsName = htmlToText(artistsList)
-
                                 Text(
-                                    text = artistsName,
+                                    text = htmlToText(artistsList),
                                     fontSize = 13.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
@@ -927,7 +922,7 @@ fun ExploreSongs(
                                     fontSize = 12.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Medium,
                                     fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.secondary_text_color),
                                     maxLines = 1,
@@ -1045,9 +1040,11 @@ fun ExploreSongs(
                                     }
                                 }
 
-                                IconButton(onClick = {
-                                    onMoreClick(song, index, songs)
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        onMoreClick(song, index, songs)
+                                    }
+                                ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         painter = painterResource(R.drawable.three_dots_icon),

@@ -690,6 +690,7 @@ fun Setting_Activity(
                             ) {
                                 qualities.forEach { quality ->
                                     DropdownMenuItem(
+                                        modifier = Modifier.height(38.dp),
                                         text = {
                                             Text(
                                                 text = quality.label,
@@ -804,8 +805,9 @@ fun Setting_Activity(
                                 shape = RoundedCornerShape(12.dp),
                                 onDismissRequest = { downloadExpanded = false }
                             ) {
-                                qualities.forEach { quality ->
+                                qualities.forEachIndexed { _, quality ->
                                     DropdownMenuItem(
+                                        modifier = Modifier.height(38.dp),
                                         text = {
                                             Text(
                                                 text = quality.label,
@@ -821,7 +823,6 @@ fun Setting_Activity(
                                                         colorResource(R.color.background_color)
                                             )
                                         },
-
                                         onClick = {
                                             downloadExpanded = false
                                             settingsViewModel.setDownloadQuality(quality)
@@ -925,8 +926,14 @@ fun Setting_Activity(
                         confirmText = "Log Out",
                         icon = R.drawable.logout_icon,
                         onConfirm = {
-                            googleSignInManager.signOut {
-                                Toast.makeText(context, "Signed out!", Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                googleSignInManager.signOut()
+
+                                Toast.makeText(
+                                    context,
+                                    "Signed out!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
 
                             try {
@@ -965,6 +972,17 @@ fun Setting_Activity(
                                 },
                                 onDone = {
                                     showDeleteDialog = false
+                                },
+                                onSignOut = {
+                                    scope.launch {
+                                        googleSignInManager.signOut()
+
+                                        Toast.makeText(
+                                            context,
+                                            "Signed out!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                             )
                         },
@@ -1108,7 +1126,8 @@ private fun deleteAccount(
     context: Context,
     onDone: () -> Unit,
     onProfileClear: suspend () -> Unit,
-    onCacheClear : () -> Unit
+    onCacheClear : () -> Unit,
+    onSignOut: () -> Unit
 ) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid
     if (uid == null) {
@@ -1120,7 +1139,7 @@ private fun deleteAccount(
     val userReference = FirebaseDatabase.getInstance().getReference("Users").child(uid)
     userReference.removeValue().addOnSuccessListener {
 
-        googleSignInManager.signOut { }
+        onSignOut()
 
         FirebaseAuth.getInstance().currentUser?.delete()?.addOnCompleteListener { task ->
             if (!task.isSuccessful) {

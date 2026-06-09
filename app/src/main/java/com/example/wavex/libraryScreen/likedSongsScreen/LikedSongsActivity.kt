@@ -104,7 +104,6 @@ import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -120,6 +119,7 @@ import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreferenc
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
 import com.example.wavex.shareComponent.ShareAlbum_Playlist
@@ -182,6 +182,8 @@ fun Liked_Songs_Activity(
 
     val uniqueSongs = songsList.songs.distinctBy { it.id }
 
+    val (shuffleInteraction, shuffleScale) = pressScale()
+    val (playPlaylistInteraction, playPlaylistScale) = pressScale()
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
     val interactionSource = remember { MutableInteractionSource() }
@@ -396,20 +398,22 @@ fun Liked_Songs_Activity(
 
                 else -> {
                     ConstraintLayout(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
                             .background(colorResource(R.color.background_color))
                     ) {
                         val (contentList, miniPlayer) = createRefs()
 
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.constrainAs(contentList) {
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(contentList) {
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 15.dp)
                         ) {
                             item {
@@ -431,7 +435,8 @@ fun Liked_Songs_Activity(
                                     )
 
                                     Column(
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier
+                                            .fillMaxWidth()
                                             .padding(start = 15.dp)
                                             .animateContentSize(),
                                         verticalArrangement = Arrangement.Center
@@ -467,13 +472,6 @@ fun Liked_Songs_Activity(
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-//                                            Icon(
-//                                                painter = painterResource(R.drawable.headset_icon),
-//                                                contentDescription = "Headset Icon",
-//                                                tint = colorResource(R.color.secondary_text_color),
-//                                                modifier = Modifier.size(18.dp)
-//                                            )
-
                                             Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
@@ -481,7 +479,7 @@ fun Liked_Songs_Activity(
                                                 fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.Medium,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -499,13 +497,6 @@ fun Liked_Songs_Activity(
                                                     )
                                             )
 
-//                                            Icon(
-//                                                painter = painterResource(R.drawable.clock_icon),
-//                                                contentDescription = "Clock Icon",
-//                                                tint = colorResource(R.color.secondary_text_color),
-//                                                modifier = Modifier.size(18.dp)
-//                                            )
-
                                             Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
@@ -513,7 +504,7 @@ fun Liked_Songs_Activity(
                                                 fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.Medium,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -544,7 +535,7 @@ fun Liked_Songs_Activity(
                                             .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.theme_color))
                                             .clickable(
-                                                interactionSource = interactionSource,
+                                                interactionSource = playPlaylistInteraction,
                                                 indication = null
                                             ) {
                                                 if (songsList.songs.isNotEmpty()) {
@@ -552,6 +543,10 @@ fun Liked_Songs_Activity(
                                                     ServiceLocator.musicService?.setPlaylist(songsList.songs, 0)
                                                 }
                                             }
+                                            .graphicsLayer(
+                                                scaleX = playPlaylistScale,
+                                                scaleY = playPlaylistScale
+                                            )
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -586,7 +581,7 @@ fun Liked_Songs_Activity(
                                             .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                             .clickable(
-                                                interactionSource = interactionSource,
+                                                interactionSource = shuffleInteraction,
                                                 indication = null
                                             ) {
                                                 if (songsList.songs.isNotEmpty()) {
@@ -600,6 +595,10 @@ fun Liked_Songs_Activity(
                                                     }
                                                 }
                                             }
+                                            .graphicsLayer(
+                                                scaleX = shuffleScale,
+                                                scaleY = shuffleScale
+                                            )
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -715,7 +714,9 @@ fun Liked_Songs_Activity(
                                 }
 
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().animateContentSize()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateContentSize()
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -807,7 +808,8 @@ fun Liked_Songs_Activity(
                                         }
 
                                         Row(
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier
+                                                .fillMaxWidth()
                                                 .padding(start = if (currentSong?.id == song.id) 0.dp else 22.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
                                                 .clickable(
                                                     interactionSource = interactionSource,
@@ -884,7 +886,7 @@ fun Liked_Songs_Activity(
                                                     fontSize = 12.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Medium,
                                                     fontStyle = FontStyle.Normal,
                                                     color = colorResource(R.color.secondary_text_color),
                                                     maxLines = 1,
@@ -998,11 +1000,13 @@ fun Liked_Songs_Activity(
                                                     }
                                                 }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSongSheet = true
-                                                }) {
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSongSheet = true
+                                                    }
+                                                ) {
                                                     Icon(
                                                         modifier = Modifier.size(20.dp),
                                                         painter = painterResource(R.drawable.three_dots_icon),
@@ -1018,11 +1022,13 @@ fun Liked_Songs_Activity(
                         }
 
                         Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

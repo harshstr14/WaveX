@@ -101,13 +101,11 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
@@ -116,6 +114,7 @@ import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.profileScreen.settingScreen.IOSStyleBottomDialog
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -149,8 +148,7 @@ class FavouriteSongsActivity : ComponentActivity() {
 @Composable
 fun Favourite_Songs_Activity(
     downloadViewModel: DownloadViewModel = hiltViewModel(),
-    viewModel: FavouriteSongViewModel = viewModel(),
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel()
+    viewModel: FavouriteSongViewModel = viewModel()
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -388,18 +386,21 @@ fun Favourite_Songs_Activity(
                 }
 
                 else -> {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         val(songList) = createRefs()
 
                         LazyColumn (
                             state = songsListState,
-                            modifier = Modifier.constrainAs(songList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(songList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -636,7 +637,7 @@ fun Favourite_Songs_Activity(
                                                     fontSize = 12.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Medium,
                                                     fontStyle = FontStyle.Normal,
                                                     color = colorResource(R.color.secondary_text_color),
                                                     maxLines = 1,
@@ -750,11 +751,13 @@ fun Favourite_Songs_Activity(
                                                     }
                                                 }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSheet = true
-                                                }) {
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSheet = true
+                                                    }
+                                                ) {
                                                     Icon(
                                                         modifier = Modifier.size(20.dp),
                                                         painter = painterResource(R.drawable.three_dots_icon),

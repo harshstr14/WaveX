@@ -17,7 +17,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +88,7 @@ import com.example.wavex.fonts
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.playerScreen.PlayerActivityScreen
+import com.example.wavex.pressScale
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 
@@ -138,16 +138,8 @@ private fun All_Albums_Screen(
         }
     }
 
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (backInteraction, backScale) = pressScale()
+    val (albumInteraction, albumScale) = pressScale()
 
     var showSongSheet by remember { mutableStateOf(false) }
 
@@ -199,7 +191,7 @@ private fun All_Albums_Screen(
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -212,8 +204,8 @@ private fun All_Albums_Screen(
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -243,7 +235,8 @@ private fun All_Albums_Screen(
                     .padding(horizontal = 18.dp, vertical = 15.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(10.dp),
@@ -256,12 +249,16 @@ private fun All_Albums_Screen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(painter = painterResource(when {
-                            data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                            else -> {
-                                R.drawable.alert_icon
-                            }
-                        } ), contentDescription = "Icons",
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                                    else -> {
+                                        R.drawable.alert_icon
+                                    }
+                                }
+                            ),
+                            contentDescription = "Icons",
                             tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
                         )
 
@@ -319,13 +316,14 @@ private fun All_Albums_Screen(
                         LazyVerticalGrid(
                             state = albumsGridState,
                             columns = GridCells.Fixed(3),
-                            modifier = Modifier.constrainAs(albumsGrid){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(albumsGrid){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 90.dp else 20.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)
@@ -338,7 +336,7 @@ private fun All_Albums_Screen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable(
-                                            interactionSource = interactionSource,
+                                            interactionSource = albumInteraction,
                                             indication = null
                                         ) {
                                             val intent = Intent(context, AlbumActivity::class.java).apply {
@@ -347,7 +345,11 @@ private fun All_Albums_Screen(
                                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                             }
                                             context.startActivity(intent)
-                                        },
+                                        }
+                                        .graphicsLayer(
+                                            scaleX = albumScale,
+                                            scaleY = albumScale
+                                        )
                                 ) {
                                     AsyncImage(
                                         model = album.image.getOrNull(2)?.url,
@@ -417,11 +419,13 @@ private fun All_Albums_Screen(
                         }
 
                         Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

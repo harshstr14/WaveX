@@ -121,7 +121,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import org.schabi.newpipe.extractor.timeago.patterns.fa
 import java.io.File
 
 @AndroidEntryPoint
@@ -470,10 +469,13 @@ private fun YourProfileScreen(
                             end.linkTo(parent.end)
                             bottom.linkTo(updateProfileButtonRef.top, margin = (-16).dp)
                             height = Dimension.fillToConstraints
-                        }.verticalScroll(rememberScrollState())
+                        }
+                        .verticalScroll(rememberScrollState())
                         .padding(bottom = 25.dp)
                 ) {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         val (
                             genderLabelRef, genderDropdownRef, profileImageRef, editProfileImageRef,
                             nameLabelRef, nameFieldContainerRef, phoneLabelRef, phoneFieldContainerRef,

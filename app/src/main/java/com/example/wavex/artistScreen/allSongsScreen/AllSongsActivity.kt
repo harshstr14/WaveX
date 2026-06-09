@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,7 +92,6 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -101,10 +99,12 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playerScreen.PlayerActivityScreen
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -170,16 +170,7 @@ private fun All_Songs_Activity(
         }
     }
 
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
-    )
+    val (backInteraction, backScale) = pressScale()
 
     val musicService = ServiceLocator.musicService
 
@@ -228,7 +219,7 @@ private fun All_Songs_Activity(
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
-                                interactionSource = interactionSource,
+                                interactionSource = backInteraction,
                                 indication = null
                             ) {
                                 activity?.finish()
@@ -241,8 +232,8 @@ private fun All_Songs_Activity(
                             tint = colorResource(R.color.primary_text_color),
                             modifier = Modifier.size(20.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = backScale
+                                    scaleY = backScale
                                 }
                         )
                     }
@@ -351,13 +342,14 @@ private fun All_Songs_Activity(
 
                         LazyColumn (
                             state = songsListState,
-                            modifier = Modifier.constrainAs(songList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(songList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(top = 8.dp, bottom = if (currentSong != null) 90.dp else 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -441,10 +433,8 @@ private fun All_Songs_Activity(
                                                 .weight(1f),
                                             verticalArrangement = Arrangement.Center
                                         ) {
-                                            val songName = htmlToText(song.name)
-
                                             Text(
-                                                text = songName,
+                                                text = htmlToText(song.name),
                                                 fontSize = 15.sp,
                                                 lineHeight = 16.sp,
                                                 fontFamily = fonts,
@@ -462,10 +452,8 @@ private fun All_Songs_Activity(
                                                 ?.joinToString(", ") { it.name }
                                                 ?: "Unknown Artist"
 
-                                            val artistsName = htmlToText(artistsList)
-
                                             Text(
-                                                text = artistsName,
+                                                text = htmlToText(artistsList),
                                                 fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
@@ -483,7 +471,7 @@ private fun All_Songs_Activity(
                                                 fontSize = 12.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Medium,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -602,11 +590,13 @@ private fun All_Songs_Activity(
                                                 }
                                             }
 
-                                            IconButton(onClick = {
-                                                selectedSong = song
-                                                selectedIndex = index
-                                                showSongSheet = true
-                                            }) {
+                                            IconButton(
+                                                onClick = {
+                                                    selectedSong = song
+                                                    selectedIndex = index
+                                                    showSongSheet = true
+                                                }
+                                            ) {
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
                                                     painter = painterResource(R.drawable.three_dots_icon),
@@ -621,7 +611,8 @@ private fun All_Songs_Activity(
 
                             item {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().padding(end = 12.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth().padding(end = 12.dp)
                                         .clickable(
                                             interactionSource = interactionSource,
                                             indication = null
@@ -748,11 +739,13 @@ private fun All_Songs_Activity(
                         }
 
                         Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

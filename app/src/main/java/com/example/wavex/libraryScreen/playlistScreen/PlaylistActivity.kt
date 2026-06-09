@@ -104,7 +104,6 @@ import com.example.wavex.MiniPlayer
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -119,6 +118,7 @@ import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
 import com.example.wavex.shareComponent.ShareAlbum_Playlist
@@ -191,6 +191,8 @@ private fun Playlist_Activity(
     val context = LocalContext.current
     val activity = context as? Activity
 
+    val (shuffleInteraction, shuffleScale) = pressScale()
+    val (playPlaylistInteraction, playPlaylistScale) = pressScale()
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
     val interactionSource = remember { MutableInteractionSource() }
@@ -397,19 +399,22 @@ private fun Playlist_Activity(
 
                 else -> {
                     ConstraintLayout(
-                        modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(colorResource(R.color.background_color))
                     ) {
                         val (contentList, miniPlayer) = createRefs()
 
                         LazyColumn (
                             state = listState,
-                            modifier = Modifier.constrainAs(contentList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(contentList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 15.dp)
                         ) {
                             item {
@@ -512,13 +517,6 @@ private fun Playlist_Activity(
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-//                                            Icon(
-//                                                painter = painterResource(R.drawable.headset_icon),
-//                                                contentDescription = "Headset Icon",
-//                                                tint = colorResource(R.color.secondary_text_color),
-//                                                modifier = Modifier.size(18.dp)
-//                                            )
-
                                             Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
@@ -526,7 +524,7 @@ private fun Playlist_Activity(
                                                 fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.Medium,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -544,13 +542,6 @@ private fun Playlist_Activity(
                                                     )
                                             )
 
-//                                            Icon(
-//                                                painter = painterResource(R.drawable.clock_icon),
-//                                                contentDescription = "Clock Icon",
-//                                                tint = colorResource(R.color.secondary_text_color),
-//                                                modifier = Modifier.size(18.dp)
-//                                            )
-
                                             Spacer(modifier = Modifier.width(3.dp))
 
                                             Text(
@@ -558,7 +549,7 @@ private fun Playlist_Activity(
                                                 fontSize = 13.sp,
                                                 lineHeight = 14.sp,
                                                 fontFamily = fonts,
-                                                fontWeight = FontWeight.Normal,
+                                                fontWeight = FontWeight.Medium,
                                                 fontStyle = FontStyle.Normal,
                                                 color = colorResource(R.color.secondary_text_color),
                                                 maxLines = 1,
@@ -589,7 +580,7 @@ private fun Playlist_Activity(
                                             .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.theme_color))
                                             .clickable(
-                                                interactionSource = interactionSource,
+                                                interactionSource = playPlaylistInteraction,
                                                 indication = null
                                             ) {
                                                 if (playlistData?.songs?.isNotEmpty() == true) {
@@ -597,6 +588,10 @@ private fun Playlist_Activity(
                                                     ServiceLocator.musicService?.setPlaylist(playlistData.songs, 0)
                                                 }
                                             }
+                                            .graphicsLayer(
+                                                scaleX = playPlaylistScale,
+                                                scaleY = playPlaylistScale
+                                            )
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -631,7 +626,7 @@ private fun Playlist_Activity(
                                             .clip(RoundedCornerShape(22.dp))
                                             .background(colorResource(R.color.primary_text_color).copy(alpha = 0.85f))
                                             .clickable(
-                                                interactionSource = interactionSource,
+                                                interactionSource = shuffleInteraction,
                                                 indication = null
                                             ) {
                                                 if (playlistData?.songs?.isNotEmpty() == true) {
@@ -645,6 +640,10 @@ private fun Playlist_Activity(
                                                     }
                                                 }
                                             }
+                                            .graphicsLayer(
+                                                scaleX = shuffleScale,
+                                                scaleY = shuffleScale
+                                            )
                                             .padding(horizontal = 24.dp, vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -875,10 +874,8 @@ private fun Playlist_Activity(
                                                     .weight(1f),
                                                 verticalArrangement = Arrangement.Center
                                             ) {
-                                                val songName = htmlToText(song.name)
-
                                                 Text(
-                                                    text = songName,
+                                                    text = htmlToText(song.name),
                                                     fontSize = 15.sp,
                                                     lineHeight = 16.sp,
                                                     fontFamily = fonts,
@@ -896,10 +893,8 @@ private fun Playlist_Activity(
                                                     ?.joinToString(", ") { it.name }
                                                     ?: "Unknown Artist"
 
-                                                val artistsName = htmlToText(artistsList)
-
                                                 Text(
-                                                    text = artistsName,
+                                                    text = htmlToText(artistsList),
                                                     fontSize = 13.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
@@ -917,7 +912,7 @@ private fun Playlist_Activity(
                                                     fontSize = 12.sp,
                                                     lineHeight = 14.sp,
                                                     fontFamily = fonts,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Medium,
                                                     fontStyle = FontStyle.Normal,
                                                     color = colorResource(R.color.secondary_text_color),
                                                     maxLines = 1,
@@ -1035,11 +1030,13 @@ private fun Playlist_Activity(
                                                     }
                                                 }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSongSheet = true
-                                                }) {
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSongSheet = true
+                                                    }
+                                                ) {
                                                     Icon(
                                                         modifier = Modifier.size(20.dp),
                                                         painter = painterResource(R.drawable.three_dots_icon),
@@ -1055,11 +1052,13 @@ private fun Playlist_Activity(
                         }
 
                         Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

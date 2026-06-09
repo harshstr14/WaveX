@@ -288,19 +288,22 @@ private fun Playlists_Activity(viewModel: FavouriteViewModel = viewModel()) {
                 }
 
                 else -> {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         val (playlistsGrid) = createRefs()
 
                         LazyVerticalGrid(
                             state = playlistsGridState,
                             columns = GridCells.Fixed(3),
-                            modifier = Modifier.constrainAs(playlistsGrid){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(playlistsGrid){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             horizontalArrangement = Arrangement.spacedBy(18.dp)

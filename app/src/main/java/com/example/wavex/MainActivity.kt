@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
     LaunchedEffect(Unit) {
-        delay(2000)
+        delay(2000.milliseconds)
         onTimeout()
     }
 

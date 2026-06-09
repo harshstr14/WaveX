@@ -100,7 +100,6 @@ import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.artistScreen.allAlbumsScreen.AllAlbumsActivity
 import com.example.wavex.artistScreen.allSongsScreen.AllSongsActivity
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -114,6 +113,7 @@ import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreferenc
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareArtist
 import com.example.wavex.shareComponent.ShareArtistItem
@@ -225,15 +225,9 @@ private fun Artist_Activity(
         })
     }
 
-    val heartScale by animateFloatAsState(
-        targetValue = if (isLiked) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "HeartPop"
-    )
-
+    val (songSeeAllInteraction, songSeeAllScale) = pressScale()
+    val (albumSeeAllInteraction, albumSeeAllScale) = pressScale()
+    val (heartInteraction, heartScale) = pressScale()
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
 
@@ -360,7 +354,7 @@ private fun Artist_Activity(
                                         color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
-                                        interactionSource = interactionSource,
+                                        interactionSource = heartInteraction,
                                         indication = null
                                     ) {
                                         favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
@@ -545,23 +539,29 @@ private fun Artist_Activity(
                 }
 
                 else -> {
-                    ConstraintLayout(modifier = Modifier.fillMaxSize().background(colorResource(R.color.background_color))) {
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize()
+                            .background(colorResource(R.color.background_color))
+                    ) {
                         val (contentList, miniPlayer) = createRefs()
 
                         LazyColumn (
                             state = listState,
-                            modifier = Modifier.constrainAs(contentList){
-                                top.linkTo(parent.top)
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                                height = Dimension.fillToConstraints
-                            },
+                            modifier = Modifier
+                                .constrainAs(contentList){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
                             contentPadding = PaddingValues(bottom = if (currentSong != null) 80.dp else 5.dp)
                         ) {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 24.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp, start = 24.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box {
@@ -677,16 +677,22 @@ private fun Artist_Activity(
                                         )
 
                                         Text(
-                                            modifier = Modifier.clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                val intent = Intent(context, AllSongsActivity::class.java).apply {
-                                                    putExtra("artist_id", artists.id)
-                                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            modifier = Modifier
+                                                .clickable(
+                                                    interactionSource = songSeeAllInteraction,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllSongsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
                                                 }
-                                                context.startActivity(intent)
-                                            }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                .graphicsLayer(
+                                                    scaleX = songSeeAllScale,
+                                                    scaleY = songSeeAllScale
+                                                ),
+                                            text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.theme_color), lineHeight = 18.sp
                                         )
                                     }
@@ -823,7 +829,7 @@ private fun Artist_Activity(
                                                         fontSize = 12.sp,
                                                         lineHeight = 14.sp,
                                                         fontFamily = fonts,
-                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontWeight = FontWeight.Medium,
                                                         fontStyle = FontStyle.Normal,
                                                         color = colorResource(R.color.secondary_text_color),
                                                         maxLines = 1,
@@ -939,11 +945,13 @@ private fun Artist_Activity(
                                                     }
                                                 }
 
-                                                IconButton(onClick = {
-                                                    selectedSong = song
-                                                    selectedIndex = index
-                                                    showSongSheet = true
-                                                }) {
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedSong = song
+                                                        selectedIndex = index
+                                                        showSongSheet = true
+                                                    }
+                                                ) {
                                                     Icon(
                                                         modifier = Modifier.size(20.dp),
                                                         painter = painterResource(R.drawable.three_dots_icon),
@@ -973,16 +981,22 @@ private fun Artist_Activity(
                                         )
 
                                         Text(
-                                            modifier = Modifier.clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null
-                                            ) {
-                                                val intent = Intent(context, AllAlbumsActivity::class.java).apply {
-                                                    putExtra("artist_id", artists.id)
-                                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            modifier = Modifier
+                                                .clickable(
+                                                    interactionSource = albumSeeAllInteraction,
+                                                    indication = null
+                                                ) {
+                                                    val intent = Intent(context, AllAlbumsActivity::class.java).apply {
+                                                        putExtra("artist_id", artists.id)
+                                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    }
+                                                    context.startActivity(intent)
                                                 }
-                                                context.startActivity(intent)
-                                            }, text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                                .graphicsLayer(
+                                                    scaleX = albumSeeAllScale,
+                                                    scaleY = albumSeeAllScale
+                                                ),
+                                            text = "See All", fontSize = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                                             color = colorResource(R.color.theme_color), lineHeight = 18.sp
                                         )
                                     }
@@ -990,10 +1004,12 @@ private fun Artist_Activity(
 
                                 item {
                                     LazyRow(
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier
+                                            .fillMaxWidth()
                                             .padding(top = 10.dp),
                                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+                                    ) {
                                         items(artists.topAlbums) { album ->
                                             Column(
                                                 modifier = Modifier
@@ -1098,10 +1114,12 @@ private fun Artist_Activity(
 
                                 item {
                                     LazyRow(
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier
+                                            .fillMaxWidth()
                                             .padding(top = 10.dp, bottom = 15.dp),
                                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+                                    ) {
                                         items(artists.singles) { album ->
                                             Column(
                                                 modifier = Modifier
@@ -1197,11 +1215,13 @@ private fun Artist_Activity(
                         }
 
                         Box(
-                            modifier = Modifier.constrainAs(miniPlayer) {
-                                start.linkTo(parent.start)
-                                end.linkTo(parent.end)
-                                bottom.linkTo(parent.bottom)
-                            }.fillMaxWidth().padding(bottom = 5.dp)
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
                         ) {
                             currentSong?.let { song ->
                                 MiniPlayer(

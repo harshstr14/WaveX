@@ -135,20 +135,18 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.toRecentlyPlayedEntity
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
 import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import com.example.wavex.shareComponent.ShareSong
 import com.example.wavex.shareComponent.ShareSongItem
@@ -598,8 +596,11 @@ private fun Player_Activity_Screen(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                    val(songImage, songName, albumName,
+                ConstraintLayout(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val(
+                        songImage, songName, albumName,
                         progressBar, startTime, endTime, row, volume
                     ) = createRefs()
 
@@ -661,7 +662,8 @@ private fun Player_Activity_Screen(
                                         cornerRadius,
                                         frameworkPaint
                                     )
-                                }                            }
+                                }
+                            }
                             .clip(RoundedCornerShape(20.dp))
                     )
 
@@ -676,11 +678,13 @@ private fun Player_Activity_Screen(
                                 slideOutHorizontally(
                                     targetOffsetX = { it }
                                 ),
-                        modifier = Modifier.constrainAs(volume) {
-                            top.linkTo(songImage.top)
-                            bottom.linkTo(songImage.bottom)
-                            end.linkTo(parent.end)
-                        }.padding(end = 18.dp)
+                        modifier = Modifier
+                            .constrainAs(volume) {
+                                top.linkTo(songImage.top)
+                                bottom.linkTo(songImage.bottom)
+                                end.linkTo(parent.end)
+                            }
+                            .padding(end = 18.dp)
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -733,16 +737,18 @@ private fun Player_Activity_Screen(
                     }
 
                     Text(
-                        modifier = Modifier.constrainAs(songName) {
-                            top.linkTo(songImage.bottom, margin = 24.dp)
-                            start.linkTo(songImage.start, margin = 14.dp)
-                            end.linkTo(songImage.end, margin = 14.dp)
-                            width = Dimension.fillToConstraints
-                        }.animateContentSize(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessLow
-                            )
-                        ),
+                        modifier = Modifier
+                            .constrainAs(songName) {
+                                top.linkTo(songImage.bottom, margin = 24.dp)
+                                start.linkTo(songImage.start, margin = 14.dp)
+                                end.linkTo(songImage.end, margin = 14.dp)
+                                width = Dimension.fillToConstraints
+                            }
+                            .animateContentSize(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            ),
                         text = htmlToText(currentSong?.name),
                         fontSize = 20.sp, lineHeight = 24.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
@@ -750,24 +756,28 @@ private fun Player_Activity_Screen(
                     )
 
                     Text(
-                        modifier = Modifier.constrainAs(albumName) {
-                            top.linkTo(songName.bottom, margin = 8.dp)
-                            start.linkTo(songImage.start, margin = 14.dp)
-                            end.linkTo(songImage.end, margin = 14.dp)
-                            width = Dimension.fillToConstraints
-                        },
+                        modifier = Modifier
+                            .constrainAs(albumName) {
+                                top.linkTo(songName.bottom, margin = 8.dp)
+                                start.linkTo(songImage.start, margin = 14.dp)
+                                end.linkTo(songImage.end, margin = 14.dp)
+                                width = Dimension.fillToConstraints
+                            },
                         text = "Album • ${htmlToText(currentSong?.album?.name)}",
                         fontSize = 13.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), maxLines = 1, textAlign = TextAlign.Center,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Column(modifier = Modifier.constrainAs(progressBar) {
-                        top.linkTo(albumName.bottom, margin = 24.dp)
-                        start.linkTo(parent.start, margin = 20.dp)
-                        end.linkTo(parent.end, margin = 20.dp)
-                        width = Dimension.fillToConstraints
-                    }) {
+                    Column(
+                        modifier = Modifier
+                            .constrainAs(progressBar) {
+                            top.linkTo(albumName.bottom, margin = 24.dp)
+                            start.linkTo(parent.start, margin = 20.dp)
+                            end.linkTo(parent.end, margin = 20.dp)
+                            width = Dimension.fillToConstraints
+                        }
+                    ) {
                         AudioWaveform(
                             amplitudes = amplitudes,
                             waveformHeight = waveformHeight,
@@ -805,31 +815,34 @@ private fun Player_Activity_Screen(
                     }
 
                     Text(
-                        modifier = Modifier.constrainAs(startTime) {
-                            top.linkTo(progressBar.bottom, margin = 12.dp)
-                            start.linkTo(parent.start, margin = 22.dp)
-                        },
+                        modifier = Modifier
+                            .constrainAs(startTime) {
+                                top.linkTo(progressBar.bottom, margin = 12.dp)
+                                start.linkTo(parent.start, margin = 22.dp)
+                            },
                         text = formatTime(displayedProgressMs.toLong()),
-                        fontSize = 10.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 10.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color), maxLines = 1
                     )
 
                     Text(
-                        modifier = Modifier.constrainAs(endTime) {
-                            top.linkTo(progressBar.bottom, margin = 12.dp)
-                            end.linkTo(parent.end, margin = 22.dp)
-                        },
+                        modifier = Modifier
+                            .constrainAs(endTime) {
+                                top.linkTo(progressBar.bottom, margin = 12.dp)
+                                end.linkTo(parent.end, margin = 22.dp)
+                            },
                         text = formatTime(duration.toLong()),
-                        fontSize = 10.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 10.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.primary_text_color), maxLines = 1
                     )
 
                     Row(
-                        modifier = Modifier.constrainAs(row) {
-                            top.linkTo(endTime.bottom, margin = 28.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        },
+                        modifier = Modifier
+                            .constrainAs(row) {
+                                top.linkTo(endTime.bottom, margin = 28.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -903,8 +916,8 @@ private fun Player_Activity_Screen(
                                             frameworkPaint
                                         )
                                     }
-                                }
-                            , contentAlignment = Alignment.Center
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
                             Box(
                                 modifier = Modifier
@@ -1253,7 +1266,6 @@ fun UpNextSheetContent(
     currentSongId: String?,
     sheetState: SheetState,
     downloadedIds: Set<String>,
-    recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(),
     onMoreClick: (SongItem, Int, List<SongItem>) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1451,10 +1463,8 @@ fun UpNextSheetContent(
                                     .weight(1f),
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                val songName = htmlToText(song.name)
-
                                 Text(
-                                    text = songName,
+                                    text = htmlToText(song.name),
                                     fontSize = 14.sp,
                                     lineHeight = 16.sp,
                                     fontFamily = fonts,
@@ -1472,10 +1482,8 @@ fun UpNextSheetContent(
                                     ?.joinToString(", ") { it.name }
                                     ?: "Unknown Artist"
 
-                                val artistsName = htmlToText(artistsList)
-
                                 Text(
-                                    text = artistsName,
+                                    text = htmlToText(artistsList),
                                     fontSize = 12.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
@@ -1493,7 +1501,7 @@ fun UpNextSheetContent(
                                     fontSize = 12.sp,
                                     lineHeight = 14.sp,
                                     fontFamily = fonts,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Medium,
                                     fontStyle = FontStyle.Normal,
                                     color = colorResource(R.color.secondary_text_color),
                                     maxLines = 1,
@@ -1610,9 +1618,11 @@ fun UpNextSheetContent(
                                     }
                                 }
 
-                                IconButton(onClick = {
-                                    onMoreClick(song, index, songLists)
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        onMoreClick(song, index, songLists)
+                                    }
+                                ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         painter = painterResource(R.drawable.three_dots_icon),

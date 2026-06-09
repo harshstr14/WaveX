@@ -2,64 +2,81 @@ package com.example.wavex.googleAuthentication
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultLauncher
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import com.example.wavex.R
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 
 class GoogleSignInManager(context: Context) {
-
-    private val appContext = context.applicationContext
-
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val database: DatabaseReference =
-        FirebaseDatabase.getInstance().reference
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().reference
+    private val credentialManager = CredentialManager.create(context)
 
-    private val googleSignInClient: GoogleSignInClient by lazy {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(appContext.getString(R.string.web_client_id))
-            .requestEmail()
-            .build()
+    val googleIdOption = GetGoogleIdOption.Builder()
+        .setServerClientId(
+            context.getString(R.string.web_client_id)
+        )
+        .setFilterByAuthorizedAccounts(false)
+        .build()
 
-        GoogleSignIn.getClient(appContext, gso)
-    }
+    val request = GetCredentialRequest.Builder()
+        .addCredentialOption(googleIdOption)
+        .build()
 
-    fun signIn(
-        launcher: ActivityResultLauncher<Intent>
-    ) {
-        launcher.launch(googleSignInClient.signInIntent)
-    }
-
-    fun handleSignInResult(
-        result: ActivityResult,
+    suspend fun signIn(
+        activity: Activity,
         onSuccess: (FirebaseAuth) -> Unit,
         onError: (String) -> Unit
     ) {
-        if (result.resultCode != Activity.RESULT_OK) {
-            onError("Sign-in cancelled")
-            return
-        }
-
         try {
-            val account =
-                GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                    .getResult(ApiException::class.java)
+            val result = credentialManager.getCredential(
+                context = activity,
+                request = request
+            )
 
-            val idToken = account.idToken
-                ?: return onError("ID Token missing")
+            handleCredential(
+                result,
+                onSuccess,
+                onError
+            )
 
-            firebaseAuthWithGoogle(idToken, onSuccess, onError)
+        } catch (e: Exception) {
+            onError(e.message ?: "Sign in failed")
+        }
+    }
 
-        } catch (e: ApiException) {
-            onError("Google Sign-In failed: ${e.statusCode}")
+    private fun handleCredential(
+        result: GetCredentialResponse,
+        onSuccess: (FirebaseAuth) -> Unit,
+        onError: (String) -> Unit
+    ) {
+
+        val credential = result.credential
+
+        if (credential is CustomCredential &&
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+
+            val googleCredential =
+                GoogleIdTokenCredential.createFrom(
+                    credential.data
+                )
+
+            firebaseAuthWithGoogle(
+                googleCredential.idToken,
+                onSuccess,
+                onError
+            )
+        } else {
+            onError("Invalid credential")
         }
     }
 
@@ -97,10 +114,11 @@ class GoogleSignInManager(context: Context) {
         }
     }
 
-    fun signOut(onDone: () -> Unit) {
+    suspend fun signOut() {
         auth.signOut()
-        googleSignInClient.signOut().addOnCompleteListener {
-            onDone()
-        }
+
+        credentialManager.clearCredentialState(
+            ClearCredentialStateRequest()
+        )
     }
 }

@@ -47,7 +47,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -115,15 +114,11 @@ import com.example.wavex.searchScreen.SearchSource
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.service.ServiceLocator
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
@@ -131,123 +126,11 @@ import java.io.FileOutputStream
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.absoluteValue
+import kotlin.time.Duration.Companion.milliseconds
 
 object PlayerManager {
     var currentPlaylist: List<SongItem> = emptyList()
     var currentIndex: Int = 0
-}
-
-object ParallelDownloader {
-    private val semaphore = kotlinx.coroutines.sync.Semaphore(5)
-    private val jobs = mutableMapOf<String, Job>()
-
-    enum class DownloadState {
-        DOWNLOADING,
-        PAUSED,
-        COMPLETED,
-        FAILED
-    }
-
-    val downloadStates = mutableStateMapOf<String, DownloadState>()
-
-    fun getState(songId: String): DownloadState? {
-        return downloadStates[songId]
-    }
-
-    fun pause(songId: String) {
-        jobs[songId]?.cancel()
-        jobs.remove(songId)
-
-        downloadStates[songId] = DownloadState.PAUSED
-    }
-
-    fun resume(
-        scope: CoroutineScope,
-        songId: String,
-        url: String,
-        fileName: String,
-        context: Context,
-        onFinished: suspend (String?) -> Unit
-    ) {
-        if (downloadStates[songId] != DownloadState.PAUSED) return
-
-        if (jobs[songId]?.isActive == true) return
-
-        jobs[songId]?.cancel()
-        jobs.remove(songId)
-
-        downloadStates[songId] = DownloadState.DOWNLOADING
-
-        val job = scope.launch {
-            Log.d("DOWNLOAD_DEBUG", "Resume download for $songId")
-
-            try {
-                val path = semaphore.withPermit {
-                    downloadSong(url, fileName, context)
-                }
-
-                if (isActive) {
-                    downloadStates[songId] =
-                        if (path != null) DownloadState.COMPLETED else DownloadState.FAILED
-
-                    onFinished(path)
-                }
-
-            } catch (e: CancellationException) {
-                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
-                throw e
-
-            } finally {
-                jobs.remove(songId)
-            }
-        }
-
-        jobs[songId] = job
-    }
-
-    fun start(
-        scope: CoroutineScope,
-        songId: String,
-        url: String,
-        fileName: String,
-        context: Context,
-        onFinished: suspend (String?) -> Unit
-    ) {
-        val currentState = downloadStates[songId]
-
-        if (jobs[songId]?.isActive == true && currentState == DownloadState.DOWNLOADING) return
-
-        jobs[songId]?.cancel()
-        jobs.remove(songId)
-
-        downloadStates[songId] = DownloadState.DOWNLOADING
-
-        val job = scope.launch {
-            Log.d("DOWNLOAD_DEBUG", "Start download for $songId")
-
-            try {
-                val path = semaphore.withPermit {
-                    downloadSong(url, fileName, context)
-                }
-
-                if (isActive) {
-                    downloadStates[songId] =
-                        if (path != null) DownloadState.COMPLETED else DownloadState.FAILED
-
-                    onFinished(path)
-                }
-
-            } catch (e: CancellationException) {
-                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
-                throw e
-
-            } finally {
-                jobs.remove(songId)
-            }
-        }
-
-        jobs[songId] = job
-    }
 }
 
 @Composable
@@ -424,29 +307,36 @@ fun HomeScreen (
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        ConstraintLayout(modifier = Modifier.fillMaxSize()
-            .graphicsLayer {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
-                    renderEffect = RenderEffect
-                        .createBlurEffect(
-                            animatedBlur,
-                            animatedBlur,
-                            Shader.TileMode.CLAMP
-                        )
-                        .asComposeRenderEffect()
+        ConstraintLayout(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
                 }
-            }
         ) {
             val (logoIcon, profileAvatar, mainContent, loader) = createRefs()
 
             Box(
-                modifier = Modifier.constrainAs(logoIcon) {
-                    top.linkTo(profileAvatar.top)
-                    bottom.linkTo(profileAvatar.bottom)
-                    start.linkTo(parent.start, margin = 10.dp)
-                }.size(width = 140.dp, height = 40.dp).zIndex(20f)
+                modifier = Modifier
+                    .constrainAs(logoIcon) {
+                        top.linkTo(profileAvatar.top)
+                        bottom.linkTo(profileAvatar.bottom)
+                        start.linkTo(parent.start, margin = 10.dp)
+                    }
+                    .size(width = 140.dp, height = 40.dp)
+                    .zIndex(20f)
             ) {
-                Icon(painter = painterResource(R.drawable.wavex_logo_dark), contentDescription = "Logo Icon",
+                Icon(
+                    painter = painterResource(R.drawable.wavex_logo_dark),
+                    contentDescription = "Logo Icon",
                     tint = Color.Unspecified,
                     modifier = Modifier
                         .size(width = 140.dp, height = 40.dp)
@@ -487,8 +377,9 @@ fun HomeScreen (
                                 frameworkPaint
                             )
                         }
-                    }.zIndex(20f)
-                , contentAlignment = Alignment.Center
+                    }
+                    .zIndex(20f),
+                contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -525,17 +416,25 @@ fun HomeScreen (
                 )
             }
 
-            Column(modifier = Modifier.constrainAs(mainContent) {
-                top.linkTo(parent.top, margin = 5.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                bottom.linkTo(parent.bottom)
-                height = Dimension.fillToConstraints
-            }.verticalScroll(scrollState).zIndex(0f)
+            Column(
+                modifier = Modifier
+                    .constrainAs(mainContent) {
+                        top.linkTo(parent.top, margin = 5.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        bottom.linkTo(parent.bottom)
+                        height = Dimension.fillToConstraints
+                    }
+                    .verticalScroll(scrollState).zIndex(0f)
             ) {
-                ConstraintLayout(modifier = Modifier.fillMaxWidth()) {
-                    val (featuredPlaylistTitle,featuredPlaylistsSection,recentlyPlayedTitle,recentlyPlayedSection,newReleasesTitle,newReleasesSection,popularArtistsTitle,
-                        popularArtistsSection,trendingSongsTitle,trendingSongsSection,topAlbumsTitle,topAlbumsSection) = createRefs()
+                ConstraintLayout(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val (
+                        featuredPlaylistTitle, featuredPlaylistsSection, recentlyPlayedTitle,
+                        recentlyPlayedSection, newReleasesTitle, newReleasesSection, popularArtistsTitle,
+                        popularArtistsSection, trendingSongsTitle, trendingSongsSection, topAlbumsTitle, topAlbumsSection
+                    ) = createRefs()
 
                     Text(
                         text = "FEATURED · TODAY",
@@ -598,11 +497,16 @@ fun HomeScreen (
                         )
                     }
 
-                    NewReleasesSongs("6689255","songs", modifier = Modifier.constrainAs(newReleasesSection) {
-                        top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }, newReleasesVM, onSongLongPress = onSongLongPress)
+                    NewReleasesSongs(
+                        playlistId = "6689255", root = "songs",
+                        modifier = Modifier
+                            .constrainAs(newReleasesSection) {
+                                top.linkTo(newReleasesTitle.bottom, margin = 15.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
+                        viewModel = newReleasesVM, onSongLongPress = onSongLongPress
+                    )
 
                     if (artists.isNotEmpty()) {
                         Text(
@@ -618,11 +522,14 @@ fun HomeScreen (
                         )
                     }
 
-                    Artists(modifier = Modifier.constrainAs(popularArtistsSection){
-                        top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    })
+                    Artists(
+                        modifier = Modifier
+                            .constrainAs(popularArtistsSection){
+                            top.linkTo(popularArtistsTitle.bottom, margin = 15.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }
+                    )
 
                     if (trending.isNotEmpty()) {
                         Text(
@@ -638,11 +545,16 @@ fun HomeScreen (
                         )
                     }
 
-                    TrendingSongs("946682072","songs", modifier = Modifier.constrainAs(trendingSongsSection) {
-                        top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }, trendingVM, onSongLongPress = onSongLongPress)
+                    TrendingSongs(
+                        playlistId = "946682072", root = "songs",
+                        modifier = Modifier
+                            .constrainAs(trendingSongsSection) {
+                                top.linkTo(trendingSongsTitle.bottom, margin = 15.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
+                        viewModel = trendingVM, onSongLongPress = onSongLongPress
+                    )
 
                     if (albums.isNotEmpty()) {
                         Text(
@@ -658,11 +570,16 @@ fun HomeScreen (
                         )
                     }
 
-                    TopAlbums("latest","results", modifier = Modifier.constrainAs(topAlbumsSection) {
-                        top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }, albumsVM)
+                    TopAlbums(
+                        query = "latest", root = "results",
+                        modifier = Modifier
+                            .constrainAs(topAlbumsSection) {
+                                top.linkTo(topAlbumsTitle.bottom, margin = 15.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                            },
+                        viewModel = albumsVM
+                    )
                 }
             }
 
@@ -720,7 +637,7 @@ fun Playlist(
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(4000)
+            delay(4000.milliseconds)
 
             pagerState.animateScrollToPage(
                 pagerState.currentPage + 1
@@ -881,23 +798,13 @@ fun RecentlyPlayedSongs(
         songLists.chunked(3)
     }
 
-    songLists.forEach {
-        Log.d(
-            "RECENT",
-            """
-        Id       : ${it.id}
-        Title    : ${it.name}
-        Duration : ${it.duration}
-        """.trimIndent()
-        )
-    }
-
     LazyRow(
         modifier = modifier.height(230.dp),
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        items(items = columns,
+        items(
+            items = columns,
             key = { column -> column.firstOrNull()?.id ?: column.hashCode() }
         ) { columnSongs ->
             Column(
@@ -960,10 +867,8 @@ fun RecentlyPlayedSongs(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.Center
                         ) {
-                            val songName = htmlToText(song.name)
-
                             Text(
-                                text = songName,
+                                text = htmlToText(song.name),
                                 fontSize = 15.sp,
                                 lineHeight = 16.sp,
                                 fontFamily = fonts,
@@ -981,10 +886,8 @@ fun RecentlyPlayedSongs(
                                 ?.joinToString(", ") { it.name }
                                 ?: "Unknown Artist"
 
-                            val artistsName = htmlToText(artistsList)
-
                             Text(
-                                text = artistsName,
+                                text = htmlToText(artistsList),
                                 fontSize = 13.sp,
                                 lineHeight = 14.sp,
                                 fontFamily = fonts,
@@ -1002,7 +905,7 @@ fun RecentlyPlayedSongs(
                                 fontSize = 12.sp,
                                 lineHeight = 14.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 maxLines = 1,
@@ -1033,9 +936,11 @@ fun NewReleasesSongs(
 
     if (songs.isEmpty()) return
 
-    LazyRow(modifier = modifier,
+    LazyRow(
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
         itemsIndexed(songs, key = { _, song -> song.id }) { _, song ->
             Column(
                 modifier = Modifier
@@ -1116,9 +1021,11 @@ fun Artists(modifier: Modifier) {
 
     if (artists.isEmpty()) return
 
-    LazyRow(modifier = modifier,
+    LazyRow(
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = 22.dp),
-        horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(22.dp)
+    ) {
         items(artists, key = { it.id }) { artist ->
             Column(
                 modifier = Modifier.clickable(
@@ -1192,9 +1099,11 @@ fun TrendingSongs(
 
     if (songs.isEmpty()) return
 
-    LazyRow(modifier = modifier,
+    LazyRow(
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
         itemsIndexed(songs, key = { _, song -> song.id }) { _, song ->
             Column(
                 modifier = Modifier
@@ -1266,7 +1175,11 @@ fun TrendingSongs(
 }
 
 @Composable
-fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: AlbumsViewModel = viewModel()) {
+fun TopAlbums(
+    query: String, root: String,
+    modifier: Modifier,
+    viewModel: AlbumsViewModel = viewModel()
+) {
     val albums = viewModel.albums.value
     val context = LocalContext.current
 
@@ -1282,9 +1195,11 @@ fun TopAlbums(query: String, root: String, modifier: Modifier, viewModel: Albums
 
     if (albums.isEmpty()) return
 
-    LazyRow(modifier = modifier,
+    LazyRow(
+        modifier = modifier,
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = if (currentSong != null) 170.dp else 100.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
         items(albums, key = { it.id }) { album ->
             Column(
                 modifier = Modifier

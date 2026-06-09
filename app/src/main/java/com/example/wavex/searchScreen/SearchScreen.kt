@@ -21,7 +21,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -125,7 +124,6 @@ import com.example.wavex.R
 import com.example.wavex.albumScreen.AlbumActivity
 import com.example.wavex.artistScreen.ArtistActivity
 import com.example.wavex.fonts
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.formatDuration
@@ -133,6 +131,7 @@ import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
 import com.example.wavex.playlistScreen.PlaylistActivity
 import com.example.wavex.playlistScreen.SongOptionsBottomSheet
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
 import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
 import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
@@ -146,6 +145,7 @@ import com.example.wavex.searchScreen.viewModel.SearchArtistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchPlaylistsViewModel
 import com.example.wavex.searchScreen.viewModel.SearchSongsViewModel
 import com.example.wavex.service.MusicPlayerService
+import com.example.wavex.service.ParallelDownloader
 import com.example.wavex.service.ServiceLocator
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -153,6 +153,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class SearchSource {
     JIOSAAVN,
@@ -184,8 +185,7 @@ fun SearchScreen(
         mutableStateOf(SearchSource.JIOSAAVN)
     }
 
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val (backInteraction, backScale) = pressScale()
 
     var showSongSheet by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
@@ -206,15 +206,6 @@ fun SearchScreen(
             stiffness = Spring.StiffnessLow
         ),
         label = "BlurAnim"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "ShareScale"
     )
 
     val musicService = ServiceLocator.musicService
@@ -256,7 +247,7 @@ fun SearchScreen(
                     color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                     shape = RoundedCornerShape(20.dp)
                 ).clickable(
-                    interactionSource = interactionSource,
+                    interactionSource = backInteraction,
                     indication = null
                 ) {
                     navController.popBackStack()
@@ -269,8 +260,8 @@ fun SearchScreen(
                 tint = colorResource(R.color.primary_text_color),
                 modifier = Modifier.size(20.dp)
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
+                        scaleX = backScale
+                        scaleY = backScale
                     }
             )
         }
@@ -350,7 +341,7 @@ fun SearchScreen(
 
         LaunchedEffect(Unit) {
             snapshotFlow { searchText.text.trim() }
-                .debounce(450)
+                .debounce(800.milliseconds)
                 .distinctUntilChanged()
                 .filter { it.length >= 2 || it.isEmpty() }
                 .collectLatest { query ->
@@ -588,7 +579,7 @@ fun SourceSelectorUI(
 
     val selectedBorder = colorResource(R.color.theme_color)
     val selectedBg = colorResource(R.color.theme_color).copy(alpha = 0.10f)
-    val unselectedBg = colorResource(R.color.secondary_text_color).copy(alpha = 0.20f)
+    val unselectedBg = colorResource(R.color.secondary_text_color).copy(alpha = 0.10f)
     val textColor = colorResource(R.color.background_color)
 
     Box(
@@ -1063,11 +1054,41 @@ private fun SearchArtists(
         }
 
         uiState is SearchArtistsUiState.Empty -> {
-            ErrorState("No artists found")
+            ErrorState(
+                message = "No artists found",
+                onRetry = {
+                    when(source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchArtistsByQuery(query,root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicArtists(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchArtistsUiState.Error -> {
-            ErrorState((uiState as SearchArtistsUiState.Error).message)
+            ErrorState(
+                message = (uiState as SearchArtistsUiState.Error).message,
+                onRetry = {
+                    when(source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchArtistsByQuery(query,root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicArtists(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchArtistsUiState.Success -> {
@@ -1079,7 +1100,9 @@ private fun SearchArtists(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(items = artists,key = { it.id }) { artist ->
+                items(
+                    items = artists,key = { it.id }
+                ) { artist ->
                     val artistName = remember(artist.name) {
                         htmlToText(artist.name)
                     }
@@ -1202,11 +1225,41 @@ private fun SearchSongs(
         }
 
         uiState is SearchSongsUiState.Empty -> {
-            ErrorState("No songs found")
+            ErrorState(
+                message = "No songs found",
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchSongByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicSongs(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchSongsUiState.Error -> {
-            ErrorState((uiState as SearchSongsUiState.Error).message)
+            ErrorState(
+                message = (uiState as SearchSongsUiState.Error).message,
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchSongByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicSongs(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchSongsUiState.Success -> {
@@ -1354,7 +1407,7 @@ private fun SearchSongs(
                                         fontSize = 12.sp,
                                         lineHeight = 14.sp,
                                         fontFamily = fonts,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Medium,
                                         fontStyle = FontStyle.Normal,
                                         color = secondaryTextColor,
                                         maxLines = 1,
@@ -1477,9 +1530,11 @@ private fun SearchSongs(
                                     }
                                 }
 
-                                IconButton(onClick = {
-                                    onMoreClick(song, songs, index)
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        onMoreClick(song, songs, index)
+                                    }
+                                ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         painter = painterResource(R.drawable.three_dots_icon),
@@ -1546,11 +1601,41 @@ private fun SearchAlbums(
         }
 
         uiState is SearchAlbumsUiState.Empty -> {
-            ErrorState("No albums found")
+            ErrorState(
+                message = "No albums found",
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchAlbumByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicAlbums(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchAlbumsUiState.Error -> {
-            ErrorState((uiState as SearchAlbumsUiState.Error).message)
+            ErrorState(
+                message = (uiState as SearchAlbumsUiState.Error).message,
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchAlbumByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicAlbums(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchAlbumsUiState.Success -> {
@@ -1704,11 +1789,41 @@ private fun SearchPlaylists(
         }
 
         uiState is SearchPlaylistUiState.Empty -> {
-            ErrorState("No playlists found")
+            ErrorState(
+                message = "No playlists found",
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchPlayListByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicPlaylists(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchPlaylistUiState.Error -> {
-            ErrorState((uiState as SearchPlaylistUiState.Error).message)
+            ErrorState(
+                message = (uiState as SearchPlaylistUiState.Error).message,
+                onRetry = {
+                    when (source) {
+                        SearchSource.JIOSAAVN -> {
+                            viewModel.fetchPlayListByQuery(query, root)
+                        }
+
+                        SearchSource.YTMUSIC -> {
+                            viewModel.fetchYTMusicPlaylists(query)
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
         }
 
         uiState is SearchPlaylistUiState.Success -> {
@@ -1828,7 +1943,10 @@ private fun EmptyState(text: String) {
 }
 
 @Composable
-private fun ErrorState(message: String) {
+private fun ErrorState(
+    message: String,
+    onRetry: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1864,6 +1982,23 @@ private fun ErrorState(message: String) {
             fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(colorResource(R.color.theme_color))
+                .clickable { onRetry() }
+                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Retry",
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.background_color)
+            )
+        }
     }
 }
 

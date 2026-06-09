@@ -54,7 +54,6 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.wavex.R
-import com.example.wavex.homeScreen.ParallelDownloader
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
 import com.example.wavex.homeScreen.htmlToText
@@ -76,6 +75,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -161,10 +161,13 @@ class  MusicPlayerService : LifecycleService() {
     private var playlist: MutableList<SongItem> = mutableListOf()
     private var currentQueuedSong: SongItem? = null
     private var currentIndex = -1
+
     private var playJob: Job? = null
     private var artLoadJob: Job? = null
     private var qualityJob: Job? = null
+    private var bufferingJob: Job? = null
     private var downloadQualityJob: Job? = null
+
     private val artCache = LruCache<String, Bitmap>(30)
     private val historyRepository = MusicHistoryRepository()
     private var isHistorySaved = false
@@ -224,7 +227,6 @@ class  MusicPlayerService : LifecycleService() {
     private var shouldRetry = false
     private var isRetrying = false
     private var shouldFetchSuggestions = false
-
 
     override fun onCreate() {
         super.onCreate()
@@ -334,9 +336,12 @@ class  MusicPlayerService : LifecycleService() {
             if (localFile != null && localFile.exists() && !isLocalPlaying) {
                 val position = player.currentPosition
 
-                player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                player.setMediaItem(
+                    MediaItem.fromUri(localFile.toUri()),
+                    position
+                )
                 player.prepare()
-                player.seekTo(position)
+                player.play()
                 player.playWhenReady = true
             } else {
                 player.pause()
@@ -357,7 +362,9 @@ class  MusicPlayerService : LifecycleService() {
             val song = _currentSong.value ?: return@launch
             val position = player.currentPosition
 
-            val uri = song.getBestUri(true)
+            val refreshedSong = recentlyPlayedRepository.getPlayableSong(song)
+
+            val uri = refreshedSong.getBestUri(true)
 
             if (uri != Uri.EMPTY) {
                 player.setMediaItem(MediaItem.fromUri(uri))
@@ -374,10 +381,10 @@ class  MusicPlayerService : LifecycleService() {
     private fun initPlayer() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                30000,  // minBufferMs: total buffer duration before rebuffering (30s)
-                60000,  // maxBufferMs: total buffer size (60s)
-                1500,   // bufferForPlaybackMs: how much to buffer before starting playback (1.5s)
-                3000    // bufferForPlaybackAfterRebufferMs: after buffering again (3s)
+                30000,
+                120000,
+                5000,
+                10000
             )
             .build()
 
@@ -433,9 +440,20 @@ class  MusicPlayerService : LifecycleService() {
                 )
 
                 when(state) {
-                    Player.STATE_BUFFERING -> _isBuffering.value = true
+                    Player.STATE_BUFFERING -> {
+                        bufferingJob?.cancel()
+
+                        bufferingJob = serviceScope.launch {
+                            delay(500)
+
+                            if (player.playbackState == Player.STATE_BUFFERING) {
+                                _isBuffering.value = true
+                            }
+                        }
+                    }
 
                     Player.STATE_READY -> {
+                        bufferingJob?.cancel()
                         _isBuffering.value = false
 
                         if (currentIndex in playlist.indices) {
@@ -485,19 +503,25 @@ class  MusicPlayerService : LifecycleService() {
                     error
                 )
 
-                val song = _currentSong.value
-                val localFile = song?.localPath?.let { File(it) }
+                val currentSong = _currentSong.value ?: return
 
-                if (localFile != null && localFile.exists()) {
+                val localFile = currentSong.localPath?.let(::File)
+
+                if (localFile?.exists() == true) {
                     val position = player.currentPosition
 
-                    player.setMediaItem(MediaItem.fromUri(localFile.toUri()))
+                    player.setMediaItem(
+                        MediaItem.fromUri(localFile.toUri()),
+                        position
+                    )
+
                     player.prepare()
-                    player.seekTo(position)
-                    player.playWhenReady = true
-                } else {
-                    shouldRetry = true
+                    player.play()
+
+                    return
                 }
+
+                shouldRetry = true
             }
         })
     }
@@ -819,6 +843,7 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     private fun prepareAndPlay(song: SongItem) {
+        _isBuffering.value = true
         playJob?.cancel()
 
         Log.d(
@@ -1598,6 +1623,7 @@ class  MusicPlayerService : LifecycleService() {
                         image = song.image,
                         duration = song.duration,
                         downloadUrl = song.downloadUrl,
+                        songSource = song.songSource
                     )
                 )
             }

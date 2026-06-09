@@ -81,7 +81,8 @@ import kotlinx.coroutines.launch
 val fonts = FontFamily(
     Font(R.font.merriweathersans_bold, FontWeight.Bold),
     Font(R.font.merriweathersans_semibold, FontWeight.SemiBold),
-    Font(R.font.merriweathersans_regular, FontWeight.Normal)
+    Font(R.font.merriweathersans_regular, FontWeight.Normal),
+    Font(R.font.merriweathersans_medium, FontWeight.Medium)
 )
 
 private lateinit var auth: FirebaseAuth
@@ -89,24 +90,6 @@ private lateinit var database: DatabaseReference
 
 class SignUp : ComponentActivity() {
     private lateinit var googleSignInManager: GoogleSignInManager
-
-    private val launcher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            googleSignInManager.handleSignInResult(
-                it,
-                onSuccess = { auth ->
-                    Toast.makeText(this,"Welcome! ${auth.currentUser?.displayName}",Toast.LENGTH_SHORT).show()
-                    startActivity(
-                        Intent(this, MainScreen::class.java).apply {
-                            flags =Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        }
-                    )
-                },
-                onError = { message ->
-                    Toast.makeText(this,message,Toast.LENGTH_SHORT).show()
-                }
-            )
-        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,16 +110,16 @@ class SignUp : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                SignUpScreen( onGoogleSignIn = {
-                    googleSignInManager.signIn(launcher)
-                })
+                SignUpScreen( googleSignInManager = googleSignInManager)
             }
         }
     }
 }
 
 @Composable
-fun SignUpScreen(onGoogleSignIn: () -> Unit) {
+fun SignUpScreen(
+    googleSignInManager: GoogleSignInManager
+) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -632,7 +615,27 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
                         shape = RoundedCornerShape(26.dp),
                         ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
                         spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
-                    ).clickable { onGoogleSignIn()
+                    ).clickable {
+                        scope.launch {
+                            activity?.let { currentActivity ->
+                                googleSignInManager.signIn(
+                                    activity = currentActivity,
+                                    onSuccess = { auth ->
+                                        Toast.makeText(context,"Welcome ${auth.currentUser?.displayName}",Toast.LENGTH_SHORT).show()
+
+                                        val intent = Intent(context, MainScreen::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        }
+                                        context.startActivity(intent)
+                                    },
+                                    onError = { message ->
+                                        Toast.makeText(context,message,Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                            }
+                        }
+
                         keyboardController?.hide()
                     }.background(Color(0xFF2C2C2C),
                         shape = RoundedCornerShape(26.dp)),
@@ -750,6 +753,6 @@ fun SignUpScreen(onGoogleSignIn: () -> Unit) {
 @Composable
 fun SignUpScreenPreview() {
     WaveXTheme {
-        SignUpScreen(onGoogleSignIn = { })
+
     }
 }
