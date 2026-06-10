@@ -65,6 +65,7 @@ import androidx.core.net.toUri
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.wavex.CryptoUtils
 import com.example.wavex.R
 import com.example.wavex.albumScreen.ShareType
 import com.example.wavex.fonts
@@ -73,6 +74,7 @@ import com.example.wavex.homeScreen.formatDuration
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.pressScale
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 data class ShareAlbumPlaylistItem(
     val id: String,
@@ -635,11 +637,24 @@ fun ShareAlbum_Playlist(
 }
 
 private fun generateShareLink(item: ShareAlbumPlaylistItem): String {
+    val payload = "${item.source}|${item.id}"
+    val token = URLEncoder.encode(
+        CryptoUtils.encrypt(payload),
+        "UTF-8"
+    )
+
     return when (item.type) {
-        ShareType.SONG -> "https://wavex-edd95.web.app/song/${item.source}/${item.id}"
-        ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.source}/${item.id}"
-        ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.source}/${item.id}"
-        ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.source}/${item.id}"
+        ShareType.SONG ->
+            "https://wavex-edd95.web.app/song/$token"
+
+        ShareType.ALBUM ->
+            "https://wavex-edd95.web.app/album/$token"
+
+        ShareType.PLAYLIST ->
+            "https://wavex-edd95.web.app/playlist/$token"
+
+        ShareType.ARTIST ->
+            "https://wavex-edd95.web.app/artist/$token"
     }
 }
 

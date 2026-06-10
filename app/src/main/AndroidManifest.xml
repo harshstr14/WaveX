@@ -158,7 +158,8 @@
             android:exported="true"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_main_screen"
-            android:theme="@style/Theme.WaveX">
+            android:theme="@style/Theme.WaveX"
+            android:launchMode="singleTask">
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
 

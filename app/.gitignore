@@ -3,3 +3,4 @@
 /build
 /app/google-services.json
 /app/src/main/java/com/example/wavex/homeScreen/WaveXApplication.kt
+/app/src/main/java/com/example/wavex/CryptoUtils.kt
