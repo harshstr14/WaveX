@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,12 +63,11 @@ import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
-private lateinit var auth: FirebaseAuth
 class ForgotPassword : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        auth = FirebaseAuth.getInstance()
+        val auth = FirebaseAuth.getInstance()
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
@@ -82,14 +81,16 @@ class ForgotPassword : ComponentActivity() {
 
         setContent {
             WaveXTheme {
-                ForgotPasswordScreen()
+                ForgotPasswordScreen(auth = auth)
             }
         }
     }
 }
 
 @Composable
-fun ForgotPasswordScreen() {
+fun ForgotPasswordScreen(
+    auth: FirebaseAuth
+) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -141,25 +142,35 @@ fun ForgotPasswordScreen() {
         }
     ) { paddingValues ->
         val context = LocalContext.current
-        var email by remember { mutableStateOf("") }
+        var email by rememberSaveable { mutableStateOf("") }
         val activity = remember(context) { context as? Activity }
-        var emailError by remember { mutableStateOf(false) }
+        var emailError by rememberSaveable { mutableStateOf(false) }
 
-        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorResource(R.color.background_color))) {
+        ConstraintLayout(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(colorResource(R.color.background_color))
+        ) {
             val (
                 backIcon, titleText, descriptionText, emailLabel,
                 emailInputContainer, sendLinkButton, errorState
             ) = createRefs()
 
-            Box(modifier = Modifier.constrainAs(backIcon) {
-                top.linkTo(parent.top, margin = 25.dp)
-                start.linkTo(parent.start, margin = 25.dp)
-            }.size(36.dp).clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                ).clickable { activity?.finish() }, contentAlignment = Alignment.Center
+            Box(
+                modifier = Modifier
+                    .constrainAs(backIcon) {
+                        top.linkTo(parent.top, margin = 25.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }
+                    .size(36.dp).clip(RoundedCornerShape(20.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable { activity?.finish() },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
@@ -169,69 +180,89 @@ fun ForgotPasswordScreen() {
                 )
             }
 
-            Text("Forgot Password", modifier = Modifier.constrainAs(titleText) {
-                top.linkTo(backIcon.bottom, margin = 25.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }, fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = colorResource(R.color.primary_text_color), lineHeight = 26.sp
+            Text(
+                text = "Forgot Password",
+                modifier = Modifier
+                    .constrainAs(titleText) {
+                        top.linkTo(backIcon.bottom, margin = 25.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                fontSize = 24.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.primary_text_color), lineHeight = 28.sp
             )
 
-            Text("Please enter your email address to\nreceive a reset password link", modifier = Modifier.constrainAs(descriptionText) {
-                top.linkTo(titleText.bottom, margin = 14.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 18.sp
+            Text(
+                text = "Please enter your email address to\nreceive a reset password link",
+                modifier = Modifier
+                    .constrainAs(descriptionText) {
+                        top.linkTo(titleText.bottom, margin = 14.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 16.sp
             )
 
-            Text("Email", modifier = Modifier.constrainAs(emailLabel) {
-                top.linkTo(descriptionText.bottom, margin = 25.dp)
-                start.linkTo(parent.start, margin = 28.dp)
-            }, fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            Text(
+                text = "Email",
+                modifier = Modifier
+                    .constrainAs(emailLabel) {
+                        top.linkTo(descriptionText.bottom, margin = 25.dp)
+                        start.linkTo(parent.start, margin = 28.dp)
+                    },
+                fontSize = 14.sp, lineHeight = 18.sp, fontFamily = fonts,
+                fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color)
             )
 
             Box(
-                modifier = Modifier.constrainAs(emailInputContainer) {
-                top.linkTo(emailLabel.bottom, margin = 10.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }.padding(horizontal = 25.dp)
-                .height(52.dp).fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = if (emailError) Color.Red else Color.Transparent,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .background(
-                    colorResource(R.color.secondary_text_color).copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(12.dp)
-                ),
+                modifier = Modifier
+                    .constrainAs(emailInputContainer) {
+                        top.linkTo(emailLabel.bottom, margin = 10.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                    .padding(horizontal = 25.dp)
+                    .height(52.dp).fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = if (emailError) Color.Red else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .background(
+                        color = Color(0xFFfefefe),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                ConstraintLayout(
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     val (inputField, placeholderText) = createRefs()
 
                     if (email.isEmpty()) {
-                        Text(modifier = Modifier.constrainAs(placeholderText) {
-                            top.linkTo(parent.top)
-                            bottom.linkTo(parent.bottom)
-                            start.linkTo(parent.start, margin = 15.dp)
-                            end.linkTo(parent.end, margin = 15.dp)
-                            width = Dimension.fillToConstraints },
+                        Text(
+                            modifier = Modifier
+                                .constrainAs(placeholderText) {
+                                    top.linkTo(parent.top)
+                                    bottom.linkTo(parent.bottom)
+                                    start.linkTo(parent.start, margin = 15.dp)
+                                    end.linkTo(parent.end, margin = 15.dp)
+                                    width = Dimension.fillToConstraints
+                                },
                             text = "Enter Email",
                             fontFamily = fonts,
                             fontWeight = FontWeight.Normal,
                             fontStyle = FontStyle.Normal,
-                            fontSize = 14.sp, lineHeight = 17.sp,
+                            fontSize = 15.sp, lineHeight = 18.sp,
                             color = colorResource(R.color.secondary_text_color)
                         )
                     }
 
                     val selectionColors = TextSelectionColors(
-                        handleColor = Color(0xFF1C1C1C),
-                        backgroundColor = Color(0xFF1C1C1C).copy(alpha = 0.3f)
+                        handleColor = colorResource(R.color.primary_text_color).copy(alpha = 0.88f),
+                        backgroundColor = colorResource(R.color.primary_text_color).copy(alpha = 0.3f)
                     )
 
                     CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
@@ -254,13 +285,13 @@ fun ForgotPasswordScreen() {
                                 },
                             textStyle = TextStyle(
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Normal,
                                 fontStyle = FontStyle.Normal,
-                                fontSize = 14.sp, lineHeight = 17.sp,
+                                fontSize = 15.sp, lineHeight = 18.sp,
                                 color = colorResource(R.color.secondary_text_color)
                             ),
                             singleLine = true,
-                            cursorBrush = SolidColor(Color(0xFF1C1C1C))
+                            cursorBrush = SolidColor(colorResource(R.color.primary_text_color).copy(alpha = 0.88f))
                         )
                     }
                 }
@@ -268,25 +299,32 @@ fun ForgotPasswordScreen() {
 
             if (emailError) {
                 Text(
-                    modifier = Modifier.constrainAs(errorState) {
-                        top.linkTo(emailInputContainer.bottom)
-                        start.linkTo(parent.start)
-                    }.padding(start = 28.dp, top = 4.dp),
+                    modifier = Modifier
+                        .constrainAs(errorState) {
+                            top.linkTo(emailInputContainer.bottom)
+                            start.linkTo(parent.start)
+                        }
+                        .padding(start = 28.dp, top = 4.dp),
                     text = "Please enter email",
                     color = Color.Red,
-                    fontSize = 12.sp,
-                    lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal
+                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts,
+                    fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal
                 )
             }
 
-            Button(modifier = Modifier.constrainAs(sendLinkButton) {
-                top.linkTo(emailInputContainer.bottom, margin = 35.dp)
-            }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
-                elevation = 26.dp,
-                shape = RoundedCornerShape(26.dp),
-                ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-            ),
+            Button(
+                modifier = Modifier
+                    .constrainAs(sendLinkButton) {
+                        top.linkTo(emailInputContainer.bottom, margin = 35.dp)
+                    }
+                    .fillMaxWidth().padding(horizontal = 25.dp)
+                    .height(54.dp)
+                    .shadow(
+                        elevation = 26.dp,
+                        shape = RoundedCornerShape(22.dp),
+                        ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                        spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                    ),
                 onClick = {
                     keyboardController?.hide()
 
@@ -323,14 +361,16 @@ fun ForgotPasswordScreen() {
                             }
                         }
                     }
-                }, colors = ButtonDefaults.buttonColors(
+                },
+                colors = ButtonDefaults.buttonColors(
                     containerColor = colorResource(R.color.theme_color),
                     contentColor = colorResource(R.color.background_color)
-                ) , shape = RoundedCornerShape(26.dp)) {
+                ),
+                shape = RoundedCornerShape(22.dp)) {
 
                 Text(
                     text = "Send Link", fontSize = 16.sp, lineHeight = 18.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.SemiBold,
+                    fontFamily = fonts, fontWeight = FontWeight.Bold,
                     fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
                 )
             }
@@ -340,8 +380,8 @@ fun ForgotPasswordScreen() {
 
 @Preview(showSystemUi = true)
 @Composable
-fun ForgotPasswordScreenPreview() {
+private fun ForgotPasswordScreenPreview() {
     WaveXTheme {
-        ForgotPasswordScreen()
+        
     }
 }

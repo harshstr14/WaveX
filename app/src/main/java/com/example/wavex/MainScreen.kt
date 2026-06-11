@@ -57,6 +57,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -277,7 +278,7 @@ fun Main_Screen(
         .downloadedSongIds
         .collectAsState(initial = emptySet())
 
-    var hasChecked by remember { mutableStateOf(false) }
+    var hasChecked by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!hasChecked) {
@@ -305,7 +306,6 @@ fun Main_Screen(
     }
 
     LaunchedEffect(Unit) {
-        Log.d("DeepLink", "LaunchedEffect")
         DeepLinkManager.events.collectLatest { event ->
             Log.d("DeepLink", "Received: ${event.deepLink}")
 
@@ -316,6 +316,7 @@ fun Main_Screen(
                     }
 
                     context.startActivity(intent)
+                    DeepLinkManager.clear()
                 }
 
                 is DeepLink.Album -> {
@@ -325,7 +326,9 @@ fun Main_Screen(
                         putExtra("album_source", deepLink.source)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
+
                     context.startActivity(intent)
+                    DeepLinkManager.clear()
                 }
 
                 is DeepLink.Playlist -> {
@@ -335,7 +338,9 @@ fun Main_Screen(
                         putExtra("playlist_source", deepLink.source)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
+
                     context.startActivity(intent)
+                    DeepLinkManager.clear()
                 }
 
                 is DeepLink.Artist -> {
@@ -345,7 +350,9 @@ fun Main_Screen(
                         putExtra("artist_source", deepLink.source)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
+
                     context.startActivity(intent)
+                    DeepLinkManager.clear()
                 }
 
                 is DeepLink.Library -> {
@@ -356,19 +363,23 @@ fun Main_Screen(
                         launchSingleTop = true
                         restoreState = true
                     }
+
+                    DeepLinkManager.clear()
                 }
 
                 DeepLink.Unknown -> {
                     Log.d("DeepLink", "Unknown")
                 }
             }
+
+            DeepLinkManager.clear()
         }
     }
 
-    var showSheet by remember { mutableStateOf(false) }
-    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
-    var selectedIndex by remember { mutableIntStateOf(-1) }
-    var selectedPlaylist by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    var showSheet by rememberSaveable { mutableStateOf(false) }
+    var selectedSong by rememberSaveable { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf(-1) }
+    var selectedPlaylist by rememberSaveable { mutableStateOf<List<SongItem>>(emptyList()) }
 
     val likedViewModel: LikedSongsViewModel = viewModel()
     val likedSongs by likedViewModel.likedSongs.collectAsState()
@@ -376,32 +387,32 @@ fun Main_Screen(
     val musicService = ServiceLocator.musicService
 
     val playlist by musicService?.playlistFlow?.collectAsState(initial = emptyList())
-        ?: remember { mutableStateOf(emptyList()) }
+        ?: rememberSaveable { mutableStateOf(emptyList()) }
 
     val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
-        ?: remember { mutableIntStateOf(-1) }
+        ?: rememberSaveable { mutableIntStateOf(-1) }
 
     val qualityPreference = musicService?.downloadQualityPreference
             ?: AudioStreamQualityPreference.HIGH
 
     val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
-        ?: remember { mutableStateOf(false) }
+        ?: rememberSaveable { mutableStateOf(false) }
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
-        ?: remember { mutableStateOf(null) }
+        ?: rememberSaveable { mutableStateOf(null) }
 
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
         bottomBar = {
             Column {
                 val progress by musicService?.progress?.collectAsState(initial = 0)
-                    ?: remember { mutableIntStateOf(0) }
+                    ?: rememberSaveable { mutableIntStateOf(0) }
 
                 val duration by musicService?.duration?.collectAsState(initial = 0)
-                    ?: remember { mutableIntStateOf(0) }
+                    ?: rememberSaveable { mutableIntStateOf(0) }
 
                 val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
-                    ?: remember { mutableStateOf(false)}
+                    ?: rememberSaveable { mutableStateOf(false)}
 
                 currentSong?.let { song ->
                     MiniPlayer(

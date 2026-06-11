@@ -58,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1696,11 +1697,11 @@ private fun CreatePlaylistBottomSheet(onClose: () -> Unit, onShowMessage: (Strin
 
 @Composable
 private fun RenamePlaylistBottomSheet( playlist: PlaylistData?, onClose: () -> Unit, onShowMessage: (String) -> Unit) {
-    var titleName by remember { mutableStateOf(playlist?.playlistName ?: "") }
-    var description by remember { mutableStateOf(playlist?.description ?: "") }
-    var titleError by remember { mutableStateOf(false) }
-    var titleFocused by remember { mutableStateOf(false) }
-    var descriptionFocused by remember { mutableStateOf(false) }
+    var titleName by rememberSaveable { mutableStateOf(playlist?.playlistName ?: "") }
+    var description by rememberSaveable { mutableStateOf(playlist?.description ?: "") }
+    var titleError by rememberSaveable { mutableStateOf(false) }
+    var titleFocused by rememberSaveable { mutableStateOf(false) }
+    var descriptionFocused by rememberSaveable { mutableStateOf(false) }
 
     val userID = FirebaseAuth.getInstance().currentUser?.uid
 

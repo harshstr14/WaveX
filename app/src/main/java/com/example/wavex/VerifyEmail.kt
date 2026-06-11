@@ -64,6 +64,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private var name: String = ""
 private var email: String = ""
@@ -192,19 +193,28 @@ fun VerifyEmailScreen() {
         val context = LocalContext.current
         val activity = remember(context) { context as? Activity }
 
-        ConstraintLayout(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorResource(R.color.background_color))) {
-            val (backIcon,mailAnimation,titleText,descriptionText,resendSection,verifyEmailButton) = createRefs()
+        ConstraintLayout(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(colorResource(R.color.background_color))
+        ) {
+            val (backIcon, mailAnimation, titleText, descriptionText, resendSection, verifyEmailButton) = createRefs()
 
             Box(
-                modifier = Modifier.constrainAs(backIcon) {
-                    top.linkTo(parent.top, margin = 25.dp)
-                    start.linkTo(parent.start, margin = 25.dp)
-                }.size(36.dp).clip(RoundedCornerShape(20.dp))
+                modifier = Modifier
+                    .constrainAs(backIcon) {
+                        top.linkTo(parent.top, margin = 25.dp)
+                        start.linkTo(parent.start, margin = 25.dp)
+                    }
+                    .size(36.dp).clip(RoundedCornerShape(20.dp))
                     .border(
                         width = 1.5.dp,
                         color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                         shape = RoundedCornerShape(20.dp)
-                    ).clickable { activity?.finish() }, contentAlignment = Alignment.Center
+                    )
+                    .clickable { activity?.finish() },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
@@ -221,42 +231,61 @@ fun VerifyEmailScreen() {
             LottieAnimation(
                 composition = composition,
                 iterations = LottieConstants.IterateForever,
-                modifier = Modifier.constrainAs(mailAnimation) {
-                    top.linkTo(backIcon.bottom, margin = 25.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }.size(144.dp)
+                modifier = Modifier
+                    .constrainAs(mailAnimation) {
+                        top.linkTo(backIcon.bottom, margin = 25.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+                    .size(144.dp)
             )
 
-            Text("Verify Your Email", modifier = Modifier.constrainAs(titleText) {
-                top.linkTo(mailAnimation.bottom, margin = 25.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }, fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            Text(
+                text = "Verify Your Email",
+                modifier = Modifier
+                    .constrainAs(titleText) {
+                        top.linkTo(mailAnimation.bottom, margin = 25.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                fontSize = 22.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.primary_text_color), lineHeight = 26.sp
             )
 
-            Text("We’ve sent a verification link to \nyour email $email.\nPlease check your inbox and \nclick the link to verify your account", modifier = Modifier.constrainAs(descriptionText) {
-                top.linkTo(titleText.bottom, margin = 18.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }, fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            Text(
+                text = "We’ve sent a verification link to \nyour email $email.\nPlease check your inbox and \nclick the link to verify your account",
+                modifier = Modifier
+                    .constrainAs(descriptionText) {
+                        top.linkTo(titleText.bottom, margin = 18.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                fontSize = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 20.sp
             )
 
-            Row (modifier = Modifier.constrainAs(resendSection) {
-                top.linkTo(descriptionText.bottom, margin = 25.dp)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-            }) {
-                Text("Didn't receive the email?" , fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+            Row (
+                modifier = Modifier
+                    .constrainAs(resendSection) {
+                        top.linkTo(descriptionText.bottom, margin = 25.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+            ) {
+                Text(
+                    text = "Didn't receive the email?" ,
+                    fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.secondary_text_color), textAlign = TextAlign.Center, lineHeight = 15.sp
                 )
 
                 Spacer(modifier = Modifier.width(3.dp))
 
-                Text(if (canResend) "Resend" else "Resend in ${secondsLeft}s", fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                    color = if (canResend) colorResource(R.color.theme_color) else Color(0xFF555555), textAlign = TextAlign.Center, lineHeight = 15.sp, modifier = Modifier
+                Text(
+                    text = if (canResend) "Resend" else "Resend in ${secondsLeft}s",
+                    fontSize = 12.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                    color = if (canResend) colorResource(R.color.theme_color) else Color(0xFF555555),
+                    textAlign = TextAlign.Center, lineHeight = 15.sp,
+                    modifier = Modifier
                         .clickable(enabled = canResend) {
                             val user = FirebaseAuth.getInstance().currentUser ?: return@clickable
 
@@ -274,14 +303,19 @@ fun VerifyEmailScreen() {
                 )
             }
 
-            Button(modifier = Modifier.constrainAs(verifyEmailButton) {
-                top.linkTo(resendSection.bottom, margin = 25.dp)
-            }.fillMaxWidth().padding(horizontal = 25.dp).height(52.dp).shadow(
-                elevation = 26.dp,
-                shape = RoundedCornerShape(26.dp),
-                ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-            ),
+            Button(
+                modifier = Modifier
+                    .constrainAs(verifyEmailButton) {
+                        top.linkTo(resendSection.bottom, margin = 25.dp)
+                    }
+                    .fillMaxWidth().padding(horizontal = 25.dp)
+                    .height(54.dp)
+                    .shadow(
+                        elevation = 26.dp,
+                        shape = RoundedCornerShape(22.dp),
+                        ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                        spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                    ),
                 onClick = {
                     val user = FirebaseAuth.getInstance().currentUser ?: return@Button
 
@@ -331,13 +365,16 @@ fun VerifyEmailScreen() {
                             }
                         }
                     }
-                }, colors = ButtonDefaults.buttonColors(
+                },
+                colors = ButtonDefaults.buttonColors(
                     containerColor = colorResource(R.color.theme_color),
                     contentColor = colorResource(R.color.background_color)
-                ) , shape = RoundedCornerShape(26.dp)) {
+                ),
+                shape = RoundedCornerShape(22.dp)) {
 
-                Text("Verify Email", fontFamily = fonts, fontWeight = FontWeight.SemiBold,
-                    fontStyle = FontStyle.Normal, fontSize = 18.sp
+                Text(
+                    text = "Verify Email", fontFamily = fonts, fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Normal, fontSize = 15.sp
                 )
             }
         }
@@ -345,7 +382,7 @@ fun VerifyEmailScreen() {
 
     LaunchedEffect(secondsLeft) {
         if (secondsLeft > 0) {
-            delay(1000)
+            delay(1000.milliseconds)
             secondsLeft--
         } else {
             canResend = true
@@ -355,7 +392,7 @@ fun VerifyEmailScreen() {
 
 @Preview(showSystemUi = true)
 @Composable
-fun VerifyEmailScreenPreview() {
+private fun VerifyEmailScreenPreview() {
     WaveXTheme {
         VerifyEmailScreen()
     }

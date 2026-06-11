@@ -253,7 +253,7 @@ fun HomeScreen (
 
             userID?.let { profileViewModel.refreshUserData(it) }
 
-            delay(1000)
+            delay(1000.milliseconds)
 
             isRefreshing = false
         }
