@@ -74,6 +74,7 @@ import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
 class SignIn : ComponentActivity() {
@@ -477,8 +478,7 @@ fun SignInScreen(
                                 end.linkTo(parent.end)
                                 width = Dimension.fillToConstraints
                             }
-                            .padding(horizontal = 28.dp),
-
+                            .padding(horizontal = 28.dp)
                     ) {
                         AnimatedVisibility(passwordError) {
                             Text(
@@ -564,6 +564,15 @@ fun SignInScreen(
                                         val refreshedUser = auth.currentUser
 
                                         if (refreshedUser?.isEmailVerified == true) {
+                                            FirebaseMessaging.getInstance()
+                                                .token
+                                                .addOnSuccessListener { token ->
+
+                                                    Log.d("FCM", token)
+
+                                                    //uploadTokenToBackend(token)
+                                                }
+
                                             context.startActivity(
                                                 Intent(context, MainScreen::class.java)
                                             )
@@ -600,13 +609,9 @@ fun SignInScreen(
                                         }
                                     } catch (e: FirebaseAuthInvalidCredentialsException) {
                                         // Wrong password
+                                        passwordError = true
+                                        passwordErrorMessage = "Incorrect password"
                                         Log.e("Auth", "Password : ${e.message}")
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "Incorrect password",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
                                     } catch (e: Exception) {
                                         // Other errors
                                         Log.e("Auth", "Other : ${e.message}")
@@ -704,6 +709,15 @@ fun SignInScreen(
                                         googleSignInManager.signIn(
                                             activity = currentActivity,
                                             onSuccess = { auth ->
+                                                FirebaseMessaging.getInstance()
+                                                    .token
+                                                    .addOnSuccessListener { token ->
+
+                                                        Log.d("FCM", token)
+
+                                                        //uploadTokenToBackend(token)
+                                                    }
+
                                                 Toast.makeText(context,"Welcome ${auth.currentUser?.displayName}",Toast.LENGTH_SHORT).show()
 
                                                 val intent = Intent(context, MainScreen::class.java).apply {

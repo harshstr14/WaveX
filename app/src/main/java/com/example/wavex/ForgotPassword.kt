@@ -7,10 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -145,6 +148,8 @@ fun ForgotPasswordScreen(
         var email by rememberSaveable { mutableStateOf("") }
         val activity = remember(context) { context as? Activity }
         var emailError by rememberSaveable { mutableStateOf(false) }
+        var emailFocused by rememberSaveable { mutableStateOf(false) }
+        var emailErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
         ConstraintLayout(
             modifier = Modifier
@@ -154,7 +159,7 @@ fun ForgotPasswordScreen(
         ) {
             val (
                 backIcon, titleText, descriptionText, emailLabel,
-                emailInputContainer, sendLinkButton, errorState
+                emailInputContainer, sendLinkButton
             ) = createRefs()
 
             Box(
@@ -226,8 +231,12 @@ fun ForgotPasswordScreen(
                     .padding(horizontal = 25.dp)
                     .height(52.dp).fillMaxWidth()
                     .border(
-                        width = 1.dp,
-                        color = if (emailError) Color.Red else Color.Transparent,
+                        width = 1.1.dp,
+                        color = when {
+                            emailError -> Color.Red
+                            emailFocused -> colorResource(R.color.theme_color)
+                            else -> Color.Transparent
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
                     .background(
@@ -282,6 +291,9 @@ fun ForgotPasswordScreen(
                                     start.linkTo(parent.start, margin = 15.dp)
                                     end.linkTo(parent.end, margin = 15.dp)
                                     width = Dimension.fillToConstraints
+                                }
+                                .onFocusChanged {
+                                    emailFocused = it.isFocused
                                 },
                             textStyle = TextStyle(
                                 fontFamily = fonts,
@@ -297,50 +309,59 @@ fun ForgotPasswordScreen(
                 }
             }
 
-            if (emailError) {
-                Text(
-                    modifier = Modifier
-                        .constrainAs(errorState) {
-                            top.linkTo(emailInputContainer.bottom)
-                            start.linkTo(parent.start)
-                        }
-                        .padding(start = 28.dp, top = 4.dp),
-                    text = "Please enter email",
-                    color = Color.Red,
-                    fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts,
-                    fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal
-                )
-            }
-
-            Button(
+            Column(
                 modifier = Modifier
                     .constrainAs(sendLinkButton) {
-                        top.linkTo(emailInputContainer.bottom, margin = 35.dp)
+                        top.linkTo(emailInputContainer.bottom, margin = 10.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        width = Dimension.fillToConstraints
                     }
-                    .fillMaxWidth().padding(horizontal = 25.dp)
-                    .height(54.dp)
-                    .shadow(
-                        elevation = 26.dp,
-                        shape = RoundedCornerShape(22.dp),
-                        ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                        spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
-                    ),
-                onClick = {
-                    keyboardController?.hide()
+                    .padding(horizontal = 25.dp)
+            ) {
+                AnimatedVisibility(emailError) {
+                    Text(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .align(Alignment.Start),
+                        text = emailErrorMessage ?: "",
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal
+                    )
+                }
 
-                    emailError = email.isBlank()
+                Spacer(modifier = Modifier.height(if (emailError) 25.dp else 25.dp))
 
-                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                        scope.launch {
-                            snackBarHostState.showSnackbar(
-                                message = "Enter a valid email",
-                                duration = SnackbarDuration.Short
-                            )
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .shadow(
+                            elevation = 26.dp,
+                            shape = RoundedCornerShape(22.dp),
+                            ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                            spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                        ),
+                    onClick = {
+                        keyboardController?.hide()
+
+                        when {
+                            email.isBlank() -> {
+                                emailError = true
+                                emailErrorMessage = "Email is required"
+
+                                return@Button
+                            }
+
+                            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                                emailError = true
+                                emailErrorMessage = "Enter a valid email"
+
+                                return@Button
+                            }
                         }
-                        return@Button
-                    }
 
-                    if (!emailError) {
                         auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
                             if (task.isSuccessful) {
                                 Log.d("RecoveryPassword", "Password reset email sent")
@@ -360,19 +381,19 @@ fun ForgotPasswordScreen(
                                 }
                             }
                         }
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(R.color.theme_color),
-                    contentColor = colorResource(R.color.background_color)
-                ),
-                shape = RoundedCornerShape(22.dp)) {
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.theme_color),
+                        contentColor = colorResource(R.color.background_color)
+                    ),
+                    shape = RoundedCornerShape(22.dp)) {
 
-                Text(
-                    text = "Send Link", fontSize = 16.sp, lineHeight = 18.sp,
-                    fontFamily = fonts, fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
-                )
+                    Text(
+                        text = "Send Link", fontSize = 16.sp, lineHeight = 18.sp,
+                        fontFamily = fonts, fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
+                    )
+                }
             }
         }
     }

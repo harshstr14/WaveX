@@ -99,6 +99,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.newpipeextractor)
     implementation(libs.hilt.android)

@@ -65,7 +65,11 @@ object DeepLinkParser {
                     )
                 }
 
-                "playlists" -> DeepLink.Library(uri.toString())
+                "userplaylist" -> {
+                    DeepLink.UserPlaylist(
+                        id = uri.toString()
+                    )
+                }
 
                 else -> DeepLink.Unknown
             }

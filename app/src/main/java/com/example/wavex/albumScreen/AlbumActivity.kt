@@ -132,7 +132,8 @@ enum class ShareType {
     SONG,
     ALBUM,
     PLAYLIST,
-    ARTIST
+    ARTIST,
+    USERPLAYLIST
 }
 
 @AndroidEntryPoint

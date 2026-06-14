@@ -45,7 +45,7 @@ class ImportPlaylistViewModel : ViewModel() {
                 val responseBody = withContext(Dispatchers.IO) {
 
                     val request = Request.Builder()
-                        .url("$apiUrl/playlist/$url")
+                        .url("$apiUrl/userplaylist/$url")
                         .get()
                         .build()
 

@@ -2,8 +2,6 @@ package com.example.wavex.service
 
 import android.Manifest
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -56,6 +54,7 @@ import coil.request.SuccessResult
 import com.example.wavex.R
 import com.example.wavex.homeScreen.PlayerManager
 import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.homeScreen.WaveXApplication.Companion.MUSIC_CHANNEL_ID
 import com.example.wavex.homeScreen.htmlToText
 import com.example.wavex.homeScreen.localDB.entity.DownloadedSongEntity
 import com.example.wavex.homeScreen.repository.RecentlyPlayedRepository
@@ -91,7 +90,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class  MusicPlayerService : LifecycleService() {
     companion object {
-        const val CHANNEL_ID = "music_player_channel"
         const val NOTIFICATION_ID = 1
 
         // Action strings for notification intents
@@ -232,9 +230,8 @@ class  MusicPlayerService : LifecycleService() {
         super.onCreate()
 
         ServiceLocator.musicService = this
-        createNotificationChannel()
 
-        val placeholderNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val placeholderNotification = NotificationCompat.Builder(this, MUSIC_CHANNEL_ID)
             .setContentTitle("WaveX is starting…")
             .setContentText("Preparing your music")
             .setSmallIcon(R.drawable.headset_icon)
@@ -695,7 +692,7 @@ class  MusicPlayerService : LifecycleService() {
         }
 
         if (!::player.isInitialized) {
-            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            val notification = NotificationCompat.Builder(this, MUSIC_CHANNEL_ID)
                 .setContentTitle("WaveX is running…")
                 .setContentText("Preparing your music")
                 .setSmallIcon(R.drawable.headset_icon)
@@ -1518,7 +1515,7 @@ class  MusicPlayerService : LifecycleService() {
             ?: "Unknown Artist"
         val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
 
-        val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notifBuilder = NotificationCompat.Builder(this, MUSIC_CHANNEL_ID)
             .setContentTitle(songName)
             .setContentText(artistsNameList)
             .setSmallIcon(R.drawable.headset_icon)
@@ -1537,21 +1534,6 @@ class  MusicPlayerService : LifecycleService() {
         return notifBuilder.build()
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Music Playback",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Music player notifications"
-            }
-
-            val manager =
-                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-    }
 
     private fun updateMetadata(song: SongItem, bitmap: Bitmap) {
 

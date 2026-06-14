@@ -79,6 +79,7 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
 val fonts = FontFamily(
@@ -248,7 +249,7 @@ fun SignUpScreen(
                 ) {
                     val (
                         nameLabel, emailLabel, passwordLabel, nameInputContainer, emailInputContainer, passwordInputContainer, signUpButton,
-                        googleSignInButton, anonymousLogInButton, dividerLeft, dividerRight, dividerText, signInSection, passwordErrorText
+                        googleSignInButton, anonymousLogInButton, dividerLeft, dividerRight, dividerText, signInSection
                     ) = createRefs()
 
                     Text(
@@ -603,151 +604,151 @@ fun SignUpScreen(
                         }
                     }
 
-                    if (passwordError) {
-                        Text(
-                            text = passwordErrorMessage ?: "",
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal,
-                            modifier = Modifier
-                                .constrainAs(passwordErrorText) {
-                                    top.linkTo(passwordInputContainer.bottom, margin = 10.dp)
-                                    start.linkTo(parent.start, margin = 28.dp)
-                                }
-                        )
-                    }
-
-                    Button(
+                    Column(
                         modifier = Modifier
                             .constrainAs(signUpButton) {
-                                top.linkTo(passwordInputContainer.bottom, margin = 35.dp)
+                                top.linkTo(passwordInputContainer.bottom, margin = 10.dp)
+                                start.linkTo(parent.start)
+                                end.linkTo(parent.end)
+                                width = Dimension.fillToConstraints
                             }
-                            .fillMaxWidth().padding(horizontal = 25.dp)
-                            .height(54.dp)
-                            .shadow(
-                                elevation = 26.dp,
-                                shape = RoundedCornerShape(22.dp),
-                                ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
-                                spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                            .padding(horizontal = 25.dp)
+                    ) {
+                        AnimatedVisibility(passwordError) {
+                            Text(
+                                modifier = Modifier
+                                    .padding(horizontal = 3.dp)
+                                    .align(Alignment.Start),
+                                text = passwordErrorMessage ?: "",
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Normal, fontStyle = FontStyle.Normal
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(if (passwordError) 25.dp else 25.dp))
+
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp)
+                                .shadow(
+                                    elevation = 26.dp,
+                                    shape = RoundedCornerShape(22.dp),
+                                    ambientColor = colorResource(R.color.theme_color).copy(alpha = 0.2f),
+                                    spotColor = colorResource(R.color.theme_color).copy(alpha = 0.4f)
+                                ),
+                            onClick = {
+                                keyboardController?.hide()
+
+                                when {
+                                    name.isBlank() && email.isBlank() && password.isBlank() -> {
+                                        nameError = true
+                                        emailError = true
+                                        passwordError = true
+
+                                        nameErrorMessage = "Name is required"
+                                        emailErrorMessage = "Email is required"
+                                        passwordErrorMessage = "Password is required"
+
+                                        return@Button
+                                    }
+
+                                    name.isBlank() -> {
+                                        nameError = true
+                                        nameErrorMessage = "Name is required"
+
+                                        return@Button
+                                    }
+
+                                    email.isBlank() -> {
+                                        emailError = true
+                                        emailErrorMessage = "Email is required"
+
+                                        return@Button
+                                    }
+
+                                    password.isBlank() -> {
+                                        passwordError = true
+                                        passwordErrorMessage = "Password is required"
+
+                                        return@Button
+                                    }
+
+                                    !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                                        emailError = true
+                                        emailErrorMessage = "Enter a valid email"
+
+                                        return@Button
+                                    }
+                                }
+
+                                auth.createUserWithEmailAndPassword(email.trim(), password.trim()).addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        val user = auth.currentUser
+
+                                        user?.sendEmailVerification()?.addOnCompleteListener {
+                                            val intent = Intent(context, VerifyEmail::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                putExtra("name", name.trim())
+                                                putExtra("email", email.trim())
+                                            }
+                                            context.startActivity(intent)
+                                        }?.addOnFailureListener {
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar(
+                                                    message = "Failed to send verification email",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        try {
+                                            throw task.exception!!
+                                        } catch (e: FirebaseAuthUserCollisionException) {
+                                            // Email already in use
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar(
+                                                    message = "This email is already registered",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                            Log.e("Auth", "Email : ${e.message}")
+                                        } catch (e: FirebaseAuthWeakPasswordException) {
+                                            // Weak password
+                                            passwordError = true
+                                            passwordErrorMessage = "Password is too weak. Use at least 6 characters"
+                                            Log.e("Auth", "Password : ${e.message}")
+                                        } catch (e: FirebaseAuthInvalidCredentialsException) {
+                                            // Invalid email format
+                                            emailError = true
+                                            emailErrorMessage = "Invalid email format"
+                                            Log.e("Auth", "Email Format : ${e.message}")
+                                        } catch (e: Exception) {
+                                            // Other errors
+                                            scope.launch {
+                                                snackBarHostState.showSnackbar(
+                                                    message = "Sign-up failed: ${e.message}",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                            Log.e("Auth", "Other : ${e.message}")
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.theme_color),
+                                contentColor = colorResource(R.color.background_color)
                             ),
-                        onClick = {
-                            keyboardController?.hide()
+                            shape = RoundedCornerShape(22.dp)) {
 
-                            when {
-                                name.isBlank() && email.isBlank() && password.isBlank() -> {
-                                    nameError = true
-                                    emailError = true
-                                    passwordError = true
-
-                                    nameErrorMessage = "Name is required"
-                                    emailErrorMessage = "Email is required"
-                                    passwordErrorMessage = "Password is required"
-
-                                    return@Button
-                                }
-
-                                name.isBlank() -> {
-                                    nameError = true
-                                    nameErrorMessage = "Name is required"
-
-                                    return@Button
-                                }
-
-                                email.isBlank() -> {
-                                    emailError = true
-                                    emailErrorMessage = "Email is required"
-
-                                    return@Button
-                                }
-
-                                password.isBlank() -> {
-                                    passwordError = true
-                                    passwordErrorMessage = "Password is required"
-
-                                    return@Button
-                                }
-
-                                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
-                                    emailError = true
-                                    emailErrorMessage = "Enter a valid email"
-
-                                    return@Button
-                                }
-                            }
-
-                            auth.createUserWithEmailAndPassword(email.trim(), password.trim()).addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    val user = auth.currentUser
-
-                                    user?.sendEmailVerification()?.addOnCompleteListener {
-                                        val intent = Intent(context, VerifyEmail::class.java).apply {
-                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                            putExtra("name", name.trim())
-                                            putExtra("email", email.trim())
-                                        }
-                                        context.startActivity(intent)
-                                    }?.addOnFailureListener {
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "Failed to send verification email",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    try {
-                                        throw task.exception!!
-                                    } catch (e: FirebaseAuthUserCollisionException) {
-                                        // Email already in use
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "This email is already registered",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                        Log.e("Auth", "Email : ${e.message}")
-                                    } catch (e: FirebaseAuthWeakPasswordException) {
-                                        // Weak password
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "Password is too weak. Use at least 6 characters",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                        Log.e("Auth", "Password : ${e.message}")
-                                    } catch (e: FirebaseAuthInvalidCredentialsException) {
-                                        // Invalid email format
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "Invalid email format",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                        Log.e("Auth", "Email Format : ${e.message}")
-                                    } catch (e: Exception) {
-                                        // Other errors
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar(
-                                                message = "Sign-up failed: ${e.message}",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
-                                        Log.e("Auth", "Other : ${e.message}")
-                                    }
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.theme_color),
-                            contentColor = colorResource(R.color.background_color)
-                        ),
-                        shape = RoundedCornerShape(22.dp)) {
-
-                        Text(
-                            text = "Sign Up", fontSize = 16.sp, lineHeight = 18.sp,
-                            fontFamily = fonts, fontWeight = FontWeight.Bold,
-                            fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
-                        )
+                            Text(
+                                text = "Sign Up", fontSize = 16.sp, lineHeight = 18.sp,
+                                fontFamily = fonts, fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Normal, color = colorResource(R.color.off_white)
+                            )
+                        }
                     }
 
                     Box(
@@ -821,6 +822,15 @@ fun SignUpScreen(
                                         googleSignInManager.signIn(
                                             activity = currentActivity,
                                             onSuccess = { auth ->
+                                                FirebaseMessaging.getInstance()
+                                                    .token
+                                                    .addOnSuccessListener { token ->
+
+                                                        Log.d("FCM", token)
+
+                                                        //uploadTokenToBackend(token)
+                                                    }
+
                                                 Toast.makeText(context,"Welcome ${auth.currentUser?.displayName}",Toast.LENGTH_SHORT).show()
 
                                                 val intent = Intent(context, MainScreen::class.java).apply {
@@ -884,6 +894,15 @@ fun SignUpScreen(
 
                                         if (userID != null) {
                                             database.child("Guest").child(userID).setValue(userData).addOnSuccessListener {
+                                                FirebaseMessaging.getInstance()
+                                                    .token
+                                                    .addOnSuccessListener { token ->
+
+                                                        Log.d("FCM", token)
+
+                                                        //uploadTokenToBackend(token)
+                                                    }
+
                                                 context.startActivity(Intent(context, MainScreen::class.java))
                                                 activity?.finish()
                                             }.addOnFailureListener { e ->

@@ -604,7 +604,10 @@ fun ShareArtist(
 }
 
 private fun generateShareLink(item: ShareArtistItem): String {
-    val payload = "${item.source}|${item.id}"
+    val payload = when (item.type) {
+        ShareType.USERPLAYLIST -> item.id
+        else -> "${item.source}|${item.id}"
+    }
     val token = URLEncoder.encode(
         CryptoUtils.encrypt(payload),
         "UTF-8"
@@ -622,6 +625,9 @@ private fun generateShareLink(item: ShareArtistItem): String {
 
         ShareType.ARTIST ->
             "https://wavex-edd95.web.app/artist/$token"
+
+        ShareType.USERPLAYLIST ->
+            "https://wavex-edd95.web.app/userplaylist/${item.id}"
     }
 }
 

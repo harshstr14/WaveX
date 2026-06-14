@@ -62,6 +62,7 @@ import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -119,8 +120,18 @@ class VerifyEmail : ComponentActivity() {
                     "name" to name,
                     "mail" to email,
                 )
+
                 if (userID != null) {
                     database.child("Users").child(userID).setValue(userData).addOnSuccessListener {
+                        FirebaseMessaging.getInstance()
+                            .token
+                            .addOnSuccessListener { token ->
+
+                                Log.d("FCM", token)
+
+                                //uploadTokenToBackend(token)
+                            }
+
                         startActivity(
                             Intent(this, MainScreen::class.java)
                         )

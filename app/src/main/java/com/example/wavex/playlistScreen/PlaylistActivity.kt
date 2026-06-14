@@ -1953,7 +1953,7 @@ private fun BottomSheetContent(
 
                     Text(
                         text = "Album • ${htmlToText(song.album?.name ?: "Unknown")}",
-                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 1,
                     )
                 }
@@ -1975,7 +1975,7 @@ private fun BottomSheetContent(
 
                     Text(
                         text = "PlayCount • ${formatCount(song.playCount.toLong())}",
-                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+                        fontSize = 13.sp, fontFamily = fonts, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color), lineHeight = 16.sp, maxLines = 1,
                     )
                 }

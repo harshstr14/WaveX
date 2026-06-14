@@ -1220,7 +1220,7 @@ private fun Playlist_Activity(
                         songCount = playlistData?.songs?.size.toString(),
                         totalDuration = formatTotalDuration(playlistData?.totalDuration ?: 0),
                         image = playlistData?.imageUrl,
-                        type = ShareType.PLAYLIST,
+                        type = ShareType.USERPLAYLIST,
                         source = ""
                     ),
                     onDismiss = { showShareSheet = false }

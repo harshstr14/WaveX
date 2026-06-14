@@ -247,7 +247,7 @@ fun ShareSong(
                                     ?: "Unknown Title"}",
                                 fontSize = 13.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -275,7 +275,7 @@ fun ShareSong(
                                     ?: "Unknown Title"}",
                                 fontSize = 13.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -578,6 +578,7 @@ private fun generateShareLink(item: ShareSongItem): String {
         ShareType.ALBUM -> "https://wavex-edd95.web.app/album/${item.id}"
         ShareType.PLAYLIST -> "https://wavex-edd95.web.app/playlist/${item.id}"
         ShareType.ARTIST -> "https://wavex-edd95.web.app/artist/${item.id}"
+        ShareType.USERPLAYLIST -> "https://wavex-edd95.web.app/userplaylist/${item.id}"
     }
 }
 

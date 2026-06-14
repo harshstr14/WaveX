@@ -253,7 +253,7 @@ fun ShareAlbum_Playlist(
                                     ?: "Unknown Title"}",
                                 fontSize = 13.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -637,7 +637,10 @@ fun ShareAlbum_Playlist(
 }
 
 private fun generateShareLink(item: ShareAlbumPlaylistItem): String {
-    val payload = "${item.source}|${item.id}"
+    val payload = when (item.type) {
+        ShareType.USERPLAYLIST -> item.id
+        else -> "${item.source}|${item.id}"
+    }
     val token = URLEncoder.encode(
         CryptoUtils.encrypt(payload),
         "UTF-8"
@@ -655,6 +658,9 @@ private fun generateShareLink(item: ShareAlbumPlaylistItem): String {
 
         ShareType.ARTIST ->
             "https://wavex-edd95.web.app/artist/$token"
+
+        ShareType.USERPLAYLIST ->
+            "https://wavex-edd95.web.app/userplaylist/${item.id}"
     }
 }
 

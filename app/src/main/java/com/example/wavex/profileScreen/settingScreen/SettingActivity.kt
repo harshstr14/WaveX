@@ -12,14 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,6 +80,7 @@ import com.example.wavex.fonts
 import com.example.wavex.googleAuthentication.GoogleSignInManager
 import com.example.wavex.homeScreen.viewModel.ProfileViewModel
 import com.example.wavex.homeScreen.viewModel.RecentlyPlayedViewModel
+import com.example.wavex.pressScale
 import com.example.wavex.profileScreen.settingScreen.viewmodel.SettingsViewModel
 import com.example.wavex.service.MusicPlayerService
 import com.example.wavex.songData.Download
@@ -1237,7 +1234,7 @@ fun IOSStyleBottomDialog(
                         text = message,
                         fontFamily = fonts,
                         fontSize = 14.sp, lineHeight = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                         fontStyle = FontStyle.Normal,
                         color = colorResource(R.color.secondary_text_color)
                     )
@@ -1423,25 +1420,6 @@ private fun getCurrentVersion(context: Context): String {
     } catch (_: Exception) {
         "1.0.0"
     }
-}
-
-@Composable
-private fun pressScale(
-    pressedScale: Float = 1.15f
-): Pair<MutableInteractionSource, Float> {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "PressScale"
-    )
-
-    return interactionSource to scale
 }
 
 @Preview(showBackground = true)

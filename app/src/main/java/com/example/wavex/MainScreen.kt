@@ -1,7 +1,9 @@
 package com.example.wavex
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -207,10 +209,23 @@ suspend fun requestWithFallback(endpoint: String): String =
 
 @AndroidEntryPoint
 class MainScreen : ComponentActivity() {
-    private var deepLinkUrl by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    100
+                )
+            }
+        }
 
         Log.d("DeepLink", "onCreate")
         Log.d("DeepLink", "MainScreen onCreate ${hashCode()}")
@@ -233,7 +248,6 @@ class MainScreen : ComponentActivity() {
         setContent {
             WaveXTheme {
                 Main_Screen(
-                    deepLinkUrl = deepLinkUrl
                 )
             }
         }
@@ -267,7 +281,6 @@ class MainScreen : ComponentActivity() {
 @Composable
 fun Main_Screen(
     downloadViewModel: DownloadViewModel = hiltViewModel(),
-    deepLinkUrl: String?,
 ) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -355,9 +368,9 @@ fun Main_Screen(
                     DeepLinkManager.clear()
                 }
 
-                is DeepLink.Library -> {
+                is DeepLink.UserPlaylist -> {
                     navController.navigate(
-                        "library?openSheet=wavex&url=${deepLinkUrl}"
+                        "library?openSheet=wavex&url=${deepLink.id}"
                     ) {
                         popUpTo(navController.graph.startDestinationId)
                         launchSingleTop = true
@@ -739,7 +752,7 @@ fun MiniPlayer(
     )
 
     val shadowColorButton by animateColorAsState(
-        targetValue = if (isPlaying) Color(0xFF34A853) else Color(0xFF797979),
+        targetValue = if (isPlaying) Color(0xFF34A853) else colorResource(R.color.primary_text_color),
         animationSpec = tween(500),
         label = "shadowColor"
     )
@@ -889,7 +902,7 @@ fun MiniPlayer(
                         .clip(RoundedCornerShape(80.dp))
                         .background(
                             if (isPlaying) colorResource(R.color.theme_color)
-                            else colorResource(R.color.secondary_text_color)
+                            else colorResource(R.color.primary_text_color)
                         )
                         .clickable(
                             interactionSource = playInteractionSource,
@@ -923,7 +936,7 @@ fun MiniPlayer(
                                 else R.drawable.notificationplaybutton
                             ),
                             contentDescription = "Play Icon",
-                            tint = colorResource(R.color.background_color),
+                            tint = colorResource(R.color.off_white),
                             modifier = Modifier
                                 .padding(start = if (isPlaying) 0.dp else 1.dp)
                                 .size(18.dp)
@@ -932,7 +945,6 @@ fun MiniPlayer(
                                     scaleY = scale
                                 }
                         )
-
                     }
                 }
             }

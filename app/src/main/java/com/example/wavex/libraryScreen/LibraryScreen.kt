@@ -948,7 +948,7 @@ private fun AddWaveXPlaylistBottomSheet(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val trimUrl = remember(url) {
-        url.substringAfter("playlists/")
+        url.substringAfter("userplaylist/")
     }
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -1147,6 +1147,7 @@ private fun AddWaveXPlaylistBottomSheet(
 
                         if (!urlError) {
                             viewModel.importWaveXPlaylist(apiUrl, trimUrl)
+                            Log.d("URl","$apiUrl $trimUrl")
                             onClose()
                         }
                     }

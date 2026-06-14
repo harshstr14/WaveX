@@ -12,7 +12,6 @@
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
-
             <category android:name="android.intent.category.APP_EMAIL" />
         </intent>
     </queries>
@@ -46,76 +45,89 @@
             android:screenOrientation="portrait"
             android:label="@string/title_activity_update_app"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.downloadedSongScreen.DownloadedSongActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_downloaded_song"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".playerScreen.PlayerActivityScreen"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_player_screen"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".libraryScreen.likedSongsScreen.LikedSongsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_liked_songs_activity"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".libraryScreen.playlistScreen.PlaylistActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_playlist"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.playlistsScreen.PlaylistsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_playlists"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <activity
             android:name=".profileScreen.settingScreen.SettingActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_setting"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.albumsScreen.AlbumsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_albums"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.artistsScreen.ArtistsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_artists_activity"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.favouriteSongsScreen.FavouriteSongsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_favourite_songs"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.yourProfileScreen.YourProfileActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_your_profile"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".profileScreen.ProfileActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_profile"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".playlistScreen.PlaylistActivity"
             android:exported="false"
@@ -128,24 +140,36 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback|dataSync" />
 
+        <service
+            android:name=".service.WaveXFirebaseService"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".albumScreen.AlbumActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_album"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".artistScreen.allAlbumsScreen.AllAlbumsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_all_albums_screen"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".artistScreen.allSongsScreen.AllSongsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_all_songs"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".artistScreen.ArtistActivity"
             android:exported="false"
@@ -179,24 +203,28 @@
             android:screenOrientation="portrait"
             android:label="@string/title_activity_verify_code"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".ForgotPassword"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_forgot_password"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".SignIn"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_sign_in"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".SignUp"
             android:exported="false"
             android:screenOrientation="portrait"
             android:label="@string/title_activity_sign_up"
             android:theme="@style/Theme.WaveX" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -205,7 +233,6 @@
             android:theme="@style/Theme.WaveX">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
