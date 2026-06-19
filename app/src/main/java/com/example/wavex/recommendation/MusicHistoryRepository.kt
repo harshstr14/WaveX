@@ -3,16 +3,18 @@ package com.example.wavex.recommendation
 import com.example.wavex.recommendation.dataClass.PlayedSong
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import jakarta.inject.Inject
 
-class MusicHistoryRepository {
-    private val auth = FirebaseAuth.getInstance()
-
-    private val database = FirebaseDatabase.getInstance().reference
+class MusicHistoryRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    firebaseDatabase: FirebaseDatabase
+) {
+    private val database = firebaseDatabase.reference
 
     fun getUserHistory(
         onResult: (List<PlayedSong>) -> Unit
     ) {
-        val userId = auth.currentUser?.uid
+        val userId = firebaseAuth.currentUser?.uid
 
         if (userId == null) {
             onResult(emptyList())
@@ -51,7 +53,7 @@ class MusicHistoryRepository {
     }
 
     fun savePlayedSong(song: PlayedSong) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = firebaseAuth.currentUser?.uid ?: return
 
         val songRef = database
             .child("Users")

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.wavex.feature.auth.presentation.signin.SignInActivity
 import com.example.wavex.ui.theme.WaveXTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -58,12 +59,12 @@ class MainActivity : ComponentActivity() {
 
                         // ❌ Email user but not verified
                         isLoggedIn && !isEmailVerified -> {
-                            startActivity(Intent(this, SignIn::class.java))
+                            startActivity(Intent(this, SignInActivity::class.java))
                         }
 
                         // ❌ Not logged in
                         else -> {
-                            startActivity(Intent(this, SignIn::class.java))
+                            startActivity(Intent(this, SignInActivity::class.java))
                         }
                     }
                     finish()

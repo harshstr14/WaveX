@@ -1,0 +1,550 @@
+package com.example.wavex.feature.artist.allalbums.presentation
+
+import android.app.Activity
+import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
+import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.wavex.MiniPlayer
+import com.example.wavex.R
+import com.example.wavex.core.model.SongItem
+import com.example.wavex.core.service.ServiceLocator
+import com.example.wavex.feature.album.presentation.AlbumActivity
+import com.example.wavex.feature.artist.allalbums.model.AllAlbumsUiState
+import com.example.wavex.feature.auth.presentation.signup.fonts
+import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.player.presentation.PlayerActivityScreen
+import com.example.wavex.pressScale
+import com.example.wavex.ui.theme.WaveXTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AllAlbumsScreen(
+    artistId: String?,
+    albums: AllAlbumsUiState,
+    isLoading: Boolean,
+    onFetchAlbum: (String, String) -> Unit,
+    onLoadNextPage: () -> Unit
+) {
+    val snackBarHostState = remember { SnackbarHostState() }
+    val albumsGridState = rememberLazyGridState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    LaunchedEffect(artistId) {
+        artistId?.let {
+            onFetchAlbum(it, "albums")
+        }
+    }
+
+    val (backInteraction, backScale) = pressScale()
+    val (albumInteraction, albumScale) = pressScale()
+
+    var showSongSheet by remember { mutableStateOf(false) }
+
+    val musicService = ServiceLocator.musicService
+
+    val currentIndex by musicService?.currentIndexFlow?.collectAsState(initial = -1)
+        ?: remember { mutableIntStateOf(-1) }
+
+    val isPlaying by musicService?.isPlaying?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+
+    val currentSong by musicService?.currentSong?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
+    val progress by musicService?.progress?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
+
+    val duration by musicService?.duration?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
+
+    val isBuffering by musicService?.isBuffering?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false)}
+
+    var selectedSong by remember { mutableStateOf<SongItem?>(null) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
+
+    val animatedBlur by animateFloatAsState(
+        targetValue = if (showSongSheet) 22f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BlurAnim"
+    )
+
+    Scaffold(
+        modifier = Modifier.background(colorResource(R.color.background_color)).
+        nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            CenterAlignedTopAppBar(
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    Box(
+                        modifier = Modifier.padding(start = 20.dp)
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(
+                                width = 1.5.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(20.dp)
+                            ).clickable(
+                                interactionSource = backInteraction,
+                                indication = null
+                            ) {
+                                activity?.finish()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_icon),
+                            contentDescription = "Back Icon",
+                            tint = colorResource(R.color.primary_text_color),
+                            modifier = Modifier.size(20.dp)
+                                .graphicsLayer {
+                                    scaleX = backScale
+                                    scaleY = backScale
+                                }
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "All Albums",
+                        fontSize = 20.sp,
+                        fontFamily = fonts,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Normal,
+                        color = colorResource(R.color.primary_text_color),
+                        lineHeight = 22.sp
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorResource(R.color.background_color),
+                    scrolledContainerColor = colorResource(R.color.background_color)
+                )
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 15.dp)
+            ) { data ->
+                Snackbar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(10.dp),
+                            ambientColor = Color(0xFF2C2C2C),
+                            spotColor = Color(0xFF2C2C2C)
+                        ),
+                    containerColor = Color(0xFF2C2C2C),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when {
+                                    data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                                    else -> {
+                                        R.drawable.alert_icon
+                                    }
+                                }
+                            ),
+                            contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.off_white)
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colorResource(R.color.background_color))
+                .padding(paddingValues)
+                .graphicsLayer {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && animatedBlur > 0f) {
+                        renderEffect = RenderEffect
+                            .createBlurEffect(
+                                animatedBlur,
+                                animatedBlur,
+                                Shader.TileMode.CLAMP
+                            )
+                            .asComposeRenderEffect()
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isLoading -> {
+                    LoadingEffect()
+                }
+
+                albums.isError -> {
+                    ErrorState(
+                        message = albums.errorMessage,
+                        onRetry = {
+                            artistId?.let {
+                                onFetchAlbum(it, "albums")
+                            }
+                        }
+                    )
+                }
+
+                else -> {
+                    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+                        val (albumsGrid, miniPlayer) = createRefs()
+
+                        LazyVerticalGrid(
+                            state = albumsGridState,
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier
+                                .constrainAs(albumsGrid){
+                                    top.linkTo(parent.top)
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                },
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = if (currentSong != null) 90.dp else 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp)
+                        ) {
+                            items(
+                                items = albums.albums,
+                                key = { it.id }
+                            ) { album ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = albumInteraction,
+                                            indication = null
+                                        ) {
+                                            val intent = Intent(context, AlbumActivity::class.java).apply {
+                                                putExtra("album_id", album.id)
+                                                putExtra("album_imageUrl", album.image[2].url)
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                        .graphicsLayer(
+                                            scaleX = albumScale,
+                                            scaleY = albumScale
+                                        )
+                                ) {
+                                    AsyncImage(
+                                        model = album.image.getOrNull(2)?.url,
+                                        contentDescription = album.name,
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.default_image),
+                                        modifier = Modifier
+                                            .fillMaxWidth().aspectRatio(1f)
+                                            .clip(RoundedCornerShape(16.dp))
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    val albumName = htmlToText(album.name)
+
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                        text = albumName,
+                                        fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    val artistsList = album.artist
+                                        .takeIf { it.isNotEmpty() }
+                                        ?.joinToString(", ") { it.name }
+                                        ?: "Unknown Artist"
+
+                                    val artistsName = htmlToText(artistsList)
+
+                                    Text(
+                                        modifier = Modifier.padding(horizontal = 2.dp ),
+                                        text = artistsName,
+                                        fontSize = 12.sp, lineHeight = 14.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.secondary_text_color), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            item(
+                                span = { GridItemSpan(maxLineSpan) }
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            onLoadNextPage()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "See More",
+                                        fontSize = 16.sp,
+                                        lineHeight = 18.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.theme_color),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .constrainAs(miniPlayer) {
+                                    start.linkTo(parent.start)
+                                    end.linkTo(parent.end)
+                                    bottom.linkTo(parent.bottom)
+                                }
+                                .fillMaxWidth().padding(bottom = 5.dp)
+                        ) {
+                            currentSong?.let { song ->
+                                MiniPlayer(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    progress = if (duration > 0)
+                                        progress.toFloat() / duration.toFloat()
+                                    else 0f,
+                                    isBuffering = isBuffering,
+                                    onPlayPause = {
+                                        musicService?.togglePlayPause()
+                                    },
+                                    onClick = {
+                                        val activity = context as? Activity
+
+                                        val intent = Intent(context, PlayerActivityScreen::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+
+                                        context.startActivity(intent)
+
+                                        activity?.let {
+                                            if (Build.VERSION.SDK_INT >= 34) {
+                                                it.overrideActivityTransition(
+                                                    Activity.OVERRIDE_TRANSITION_OPEN,
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            } else {
+                                                @Suppress("DEPRECATION")
+                                                it.overridePendingTransition(
+                                                    R.anim.slide_up,
+                                                    R.anim.fade_out
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onAddClick = {
+                                        selectedSong = song
+                                        selectedIndex = currentIndex
+                                        showSongSheet = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 45.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes (R.raw.spaceman)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .clip(RectangleShape)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier
+                    .size(110.dp)
+                    .graphicsLayer {
+                        scaleX = 1.2f
+                        scaleY = 1.2f
+                    }
+            )
+        }
+
+        Text(
+            text = message,
+            fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
+            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            color = colorResource(R.color.secondary_text_color), maxLines = 2
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(colorResource(R.color.theme_color))
+                .clickable { onRetry() }
+                .padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Retry",
+                fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
+                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
+                color = colorResource(R.color.background_color)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadingEffect() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes (R.raw.astronaut_and_music)
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 45.dp)
+            .size(110.dp)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    scaleX = 1.2f
+                    scaleY = 1.2f
+                }
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AllAlbumsScreenPreview() {
+    WaveXTheme {
+        AllAlbumsScreen(
+            artistId = "",
+            albums = AllAlbumsUiState(),
+            isLoading = false,
+            onFetchAlbum = { _,_ -> },
+            onLoadNextPage = {}
+        )
+    }
+}

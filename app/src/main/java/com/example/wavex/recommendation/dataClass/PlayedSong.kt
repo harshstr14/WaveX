@@ -1,9 +1,9 @@
 package com.example.wavex.recommendation.dataClass
 
-import com.example.wavex.songData.Album
-import com.example.wavex.songData.Artists
-import com.example.wavex.songData.Download
-import com.example.wavex.songData.Image
+import com.example.wavex.core.model.Album
+import com.example.wavex.core.model.Artists
+import com.example.wavex.core.model.Download
+import com.example.wavex.core.model.Image
 
 data class PlayedSong(
     var id: String = "",

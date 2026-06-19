@@ -1,6 +1,6 @@
 package com.example.wavex.recommendation
 
-import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.core.model.SongItem
 import com.example.wavex.recommendation.dataClass.PlayedSong
 import com.example.wavex.recommendation.dataClass.RecommendationRequest
 import com.example.wavex.recommendation.dataClass.RecommendationResponse

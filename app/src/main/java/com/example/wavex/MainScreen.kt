@@ -45,11 +45,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,9 +86,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavType
@@ -99,36 +105,53 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.example.wavex.albumScreen.AlbumActivity
-import com.example.wavex.artistScreen.ArtistActivity
-import com.example.wavex.deeplink.DeepLink
-import com.example.wavex.deeplink.DeepLinkEvent
-import com.example.wavex.deeplink.DeepLinkManager
-import com.example.wavex.deeplink.DeepLinkParser
-import com.example.wavex.discoverScreen.DiscoverScreen
-import com.example.wavex.homeScreen.HomeScreen
-import com.example.wavex.homeScreen.PlayerManager
-import com.example.wavex.homeScreen.SongItem
-import com.example.wavex.homeScreen.htmlToText
-import com.example.wavex.homeScreen.viewModel.LikedSongsViewModel
-import com.example.wavex.libraryScreen.LibraryScreen
-import com.example.wavex.libraryScreen.pressScale
+import com.example.wavex.core.deeplink.DeepLink
+import com.example.wavex.core.deeplink.DeepLinkEvent
+import com.example.wavex.core.deeplink.DeepLinkManager
+import com.example.wavex.core.deeplink.DeepLinkParser
+import com.example.wavex.core.model.AudioStreamQualityPreference
+import com.example.wavex.core.model.PlaylistData
+import com.example.wavex.core.model.SongItem
+import com.example.wavex.core.service.MusicPlayerService
+import com.example.wavex.core.service.ParallelDownloader
+import com.example.wavex.core.service.ServiceLocator
+import com.example.wavex.core.shared.LikedSongsViewModel
+import com.example.wavex.core.util.DownloadQualitySelector
+import com.example.wavex.feature.album.presentation.AlbumActivity
+import com.example.wavex.feature.artist.presentation.ArtistActivity
+import com.example.wavex.feature.auth.presentation.signup.fonts
+import com.example.wavex.feature.discover.presentation.DiscoverScreen
+import com.example.wavex.feature.discover.presentation.DiscoverViewModel
+import com.example.wavex.feature.home.presentation.HomeScreen
+import com.example.wavex.feature.home.presentation.HomeViewModel
+import com.example.wavex.feature.home.presentation.PlayerManager
+import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.importplaylist.model.ImportState
+import com.example.wavex.feature.importplaylist.presentation.ImportPlaylistViewModel
+import com.example.wavex.feature.library.presentation.LibraryScreen
+import com.example.wavex.feature.library.presentation.LibraryViewModel
+import com.example.wavex.feature.library.presentation.SheetType
+import com.example.wavex.feature.library.presentation.pressScale
+import com.example.wavex.feature.library.sheets.model.PlaylistEditorState
+import com.example.wavex.feature.library.sheets.presentation.AddSpotifyPlaylistBottomSheet
+import com.example.wavex.feature.library.sheets.presentation.AddWaveXPlaylistBottomSheet
+import com.example.wavex.feature.library.sheets.presentation.CreatePlaylistBottomSheet
+import com.example.wavex.feature.library.sheets.presentation.PlaylistEditorViewModel
+import com.example.wavex.feature.library.sheets.presentation.RenamePlaylistBottomSheet
+import com.example.wavex.feature.player.presentation.PlayerActivityScreen
+import com.example.wavex.feature.playlist.presentation.PlaylistActivity
+import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
+import com.example.wavex.feature.profile.presentation.ProfileViewModel
+import com.example.wavex.feature.profile.presentation.downloads.presentation.DownloadViewModel
+import com.example.wavex.feature.search.presentation.SearchAlbumsViewModel
+import com.example.wavex.feature.search.presentation.SearchArtistsViewModel
+import com.example.wavex.feature.search.presentation.SearchPlaylistsViewModel
+import com.example.wavex.feature.search.presentation.SearchScreen
+import com.example.wavex.feature.search.presentation.SearchSongsViewModel
+import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
-import com.example.wavex.playerScreen.PlayerActivityScreen
-import com.example.wavex.playlistScreen.PlaylistActivity
-import com.example.wavex.playlistScreen.SongOptionsBottomSheet
-import com.example.wavex.profileScreen.downloadedSongScreen.DownloadViewModel
-import com.example.wavex.profileScreen.settingScreen.AudioStreamQualityPreference
-import com.example.wavex.profileScreen.settingScreen.DownloadQualitySelector
-import com.example.wavex.profileScreen.settingScreen.checkForUpdate
-import com.example.wavex.searchScreen.SearchScreen
-import com.example.wavex.searchScreen.SearchSource
-import com.example.wavex.service.MusicPlayerService
-import com.example.wavex.service.ParallelDownloader
-import com.example.wavex.service.ServiceLocator
 import com.example.wavex.ui.theme.WaveXTheme
-import com.example.wavex.updateAppScreen.UpdateAppActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -209,7 +232,6 @@ suspend fun requestWithFallback(endpoint: String): String =
 
 @AndroidEntryPoint
 class MainScreen : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -278,9 +300,21 @@ class MainScreen : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Main_Screen(
+    libraryViewModel: LibraryViewModel = hiltViewModel(),
     downloadViewModel: DownloadViewModel = hiltViewModel(),
+    playlistEditorViewModel: PlaylistEditorViewModel = hiltViewModel(),
+    importPlaylistViewModel: ImportPlaylistViewModel = hiltViewModel(),
+    likedSongsViewModel: LikedSongsViewModel = hiltViewModel(),
+    discoverViewModel: DiscoverViewModel = hiltViewModel(),
+    searchArtistsViewModel: SearchArtistsViewModel = viewModel(),
+    searchPlaylistsViewModel: SearchPlaylistsViewModel = viewModel(),
+    searchAlbumsViewModel: SearchAlbumsViewModel = viewModel(),
+    searchSongsViewModel: SearchSongsViewModel = viewModel(),
+    profileViewModel: ProfileViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -291,32 +325,7 @@ fun Main_Screen(
         .downloadedSongIds
         .collectAsState(initial = emptySet())
 
-    var hasChecked by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        if (!hasChecked) {
-            hasChecked = true
-
-            checkForUpdate(
-                context,
-                onShowMessage = { message ->
-                }
-            ) { info ->
-
-                val intent = Intent(context, UpdateAppActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-
-                    putExtra("message", info.message)
-                    putExtra("latestVersion", info.latestVersion)
-                    putExtra("currentVersion", info.currentVersion)
-                    putExtra("downloadUrl", info.downloadUrl)
-                    putExtra("expectedSizeInBytes", info.expectedSizeInBytes)
-                }
-
-                context.startActivity(intent)
-            }
-        }
-    }
+    val likedSongs by likedSongsViewModel.likedSongs.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         DeepLinkManager.events.collectLatest { event ->
@@ -370,7 +379,7 @@ fun Main_Screen(
 
                 is DeepLink.UserPlaylist -> {
                     navController.navigate(
-                        "library?openSheet=wavex&url=${deepLink.id}"
+                        "library?openSheet=${SheetType.ADD_WAVEX_PLAYLIST.name}&url=${deepLink.id}"
                     ) {
                         popUpTo(navController.graph.startDestinationId)
                         launchSingleTop = true
@@ -389,13 +398,16 @@ fun Main_Screen(
         }
     }
 
+    val importState by importPlaylistViewModel.importState.collectAsStateWithLifecycle()
+    val playlistEditorState by playlistEditorViewModel.state.collectAsStateWithLifecycle()
+    val showBottomSheet = remember { mutableStateOf(false) }
+    var librarySheetType by rememberSaveable { mutableStateOf<SheetType?>(null) }
     var showSheet by rememberSaveable { mutableStateOf(false) }
     var selectedSong by rememberSaveable { mutableStateOf<SongItem?>(null) }
     var selectedIndex by rememberSaveable { mutableIntStateOf(-1) }
     var selectedPlaylist by rememberSaveable { mutableStateOf<List<SongItem>>(emptyList()) }
-
-    val likedViewModel: LikedSongsViewModel = viewModel()
-    val likedSongs by likedViewModel.likedSongs.collectAsState()
+    var renamePlaylist by rememberSaveable { mutableStateOf<PlaylistData?>(null) }
+    var initialWaveXUrl by rememberSaveable { mutableStateOf("") }
 
     val musicService = ServiceLocator.musicService
 
@@ -413,6 +425,62 @@ fun Main_Screen(
 
     val currentSong by musicService?.currentSong?.collectAsState(initial = null)
         ?: rememberSaveable { mutableStateOf(null) }
+
+    LaunchedEffect(showBottomSheet.value) {
+        if (showBottomSheet.value) {
+            showBottomSheet.value = true
+        }
+    }
+
+    LaunchedEffect(playlistEditorState) {
+        when (val currentState = playlistEditorState) {
+            is PlaylistEditorState.Success -> {
+                snackBarHostState.showSnackbar(
+                    message = currentState.message,
+                    duration = SnackbarDuration.Short
+                )
+
+                playlistEditorViewModel.resetState()
+                showBottomSheet.value = false
+            }
+
+            is PlaylistEditorState.Error -> {
+                snackBarHostState.showSnackbar(
+                    message = currentState.message,
+                    duration = SnackbarDuration.Short
+                )
+
+                playlistEditorViewModel.resetState()
+            }
+
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(importState) {
+        when (val state = importState) {
+            is ImportState.Success -> {
+                snackBarHostState.showSnackbar(
+                    message = "Playlist imported successfully",
+                    duration = SnackbarDuration.Short
+                )
+
+                showBottomSheet.value = false
+                importPlaylistViewModel.cancelImport()
+            }
+
+            is ImportState.Error -> {
+                snackBarHostState.showSnackbar(
+                    message = state.message,
+                    duration = SnackbarDuration.Short
+                )
+
+                importPlaylistViewModel.cancelImport()
+            }
+
+            else -> Unit
+        }
+    }
 
     Scaffold(
         containerColor = colorResource(id = R.color.background_color),
@@ -571,29 +639,114 @@ fun Main_Screen(
         ) {
             composable(BottomNavRoute.Home.route) {
                 HomeScreen(
+                    imageUrl = profileViewModel.profileImageUrl.collectAsStateWithLifecycle().value,
                     showSheet = showSheet,
                     onSongLongPress = { playlist, song, index ->
                         selectedSong = song
                         selectedIndex = index
                         selectedPlaylist = playlist
                         showSheet = true
-                    }
+                    },
+                    onRefresh = {
+                        homeViewModel.refresh()
+                    },
+                    uiState = homeViewModel.uiState.collectAsStateWithLifecycle().value
                 )
             }
 
             composable(BottomNavRoute.Discover.route) {
                 DiscoverScreen(
-                    downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
-                    navController = navController, snackBarHostState = snackBarHostState,
+                    onClickBack = {
+                        navController.popBackStack()
+                    },
+                    onDeleteSong = { songID ->
+                        downloadViewModel.deleteSong(songID) { success, message -> }
+                    },
+                    likedSongs = likedSongsViewModel.likedSongs.collectAsStateWithLifecycle().value,
+                    onToggleLike = { song ->
+                        likedSongsViewModel.toggleLike(song)
+                    },
+                    onLoadDiscoverData = {
+                        discoverViewModel.loadDiscoverData()
+                    },
+                    uiSate = discoverViewModel.uiState.collectAsStateWithLifecycle().value,
+                    downloadedIds = downloadedIds,
+                    snackBarHostState = snackBarHostState,
                     showSheet = showSheet
                 )
             }
 
             composable(BottomNavRoute.Search.route) {
                 SearchScreen(
-                    downloadViewModel = downloadViewModel, qualityPreference = qualityPreference,
-                    navController = navController, snackBarHostState = snackBarHostState,
-                    showSheet = showSheet
+                    onClickBack = {
+                        navController.popBackStack()
+                    },
+                    onDeleteSong = { songID ->
+                        downloadViewModel.deleteSong(songID) { success, message -> }
+                    },
+                    likedSongs = likedSongsViewModel.likedSongs.collectAsStateWithLifecycle().value,
+                    onToggleLike = { song ->
+                        likedSongsViewModel.toggleLike(song)
+                    },
+                    downloadedIds = downloadedIds,
+                    snackBarHostState = snackBarHostState,
+                    showSheet = showSheet,
+                    artists = searchArtistsViewModel.artists.collectAsStateWithLifecycle().value,
+                    artistsUiSate = searchArtistsViewModel.uiState.collectAsStateWithLifecycle().value,
+                    onSearchArtists = { query ->
+                        searchArtistsViewModel.fetchArtistsByQuery(query)
+                    },
+                    onSearchYTArtists = { query ->
+                        searchArtistsViewModel.fetchYTMusicArtists(query)
+                    },
+                    onArtistsClearResult = {
+                        searchArtistsViewModel.clearResults()
+                    },
+                    onArtistsIdeal = {
+                        searchArtistsViewModel.setIdle()
+                    },
+                    songs = searchSongsViewModel.songs.collectAsStateWithLifecycle().value,
+                    songsUiState = searchSongsViewModel.uiState.collectAsStateWithLifecycle().value,
+                    onSearchSongs = { query ->
+                        searchSongsViewModel.fetchSongByQuery(query)
+                    },
+                    onSearchYTSongs = { query ->
+                        searchSongsViewModel.fetchYTMusicSongs(query)
+                    },
+                    onSongsClearResult = {
+                        searchSongsViewModel.clearResults()
+                    },
+                    onSongsIdeal = {
+                        searchSongsViewModel.setIdle()
+                    },
+                    albums = searchAlbumsViewModel.albums.collectAsStateWithLifecycle().value,
+                    albumUiState = searchAlbumsViewModel.uiState.collectAsStateWithLifecycle().value,
+                    onSearchAlbums = { query ->
+                        searchAlbumsViewModel.fetchAlbumByQuery(query)
+                    },
+                    onSearchYTAlbums = { query ->
+                        searchAlbumsViewModel.fetchYTMusicAlbums(query)
+                    },
+                    onAlbumsClearResult = {
+                        searchAlbumsViewModel.clearResults()
+                    },
+                    onAlbumsIdeal = {
+                        searchAlbumsViewModel.setIdle()
+                    },
+                    playlists = searchPlaylistsViewModel.playlists.collectAsStateWithLifecycle().value,
+                    playlistsUiState = searchPlaylistsViewModel.uiState.collectAsStateWithLifecycle().value,
+                    onSearchPlaylists = { query ->
+                        searchPlaylistsViewModel.fetchPlayListByQuery(query)
+                    },
+                    onSearchYTPlaylists = { query ->
+                        searchPlaylistsViewModel.fetchYTMusicPlaylists(query)
+                    },
+                    onPlaylistsClearResult = {
+                        searchPlaylistsViewModel.clearResults()
+                    },
+                    onPlaylistsIdeal = {
+                        searchPlaylistsViewModel.setIdle()
+                    }
                 )
             }
 
@@ -612,17 +765,135 @@ fun Main_Screen(
                     }
                 )
             ) { backStackEntry ->
-
                 val openSheet = backStackEntry.arguments?.getString("openSheet")
                 val url = backStackEntry.arguments?.getString("url")
 
+                LaunchedEffect(url) {
+                    if (!url.isNullOrBlank()) {
+                        initialWaveXUrl = url
+                    }
+                }
+
+                LaunchedEffect(openSheet) {
+                    if (openSheet == SheetType.ADD_WAVEX_PLAYLIST.name) {
+                        librarySheetType = SheetType.ADD_WAVEX_PLAYLIST
+                        showBottomSheet.value = true
+                    }
+                }
+
                 LibraryScreen(
-                    navController = navController,
+                    onClickBack = {
+                        navController.popBackStack()
+                    },
+                    onDeletePlaylist = { playlistID, onResult ->
+                        libraryViewModel.deletePlaylist(playlistID) { success ->
+                            onResult(success)
+                        }
+                    },
+                    onOpenSheet = { sheetType ->
+                        librarySheetType = sheetType
+                        showBottomSheet.value = true
+                    },
+                    playlists = libraryViewModel.playlists.collectAsStateWithLifecycle().value,
                     snackBarHostState = snackBarHostState,
                     showSheet = showSheet,
-                    openSheet = openSheet,
-                    initialUrl = url
+                    showBottomSheet = showBottomSheet.value,
+                    importState = importState,
+                    onPlaylistSelect = { playlist ->
+                        renamePlaylist = playlist
+                    },
+                    onCancelImport = {
+                        importPlaylistViewModel.cancelImport()
+                    },
+                    likedSongs = likedSongs
                 )
+            }
+        }
+    }
+
+    if (showBottomSheet.value) {
+        Dialog(
+            onDismissRequest = {
+                showBottomSheet.value = false
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = colorResource(R.color.off_white),
+                    tonalElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    when (librarySheetType) {
+                        SheetType.CREATE_PLAYLIST -> {
+                            CreatePlaylistBottomSheet(
+                                onClose = {
+                                    showBottomSheet.value = false
+                                },
+                                onCreate = { title, description ->
+                                    playlistEditorViewModel.createPlaylist(
+                                        title = title,
+                                        description = description
+                                    )
+                                }
+                            )
+                        }
+
+                        SheetType.ADD_SPOTIFY_PLAYLIST -> {
+                            AddSpotifyPlaylistBottomSheet(
+                                onClose = {
+                                    showBottomSheet.value = false
+                                },
+                                onImportPlaylist = { apiUrl, url ->
+                                    importPlaylistViewModel.importSpotifyPlaylist(
+                                        apiUrl = apiUrl,
+                                        url = url
+                                    )
+                                }
+                            )
+                        }
+
+                        SheetType.ADD_WAVEX_PLAYLIST -> {
+                            AddWaveXPlaylistBottomSheet(
+                                onClose = {
+                                    showBottomSheet.value = false
+                                },
+                                onImportPlaylist = { apiUrl, playlistID ->
+                                    importPlaylistViewModel.importWaveXPlaylist(
+                                        apiUrl = apiUrl,
+                                        playlistId = playlistID
+                                    )
+                                },
+                                initialWaveXUrl = initialWaveXUrl
+                            )
+                        }
+
+                        SheetType.RENAME_PLAYLIST -> {
+                            RenamePlaylistBottomSheet(
+                                playlist = renamePlaylist,
+                                onClose = {
+                                    showBottomSheet.value = false
+                                    renamePlaylist = null
+                                },
+                                onRename = { playlistID, title, description ->
+                                    playlistEditorViewModel.renamePlaylist(
+                                        playlistId = playlistID,
+                                        title = title,
+                                        description = description
+                                    )
+                                }
+                            )
+                        }
+
+                        else -> {}
+                    }
+                }
             }
         }
     }
@@ -664,7 +935,7 @@ fun Main_Screen(
             isFavourite = isFavourite,
             isDownloaded = isDownloaded,
             onToggleFavourite = {
-                likedViewModel.toggleLike(song)
+                likedSongsViewModel.toggleLike(song)
             },
             onToggleDownload = { song ->
                 val selectedDownload =

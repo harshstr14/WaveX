@@ -2,14 +2,15 @@ package com.example.wavex.recommendation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wavex.homeScreen.SongItem
+import com.example.wavex.core.model.SongItem
+import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class RecommendationViewModel : ViewModel() {
-    private val historyRepository =
-        MusicHistoryRepository()
+    @Inject
+    lateinit var historyRepository: MusicHistoryRepository
 
     private val recommendationRepository =
         RecommendationRepository()

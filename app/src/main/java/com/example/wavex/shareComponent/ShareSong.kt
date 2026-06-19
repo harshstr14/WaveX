@@ -64,9 +64,9 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.R
-import com.example.wavex.albumScreen.ShareType
-import com.example.wavex.fonts
-import com.example.wavex.homeScreen.htmlToText
+import com.example.wavex.feature.album.presentation.ShareType
+import com.example.wavex.feature.auth.presentation.signup.fonts
+import com.example.wavex.feature.home.presentation.htmlToText
 import com.example.wavex.pressScale
 import kotlinx.coroutines.launch
 
