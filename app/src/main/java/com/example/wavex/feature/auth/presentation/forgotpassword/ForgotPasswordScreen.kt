@@ -28,6 +28,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
@@ -59,6 +61,7 @@ import androidx.constraintlayout.compose.Dimension
 import com.example.wavex.R
 import com.example.wavex.feature.auth.model.ForgotPasswordUiState
 import com.example.wavex.feature.auth.presentation.signup.fonts
+import com.example.wavex.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
 
 @Composable
@@ -69,6 +72,7 @@ fun ForgotPasswordScreen(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val snackBarHostState = remember { SnackbarHostState() }
+    val (backInteraction, backScale) = pressScale()
 
     LaunchedEffect(
         uiState.successMessage,
@@ -163,14 +167,24 @@ fun ForgotPasswordScreen(
                         color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
                         shape = RoundedCornerShape(20.dp)
                     )
-                    .clickable { activity?.finish() },
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = ripple(
+                            bounded = true,
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                        )
+                    ) { activity?.finish() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_icon),
-                    contentDescription = "add Icon",
+                    contentDescription = "Back Icon",
                     tint = colorResource(R.color.primary_text_color),
                     modifier = Modifier.size(20.dp)
+                        .graphicsLayer {
+                            scaleX = backScale
+                            scaleY = backScale
+                        }
                 )
             }
 

@@ -1,7 +1,14 @@
-package com.example.wavex.shareComponent
+package com.example.wavex.uiComponent
 
 import android.content.ClipData
 import android.content.Intent
+import android.graphics.BlurMaskFilter
+import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,15 +37,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -51,6 +66,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.core.util.CryptoUtils
@@ -64,13 +80,13 @@ import com.example.wavex.pressScale
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
-data class ShareArtistItem(
+data class ShareAlbumPlaylistItem(
     val id: String,
-    val name: String,
-    val followerCount: String,
-    val fanCount: String,
-    val isVerified: Boolean,
-    val topSongs: List<SongItem> = emptyList(),
+    val title: String,
+    val artists: String,
+    val songs: List<SongItem> = emptyList(),
+    val songCount: String,
+    val totalDuration: String,
     val image: String?,
     val type: ShareType,
     val source: String
@@ -78,8 +94,8 @@ data class ShareArtistItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShareArtist(
-    artist: ShareArtistItem,
+fun ShareAlbum_Playlist(
+    album: ShareAlbumPlaylistItem,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -88,6 +104,7 @@ fun ShareArtist(
     )
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     val (copyLinkInteraction, copyLinkScale) = pressScale()
     val (whatsAppInteraction, whatsAppScale) = pressScale()
@@ -95,8 +112,24 @@ fun ShareArtist(
     val (moreInteraction, moreScale) = pressScale()
 
     val clipboardManager = LocalClipboard.current
+    val startAnimation = remember { mutableStateOf(false) }
+
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (startAnimation.value) 0.6f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowAlpha"
+    )
+
+    val shadowBlur by animateFloatAsState(
+        targetValue = if (startAnimation.value) 30f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "shadowBlur"
+    )
+
+    var shadowColor by remember { mutableStateOf(Color(0xFFF6F6F6)) }
 
     LaunchedEffect(Unit) {
+        startAnimation.value = true
         sheetState.expand()
     }
 
@@ -113,7 +146,8 @@ fun ShareArtist(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
@@ -133,33 +167,59 @@ fun ShareArtist(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(artist.image?.takeIf { it.isNotBlank() })
-                                .allowHardware(false)
-                                .build(),
-                            contentDescription = null,
-                            placeholder = painterResource(R.drawable.default_artist),
-                            error = painterResource(R.drawable.default_artist),
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(album.image?.takeIf { it.isNotBlank() })
+                            .allowHardware(false)
+                            .build(),
+                        contentDescription = null,
+                        placeholder = painterResource(R.drawable.default_image),
+                        error = painterResource(R.drawable.default_image),
+                        onSuccess = { result ->
+                            val drawable = result.result.drawable
+                            val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@AsyncImage
 
-                        if (artist.isVerified) {
-                            Icon(
-                                painter = painterResource(R.drawable.verified_icon),
-                                contentDescription = "Verified Icon",
-                                tint = Color.Unspecified,
-                                modifier = Modifier
-                                    .padding(end = 6.dp, bottom = 4.dp)
-                                    .align(Alignment.BottomEnd)
-                                    .size(26.dp)
-                            )
-                        }
-                    }
+                            Palette.from(bitmap).generate { palette ->
+                                palette?.dominantSwatch?.rgb?.let { colorInt ->
+                                    shadowColor = Color(colorInt)
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .size(100.dp)
+                            .drawBehind {
+                                val safeBlur = shadowBlur.coerceAtLeast(0.1f)
+                                val cornerRadius = 18.dp.toPx()
+
+                                drawIntoCanvas { canvas ->
+                                    val frameworkPaint = Paint().apply {
+                                        isAntiAlias = true
+                                        color = shadowColor.copy(alpha = shadowAlpha).toArgb()
+
+                                        maskFilter = if (shadowBlur > 0f) {
+                                            BlurMaskFilter(
+                                                safeBlur,
+                                                BlurMaskFilter.Blur.NORMAL
+                                            )
+                                        } else {
+                                            null
+                                        }
+                                    }
+
+                                    canvas.nativeCanvas.drawRoundRect(
+                                        0f,
+                                        0f,
+                                        size.width,
+                                        size.height,
+                                        cornerRadius,
+                                        cornerRadius,
+                                        frameworkPaint
+                                    )
+                                }
+                            }
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
 
                     Spacer(modifier = Modifier.width(18.dp))
 
@@ -167,16 +227,16 @@ fun ShareArtist(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = htmlToText(artist.name)
+                            text = htmlToText(album.title)
                                 .takeIf { it.isNotBlank() }
                                 ?: "Unknown Title",
-                            maxLines = 1,
-                            fontSize = 19.sp,
+                            maxLines = 2,
+                            fontSize = 18.sp,
                             fontFamily = fonts,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontStyle = FontStyle.Normal,
                             color = colorResource(R.color.primary_text_color),
-                            lineHeight = 22.sp
+                            lineHeight = 24.sp
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -186,19 +246,20 @@ fun ShareArtist(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.followers_icon),
-                                contentDescription = "Followers Icon",
+                                painter = painterResource(R.drawable.mic_icon),
+                                contentDescription = "Artist Icon",
                                 tint = colorResource(R.color.secondary_text_color),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
 
                             Spacer(modifier = Modifier.width(4.dp))
 
                             Text(
-                                text = "Followers : ${artist.followerCount}",
-                                fontSize = 13.sp,
+                                text = "Artists • ${htmlToText(album.artists).takeIf { it.isNotBlank() }
+                                    ?: "Unknown Title"}",
+                                fontSize = 12.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -209,23 +270,41 @@ fun ShareArtist(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.headset_icon),
-                                contentDescription = "Headset Icon",
-                                tint = colorResource(R.color.secondary_text_color),
-                                modifier = Modifier.size(18.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
 
                             Text(
-                                text = "Listeners : ${artist.fanCount}",
-                                fontSize = 13.sp,
+                                text = "${album.songCount.takeIf { it.isNotBlank() }
+                                    ?: "0"} Tracks",
+                                fontSize = 12.sp,
                                 fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
+                                fontStyle = FontStyle.Normal,
+                                color = colorResource(R.color.secondary_text_color),
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp)
+                                    .width(1.8.dp)
+                                    .height(10.dp)
+                                    .background(
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                            )
+
+                            Spacer(modifier = Modifier.width(3.dp))
+
+                            Text(
+                                text = album.totalDuration.takeIf { it.isNotBlank() }
+                                    ?: "0",
+                                fontSize = 12.sp,
+                                fontFamily = fonts,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 lineHeight = 16.sp,
@@ -242,56 +321,16 @@ fun ShareArtist(
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = colorResource(R.color.primary_text_color).copy(alpha = 0.90f)
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = 0.08f)
                     )
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 2.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                modifier = Modifier.weight(1f),
-                                text = "TOP TRACKS",
-                                color = colorResource(R.color.secondary_text_color),
-                                fontSize = 12.sp,
-                                lineHeight = 14.sp,
-                                fontFamily = fonts,
-                                letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Medium,
-                                fontStyle = FontStyle.Normal,
-                            )
-
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_up),
-                                contentDescription = "Arrow Icon",
-                                tint = colorResource(R.color.theme_color),
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(2.dp))
-
-                            Text(
-                                text = "TRENDING",
-                                color = colorResource(R.color.theme_color),
-                                fontSize = 12.sp,
-                                lineHeight = 14.sp,
-                                fontFamily = fonts,
-                                letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Medium,
-                                fontStyle = FontStyle.Normal,
-                            )
-                        }
-
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.7f),
-                        )
-
-                        artist.topSongs.take(3).forEachIndexed { index, song ->
+                        album.songs.take(3).forEachIndexed { index, song ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -338,7 +377,7 @@ fun ShareArtist(
                                 )
                             }
 
-                            if (index != artist.topSongs.take(3).lastIndex) {
+                            if (index != album.songs.take(3).lastIndex) {
                                 HorizontalDivider(
                                     thickness = 1.dp,
                                     color = colorResource(R.color.secondary_text_color).copy(alpha = 0.7f),
@@ -346,7 +385,7 @@ fun ShareArtist(
                             }
                         }
 
-                        if (artist.topSongs.size > 3) {
+                        if (album.songs.size > 3) {
                             HorizontalDivider(
                                 thickness = 1.dp,
                                 color = colorResource(R.color.secondary_text_color).copy(alpha = 0.7f),
@@ -359,13 +398,13 @@ fun ShareArtist(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "+ ${artist.topSongs.size - 3} MORE",
+                                    text = "+ ${album.songs.size - 3} MORE",
                                     color = colorResource(R.color.secondary_text_color),
                                     fontSize = 12.sp,
                                     fontFamily = fonts,
                                     fontStyle = FontStyle.Normal,
                                     letterSpacing = 2.sp,
-                                    fontWeight = FontWeight.Normal
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
@@ -378,6 +417,10 @@ fun ShareArtist(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
+                        .graphicsLayer(
+                            scaleX = copyLinkScale,
+                            scaleY = copyLinkScale
+                        )
                         .background(
                             color = colorResource(R.color.theme_color),
                             shape = RoundedCornerShape(18.dp)
@@ -387,7 +430,7 @@ fun ShareArtist(
                             indication = null
                         ) {
                             scope.launch {
-                                val link = generateShareLink(artist)
+                                val link = generateShareLink(album)
 
                                 val clipData = ClipData.newPlainText("link", link)
                                 val clipEntry = ClipEntry(clipData)
@@ -396,17 +439,13 @@ fun ShareArtist(
 
                                 snackBarHostState.showSnackbar("Link copied")
                             }
-                        }
-                        .graphicsLayer(
-                            scaleX = copyLinkScale,
-                            scaleY = copyLinkScale
-                        ),
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         modifier = Modifier
                             .padding(horizontal = 18.dp),
-                        text = "Copy Artist Link",
+                        text = if (album.type == ShareType.ALBUM) "Copy Album Link" else "Copy Playlist Link",
                         fontSize = 14.sp,
                         fontFamily = fonts,
                         fontWeight = FontWeight.Bold,
@@ -456,7 +495,7 @@ fun ShareArtist(
                             ),
                         interactionSource = whatsAppInteraction,
                         onClick = {
-                            val link = generateShareLink(artist)
+                            val link = generateShareLink(album)
 
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 this.type = "text/plain"
@@ -486,7 +525,7 @@ fun ShareArtist(
                             ),
                         interactionSource = messageInteraction,
                         onClick = {
-                            val link = generateShareLink(artist)
+                            val link = generateShareLink(album)
 
                             val intent = Intent(Intent.ACTION_SENDTO).apply {
                                 data = "smsto:".toUri()
@@ -506,7 +545,7 @@ fun ShareArtist(
                             interactionSource = moreInteraction,
                             indication = null
                         ) {
-                            val link = generateShareLink(artist)
+                            val link = generateShareLink(album)
 
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 this.type = "text/plain"
@@ -552,8 +591,6 @@ fun ShareArtist(
 
                 Spacer(modifier = Modifier.height(15.dp))
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             SnackbarHost(
                 hostState = snackBarHostState,
@@ -603,7 +640,7 @@ fun ShareArtist(
     }
 }
 
-private fun generateShareLink(item: ShareArtistItem): String {
+private fun generateShareLink(item: ShareAlbumPlaylistItem): String {
     val payload = when (item.type) {
         ShareType.USERPLAYLIST -> item.id
         else -> "${item.source}|${item.id}"
@@ -633,20 +670,21 @@ private fun generateShareLink(item: ShareArtistItem): String {
 
 @Composable
 @Preview(showSystemUi = true)
-private fun ShowShareArtist() {
-    val sampleArtist = ShareArtistItem(
+private fun ShowShareAlbumPlaylist() {
+    val sampleAlbum = ShareAlbumPlaylistItem(
         id = "",
-        name = "",
-        followerCount = "",
-        fanCount = "",
-        isVerified = false,
-        topSongs = emptyList(),
+        title = "",
+        artists = "",
+        songs = emptyList(),
+        songCount = "",
+        totalDuration = "",
         image = "",
-        type = ShareType.ARTIST,
+        type = ShareType.ALBUM,
         source = ""
     )
-    ShareArtist(
-        artist = sampleArtist,
+
+    ShareAlbum_Playlist(
+        album = sampleAlbum,
         onDismiss = {}
     )
 }

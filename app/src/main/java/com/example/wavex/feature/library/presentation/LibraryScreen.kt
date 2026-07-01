@@ -44,6 +44,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -192,7 +193,10 @@ fun LibraryScreen(
                     )
                     .clickable(
                         interactionSource = backInteraction,
-                        indication = null
+                        indication = ripple(
+                            bounded = true,
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                        )
                     ) {
                        onClickBack()
                     },
@@ -227,7 +231,10 @@ fun LibraryScreen(
                     )
                     .clickable(
                         interactionSource = addInteraction,
-                        indication = null
+                        indication = ripple(
+                            bounded = true,
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                        )
                     ) {
                         onOpenSheet(
                             SheetType.CREATE_PLAYLIST
@@ -264,7 +271,10 @@ fun LibraryScreen(
                     )
                     .clickable(
                         interactionSource = spotifyInteraction,
-                        indication = null
+                        indication = ripple(
+                            bounded = true,
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                        )
                     ) {
                         menuExpanded = true
                     },

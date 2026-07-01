@@ -49,6 +49,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,13 +105,15 @@ import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.playlist.model.PlaylistDetailUiState
 import com.example.wavex.feature.player.presentation.PlayerActivityScreen
 import com.example.wavex.pressScale
 import com.example.wavex.feature.search.presentation.SearchSource
-import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
-import com.example.wavex.shareComponent.ShareAlbum_Playlist
+import com.example.wavex.uiComponent.ShareAlbumPlaylistItem
+import com.example.wavex.uiComponent.ShareAlbum_Playlist
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,7 +138,9 @@ fun PlaylistScreen(
         playlistID: String, playlistName: String,
         imageUrl: String, source: String, onResult: (String) -> Unit
     ) -> Unit,
-    isFavourite: Boolean
+    isFavourite: Boolean,
+    libraryPlaylists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, onResult: (Boolean, String) -> Unit) -> Unit
 )  {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -244,7 +249,10 @@ fun PlaylistScreen(
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
-                                    indication = null
+                                    indication = ripple(
+                                        bounded = true,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    )
                                 ) {
                                     activity?.finish()
                                 },
@@ -280,7 +288,10 @@ fun PlaylistScreen(
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
-                                        indication = null
+                                        indication = ripple(
+                                            bounded = true,
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        )
                                     ) {
                                         showShareSheet = true
                                     },
@@ -310,7 +321,10 @@ fun PlaylistScreen(
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = heartInteraction,
-                                        indication = null
+                                        indication = ripple(
+                                            bounded = true,
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        )
                                     ) {
                                         onToggleFavourite(
                                             playlistId ?: "", playlists.name,
@@ -1208,7 +1222,7 @@ fun PlaylistScreen(
                 val isFavourite = likedSongs.contains(song.id)
                 val isDownloaded = downloadedIds.contains(song.id)
 
-                SongOptionsBottomSheet(
+                SongBottomSheet(
                     song = song,
                     isPlaying = isPlaying,
                     isCurrentSong = currentSong?.id == song.id,
@@ -1301,6 +1315,10 @@ fun PlaylistScreen(
                                 ContextCompat.startForegroundService(context, intent)
                             }
                         }
+                    },
+                    playlists = libraryPlaylists,
+                    onAddSongToPlaylist = { playlistID, song, onResult ->
+                        onAddSongToPlaylist(playlistID, song, onResult)
                     }
                 )
             }
@@ -1420,7 +1438,9 @@ private fun PlaylistScreenPreview() {
             onToggleLike = {},
             onCheckFavourite = {},
             onToggleFavourite = { _,_,_,_,_ -> },
-            isFavourite = true
+            isFavourite = true,
+            libraryPlaylists = LibraryUiState(),
+            onAddSongToPlaylist = { _,_,_ -> }
         )
     }
 }

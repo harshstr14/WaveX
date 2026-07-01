@@ -51,6 +51,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -92,22 +93,23 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
+import com.example.wavex.core.model.AudioStreamQualityPreference
 import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.service.MusicPlayerService
 import com.example.wavex.core.service.ParallelDownloader
 import com.example.wavex.core.service.ServiceLocator
+import com.example.wavex.core.util.DownloadQualitySelector
 import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
+import com.example.wavex.feature.library.model.LibraryUiState
+import com.example.wavex.feature.profile.presentation.settings.presentation.IOSStyleBottomDialog
 import com.example.wavex.feature.profile.presentation.songs.model.FavouriteSongsUiState
 import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.pressScale
-import com.example.wavex.core.model.AudioStreamQualityPreference
-import com.example.wavex.core.util.DownloadQualitySelector
-import com.example.wavex.feature.profile.presentation.settings.presentation.IOSStyleBottomDialog
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -120,7 +122,9 @@ fun FavouriteSongsScreen(
     onRemoveSong: (String, onResult: (Boolean, String) -> Unit) -> Unit,
     downloadedIds: Set<String>,
     onToggleLike: (SongItem) -> Unit,
-    likedSongs: Set<String>
+    likedSongs: Set<String>,
+    playlists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, onResult: (Boolean, String) -> Unit) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -185,7 +189,10 @@ fun FavouriteSongsScreen(
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
                                 interactionSource = backInteraction,
-                                indication = null
+                                indication = ripple(
+                                    bounded = true,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                )
                             ) {
                                 activity?.finish()
                             },
@@ -229,7 +236,10 @@ fun FavouriteSongsScreen(
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = deleteInteraction,
-                                    indication = null
+                                    indication = ripple(
+                                        bounded = true,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    )
                                 ) {
                                     if (songs.songs.isEmpty()) {
                                         scope.launch {
@@ -741,7 +751,7 @@ fun FavouriteSongsScreen(
                             val isFavourite = likedSongs.contains(song.id)
                             val isDownloaded = downloadedIds.contains(song.id)
 
-                            SongOptionsBottomSheet(
+                            SongBottomSheet(
                                 song = song,
                                 isPlaying = isPlaying,
                                 isCurrentSong = currentSong?.id == song.id,
@@ -834,6 +844,10 @@ fun FavouriteSongsScreen(
                                             ContextCompat.startForegroundService(context, intent)
                                         }
                                     }
+                                },
+                                playlists = playlists,
+                                onAddSongToPlaylist = { playlistID, song, onResult ->
+                                    onAddSongToPlaylist(playlistID, song, onResult)
                                 }
                             )
                         }
@@ -934,10 +948,12 @@ private fun FavouriteSongsScreenPreview() {
             songs = FavouriteSongsUiState(),
             onDeleteSongs = {},
             onDeleteSong = {},
+            onRemoveSong = { _,_ -> },
+            downloadedIds = setOf(),
             onToggleLike = {},
             likedSongs = setOf(),
-            downloadedIds = setOf(),
-            onRemoveSong = { _,_ -> }
+            playlists = LibraryUiState(),
+            onAddSongToPlaylist = { _, _, _ -> }
         )
     }
 }

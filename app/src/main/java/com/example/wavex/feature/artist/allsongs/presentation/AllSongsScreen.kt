@@ -44,6 +44,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,10 +95,11 @@ import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.player.presentation.PlayerActivityScreen
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
 import com.example.wavex.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +113,9 @@ fun AllSongsScreen(
     likedSongs: Set<String>,
     onToggleLike: (SongItem) -> Unit,
     songs: AllSongsUiState,
-    isLoading: Boolean
+    isLoading: Boolean,
+    playlists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, (Boolean, String) -> Unit) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -181,7 +185,10 @@ fun AllSongsScreen(
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
                                 interactionSource = backInteraction,
-                                indication = null
+                                indication = ripple(
+                                    bounded = true,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                )
                             ) {
                                 activity?.finish()
                             },
@@ -604,7 +611,7 @@ fun AllSongsScreen(
                             val isFavourite = likedSongs.contains(song.id)
                             val isDownloaded = downloadedIds.contains(song.id)
 
-                            SongOptionsBottomSheet(
+                            SongBottomSheet(
                                 song = song,
                                 isPlaying = isPlaying,
                                 isCurrentSong = currentSong?.id == song.id,
@@ -697,6 +704,10 @@ fun AllSongsScreen(
                                             ContextCompat.startForegroundService(context, intent)
                                         }
                                     }
+                                },
+                                playlists = playlists,
+                                onAddSongToPlaylist = { playlistID, song, onResult ->
+                                    onAddSongToPlaylist(playlistID, song, onResult)
                                 }
                             )
                         }
@@ -851,14 +862,16 @@ private fun AllSongsScreenPreview() {
     WaveXTheme {
         AllSongsScreen(
             artistId = "",
+            onFetchSongs = { _,_ ->},
+            onLoadNextPage = {},
+            onDeleteSong = {},
+            downloadedIds = setOf(),
+            likedSongs = setOf(),
+            onToggleLike = {},
             songs = AllSongsUiState(),
             isLoading = false,
-            onDeleteSong = {},
-            onToggleLike = {},
-            onLoadNextPage = {},
-            onFetchSongs = { _,_ ->},
-            likedSongs = setOf(),
-            downloadedIds = setOf()
+            playlists = LibraryUiState(),
+            onAddSongToPlaylist = { _,_,_ -> }
         )
     }
 }

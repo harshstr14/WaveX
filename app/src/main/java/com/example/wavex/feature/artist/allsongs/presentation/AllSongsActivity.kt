@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.wavex.core.shared.LikedSongsViewModel
+import com.example.wavex.feature.library.presentation.LibraryViewModel
 import com.example.wavex.feature.profile.presentation.downloads.presentation.DownloadViewModel
 import com.example.wavex.ui.theme.WaveXTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -18,6 +19,7 @@ class AllSongsActivity : ComponentActivity() {
     private val downloadViewModel: DownloadViewModel by viewModels()
     private val likedSongsViewModel: LikedSongsViewModel by viewModels()
     private val allSongsViewModel: AllSongsViewModel by viewModels()
+    private val libraryViewModel: LibraryViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +57,14 @@ class AllSongsActivity : ComponentActivity() {
                     likedSongs = likedSongsViewModel.likedSongs.collectAsState().value,
                     onToggleLike = { song ->
                         likedSongsViewModel.toggleLike(song)
+                    },
+                    playlists = libraryViewModel.playlists.collectAsStateWithLifecycle().value,
+                    onAddSongToPlaylist = { playlistID, song, onResult ->
+                        libraryViewModel.addSongToPlaylist(
+                            playlistId = playlistID,
+                            song = song,
+                            onResult = onResult
+                        )
                     }
                 )
             }

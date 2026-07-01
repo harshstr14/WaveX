@@ -140,7 +140,6 @@ import com.example.wavex.feature.library.sheets.presentation.PlaylistEditorViewM
 import com.example.wavex.feature.library.sheets.presentation.RenamePlaylistBottomSheet
 import com.example.wavex.feature.player.presentation.PlayerActivityScreen
 import com.example.wavex.feature.playlist.presentation.PlaylistActivity
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
 import com.example.wavex.feature.profile.presentation.ProfileViewModel
 import com.example.wavex.feature.profile.presentation.downloads.presentation.DownloadViewModel
 import com.example.wavex.feature.search.presentation.SearchAlbumsViewModel
@@ -152,6 +151,7 @@ import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -314,7 +314,7 @@ fun Main_Screen(
     searchAlbumsViewModel: SearchAlbumsViewModel = viewModel(),
     searchSongsViewModel: SearchSongsViewModel = viewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
-    homeViewModel: HomeViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -672,7 +672,15 @@ fun Main_Screen(
                     uiSate = discoverViewModel.uiState.collectAsStateWithLifecycle().value,
                     downloadedIds = downloadedIds,
                     snackBarHostState = snackBarHostState,
-                    showSheet = showSheet
+                    showSheet = showSheet,
+                    playlists = libraryViewModel.playlists.collectAsStateWithLifecycle().value,
+                    onAddSongToPlaylist = { playlistID, song, onResult ->
+                        libraryViewModel.addSongToPlaylist(
+                            playlistId = playlistID,
+                            song = song,
+                            onResult = onResult
+                        )
+                    }
                 )
             }
 
@@ -746,6 +754,14 @@ fun Main_Screen(
                     },
                     onPlaylistsIdeal = {
                         searchPlaylistsViewModel.setIdle()
+                    },
+                    libraryPlaylists = libraryViewModel.playlists.collectAsStateWithLifecycle().value,
+                    onAddSongToPlaylist = { playlistID, song, onResult ->
+                        libraryViewModel.addSongToPlaylist(
+                            playlistId = playlistID,
+                            song = song,
+                            onResult = onResult
+                        )
                     }
                 )
             }
@@ -903,7 +919,7 @@ fun Main_Screen(
         val isFavourite = likedSongs.contains(song.id)
         val isDownloaded = downloadedIds.contains(song.id)
 
-        SongOptionsBottomSheet(
+        SongBottomSheet(
             song = song,
             isPlaying = isPlaying,
             isCurrentSong = currentSong?.id == song.id,
@@ -994,6 +1010,14 @@ fun Main_Screen(
                         ContextCompat.startForegroundService(context, intent)
                     }
                 }
+            },
+            playlists = libraryViewModel.playlists.collectAsStateWithLifecycle().value,
+            onAddSongToPlaylist = { playlistID, song, onResult ->
+                libraryViewModel.addSongToPlaylist(
+                    playlistId = playlistID,
+                    song = song,
+                    onResult = onResult
+                )
             }
         )
     }

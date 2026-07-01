@@ -66,6 +66,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -119,26 +120,27 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.wavex.R
 import com.example.wavex.core.model.Artists
+import com.example.wavex.core.model.AudioStreamQualityPreference
 import com.example.wavex.core.model.DataItem
 import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.service.MusicPlayerService
 import com.example.wavex.core.service.ParallelDownloader
 import com.example.wavex.core.service.ServiceLocator
+import com.example.wavex.core.util.DownloadQualitySelector
 import com.example.wavex.feature.album.presentation.AlbumActivity
 import com.example.wavex.feature.artist.presentation.ArtistActivity
 import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.playlist.presentation.PlaylistActivity
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
 import com.example.wavex.feature.search.model.SearchAlbumsUiState
 import com.example.wavex.feature.search.model.SearchArtistsUiState
 import com.example.wavex.feature.search.model.SearchPlaylistUiState
 import com.example.wavex.feature.search.model.SearchSongsUiState
 import com.example.wavex.pressScale
-import com.example.wavex.core.model.AudioStreamQualityPreference
-import com.example.wavex.core.util.DownloadQualitySelector
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -186,7 +188,9 @@ fun SearchScreen(
     onSearchPlaylists: (String) -> Unit,
     onSearchYTPlaylists: (String) -> Unit,
     onPlaylistsClearResult: () -> Unit,
-    onPlaylistsIdeal: () -> Unit
+    onPlaylistsIdeal: () -> Unit,
+    libraryPlaylists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, onResult: (Boolean, String) -> Unit) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
@@ -258,7 +262,10 @@ fun SearchScreen(
                     shape = RoundedCornerShape(20.dp)
                 ).clickable(
                     interactionSource = backInteraction,
-                    indication = null
+                    indication = ripple(
+                        bounded = true,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                    )
                 ) {
                     onClickBack()
                 },
@@ -405,7 +412,7 @@ fun SearchScreen(
         val isFavourite = likedSongs.contains(song.id)
         val isDownloaded = downloadedIds.contains(song.id)
 
-        SongOptionsBottomSheet(
+        SongBottomSheet(
             song = song,
             isPlaying = isPlaying,
             isCurrentSong = currentSong?.id == song.id,
@@ -499,6 +506,10 @@ fun SearchScreen(
                         ContextCompat.startForegroundService(context, intent)
                     }
                 }
+            },
+            playlists = libraryPlaylists,
+            onAddSongToPlaylist = { playlistID, song, onResult ->
+                onAddSongToPlaylist(playlistID, song, onResult)
             }
         )
     }
@@ -2151,13 +2162,13 @@ private fun LoadingEffect() {
 @Composable
 private fun SearchScreenPreview() {
     SearchScreen(
-        onClickBack = {},
-        onToggleLike = {},
-        onDeleteSong = {},
-        likedSongs = setOf(),
-        downloadedIds = setOf(),
         snackBarHostState = SnackbarHostState(),
         showSheet = false,
+        onClickBack = {},
+        onToggleLike = {},
+        likedSongs = setOf(),
+        downloadedIds = setOf(),
+        onDeleteSong = {},
         artists = emptyList(),
         artistsUiSate = SearchArtistsUiState.Idle,
         onSearchArtists = {},
@@ -2170,17 +2181,19 @@ private fun SearchScreenPreview() {
         onSearchYTSongs = {},
         onSongsClearResult = {},
         onSongsIdeal = {},
+        albums = emptyList(),
+        albumUiState = SearchAlbumsUiState.Idle,
+        onSearchAlbums = {},
+        onSearchYTAlbums = {},
+        onAlbumsClearResult = {},
+        onAlbumsIdeal = {},
         playlists = emptyList(),
         playlistsUiState = SearchPlaylistUiState.Idle,
         onSearchPlaylists = {},
         onSearchYTPlaylists = {},
         onPlaylistsClearResult = {},
         onPlaylistsIdeal = {},
-        albums = emptyList(),
-        albumUiState = SearchAlbumsUiState.Idle,
-        onSearchAlbums = {},
-        onSearchYTAlbums = {},
-        onAlbumsClearResult = {},
-        onAlbumsIdeal = {}
+        libraryPlaylists = LibraryUiState(),
+        onAddSongToPlaylist = { _,_,_ -> }
     )
 }

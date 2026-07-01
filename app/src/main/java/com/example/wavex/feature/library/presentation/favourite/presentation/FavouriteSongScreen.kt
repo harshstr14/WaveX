@@ -50,6 +50,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -105,15 +106,16 @@ import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.library.presentation.favourite.model.FavouriteSongUiState
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
-import com.example.wavex.feature.playlist.presentation.formatTotalDuration
 import com.example.wavex.feature.player.presentation.PlayerActivityScreen
-import com.example.wavex.pressScale
+import com.example.wavex.feature.playlist.presentation.formatTotalDuration
 import com.example.wavex.feature.search.presentation.SearchSource
-import com.example.wavex.shareComponent.ShareAlbumPlaylistItem
-import com.example.wavex.shareComponent.ShareAlbum_Playlist
+import com.example.wavex.pressScale
+import com.example.wavex.uiComponent.ShareAlbumPlaylistItem
+import com.example.wavex.uiComponent.ShareAlbum_Playlist
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -127,6 +129,8 @@ fun FavouriteSongScreen(
     totalDuration: Int,
     onRemoveSong: (String, onResult: (Boolean, String) -> Unit) -> Unit,
     uiState: FavouriteSongUiState,
+    playlists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, onResult: (Boolean, String) -> Unit) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -210,7 +214,10 @@ fun FavouriteSongScreen(
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
-                                    indication = null
+                                    indication = ripple(
+                                        bounded = true,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    )
                                 ) {
                                     activity?.finish()
                                 },
@@ -246,7 +253,10 @@ fun FavouriteSongScreen(
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
-                                        indication = null
+                                        indication = ripple(
+                                            bounded = true,
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        )
                                     ) {
                                         showShareSheet = true
                                     },
@@ -1044,7 +1054,7 @@ fun FavouriteSongScreen(
                 val isFavourite = likedSongs.contains(song.id)
                 val isDownloaded = downloadedIds.contains(song.id)
 
-                SongOptionsBottomSheet(
+                SongBottomSheet(
                     song = song,
                     isPlaying = isPlaying,
                     isCurrentSong = currentSong?.id == song.id,
@@ -1137,6 +1147,10 @@ fun FavouriteSongScreen(
                                 ContextCompat.startForegroundService(context, intent)
                             }
                         }
+                    },
+                    playlists = playlists,
+                    onAddSongToPlaylist = { playlistID, song, onResult ->
+                        onAddSongToPlaylist(playlistID, song, onResult)
                     }
                 )
             }
@@ -1230,13 +1244,15 @@ private fun ErrorState(message: String) {
 private fun FavouriteSongScreenPreview() {
     WaveXTheme {
         FavouriteSongScreen(
-            uiState = FavouriteSongUiState(),
-            onRemoveSong = { _,_ -> },
             onDeleteSong = {},
-            onToggleLike = {},
-            likedSongs = setOf(),
             downloadedIds = setOf(),
-            totalDuration = 0
+            likedSongs = setOf(),
+            onToggleLike = {},
+            totalDuration = 0,
+            onRemoveSong = { _,_ -> },
+            uiState = FavouriteSongUiState(),
+            playlists = LibraryUiState(),
+            onAddSongToPlaylist = { _,_,_ -> }
         )
     }
 }

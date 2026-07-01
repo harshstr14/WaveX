@@ -69,6 +69,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -138,13 +139,14 @@ import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.PlayerManager
 import com.example.wavex.feature.home.presentation.formatDuration
 import com.example.wavex.feature.home.presentation.htmlToText
+import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.player.model.PlayerUiState
-import com.example.wavex.feature.playlist.presentation.SongOptionsBottomSheet
 import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.pressScale
-import com.example.wavex.shareComponent.ShareSong
-import com.example.wavex.shareComponent.ShareSongItem
+import com.example.wavex.uiComponent.ShareSong
+import com.example.wavex.uiComponent.ShareSongItem
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -159,7 +161,9 @@ fun PlayerScreen(
     onToggleLike: (SongItem) -> Unit,
     likedSongs: Set<String>,
     onLoadWaveForm: (String) -> Unit,
-    uiState: PlayerUiState
+    uiState: PlayerUiState,
+    playlists: LibraryUiState,
+    onAddSongToPlaylist: (String, SongItem, onResult: (Boolean, String) -> Unit) -> Unit
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -403,7 +407,10 @@ fun PlayerScreen(
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
-                                    indication = null
+                                    indication = ripple(
+                                        bounded = true,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    )
                                 ) {
                                     activity?.finish()
                                 },
@@ -441,7 +448,10 @@ fun PlayerScreen(
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
-                                        indication = null
+                                        indication = ripple(
+                                            bounded = true,
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        )
                                     ) {
                                         showShareSheet = true
                                     },
@@ -997,7 +1007,7 @@ fun PlayerScreen(
                     val isFavourite = likedSongs.contains(song.id)
                     val isDownloaded = downloadedIds.contains(song.id)
 
-                    SongOptionsBottomSheet(
+                    SongBottomSheet(
                         song = song,
                         isPlaying = isPlaying,
                         isCurrentSong = currentSong?.id == song.id,
@@ -1090,6 +1100,10 @@ fun PlayerScreen(
                                     ContextCompat.startForegroundService(context, intent)
                                 }
                             }
+                        },
+                        playlists = playlists,
+                        onAddSongToPlaylist = { playlistID, song, onResult ->
+                            onAddSongToPlaylist(playlistID, song , onResult)
                         }
                     )
                 }
@@ -1744,11 +1758,13 @@ private fun PlayerScreenPreview() {
     WaveXTheme {
         PlayerScreen(
             downloadedIds = setOf(),
-            likedSongs = setOf(),
             onDeleteSong = {},
             onToggleLike = {},
+            likedSongs = setOf(),
             onLoadWaveForm = {},
-            uiState = PlayerUiState()
+            uiState = PlayerUiState(),
+            playlists = LibraryUiState(),
+            onAddSongToPlaylist = { _,_,_ -> }
         )
     }
 }
