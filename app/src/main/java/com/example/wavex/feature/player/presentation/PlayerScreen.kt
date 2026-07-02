@@ -405,7 +405,8 @@ fun PlayerScreen(
                                     width = 1.dp,
                                     color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                     shape = RoundedCornerShape(20.dp)
-                                ).clickable(
+                                )
+                                .clickable(
                                     interactionSource = backInteraction,
                                     indication = ripple(
                                         bounded = true,

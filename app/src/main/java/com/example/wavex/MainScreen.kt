@@ -11,8 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -21,13 +19,12 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -40,7 +37,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,15 +63,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -93,11 +84,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
@@ -148,9 +137,9 @@ import com.example.wavex.feature.search.presentation.SearchPlaylistsViewModel
 import com.example.wavex.feature.search.presentation.SearchScreen
 import com.example.wavex.feature.search.presentation.SearchSongsViewModel
 import com.example.wavex.feature.search.presentation.SearchSource
-import com.example.wavex.navigation.BottomItem
 import com.example.wavex.navigation.BottomNavRoute
 import com.example.wavex.ui.theme.WaveXTheme
+import com.example.wavex.uiComponent.BottomNavBar
 import com.example.wavex.uiComponent.SongBottomSheet
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -659,7 +648,7 @@ fun Main_Screen(
                 )
             }
 
-            composable(BottomNavRoute.Discover.route) {
+            composable(BottomNavRoute.Browse.route) {
                 DiscoverScreen(
                     onClickBack = {
                         navController.popBackStack()
@@ -1051,30 +1040,6 @@ fun MiniPlayer(
         label = "ShareScale"
     )
 
-    val shadowColorButton by animateColorAsState(
-        targetValue = if (isPlaying) Color(0xFF34A853) else colorResource(R.color.primary_text_color),
-        animationSpec = tween(500),
-        label = "shadowColor"
-    )
-
-    val shadowScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.2f else 1.2f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
-        label = "shadowScale"
-    )
-
-    val shadowBlur by animateFloatAsState(
-        targetValue = if (isPlaying) 55f else 55f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
-        label = "shadowBlur"
-    )
-
-    val shadowAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.8f else 0.8f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
-        label = "shadowAlpha"
-    )
-
     val composition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(R.raw.loading_animation)
     )
@@ -1166,110 +1131,97 @@ fun MiniPlayer(
 
             Box(
                 modifier = Modifier
+                    .size(36.dp)
                     .align(Alignment.CenterVertically)
-                    .size(46.dp)
-                    .drawBehind {
-                        val glowRadius = (size.minDimension / 3f) * shadowScale
-                        val safeBlur = shadowBlur.coerceAtLeast(0.1f)
-
-                        drawIntoCanvas { canvas ->
-                            val frameworkPaint = android.graphics.Paint().apply {
-                                isAntiAlias = true
-                                color = shadowColorButton.copy(alpha = shadowAlpha).toArgb()
-
-                                maskFilter = if (shadowBlur > 0f) {
-                                    android.graphics.BlurMaskFilter(
-                                        safeBlur,
-                                        android.graphics.BlurMaskFilter.Blur.NORMAL
-                                    )
-                                } else {
-                                    null
-                                }
-                            }
-
-                            canvas.nativeCanvas.drawCircle(
-                                center.x,
-                                center.y,
-                                glowRadius,
-                                frameworkPaint
-                            )
-                        }                    }
-                , contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(80.dp))
+                    .background(
+                        if (isPlaying) colorResource(R.color.theme_color)
+                        else colorResource(R.color.off_white).copy(alpha = 0.08f)
+                    )
+                    .border(
+                        width = 0.90.dp,
+                        color = colorResource(R.color.off_white).copy(alpha = 0.10f),
+                        shape = RoundedCornerShape(80.dp)
+                    )
+                    .clickable(
+                        interactionSource = playInteractionSource,
+                        indication = null
+                    ) {
+                        onPlayPause()
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(80.dp))
-                        .background(
-                            if (isPlaying) colorResource(R.color.theme_color)
-                            else colorResource(R.color.primary_text_color)
-                        )
-                        .clickable(
-                            interactionSource = playInteractionSource,
-                            indication = null
-                        ) {
-                            onPlayPause()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isBuffering) {
-                        Box(
+                if (isBuffering) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RectangleShape)
+                    ) {
+                        LottieAnimation(
+                            composition = composition,
+                            iterations = LottieConstants.IterateForever,
                             modifier = Modifier
                                 .size(32.dp)
-                                .clip(RectangleShape)
-                        ) {
-                            LottieAnimation(
-                                composition = composition,
-                                iterations = LottieConstants.IterateForever,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .graphicsLayer {
-                                        scaleX = 2f
-                                        scaleY = 2f
-                                    }
-                            )
-                        }
-                    } else {
-                        Icon(
-                            painter = painterResource(
-                                if (isPlaying) R.drawable.notificationpausebutton
-                                else R.drawable.notificationplaybutton
-                            ),
-                            contentDescription = "Play Icon",
-                            tint = colorResource(R.color.off_white),
-                            modifier = Modifier
-                                .padding(start = if (isPlaying) 0.dp else 1.dp)
-                                .size(18.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    scaleX = 2f
+                                    scaleY = 2f
                                 }
                         )
                     }
+                } else {
+                    Icon(
+                        painter = painterResource(
+                            if (isPlaying) R.drawable.notificationpausebutton
+                            else R.drawable.notificationplaybutton
+                        ),
+                        contentDescription = "Play Icon",
+                        tint = colorResource(R.color.off_white),
+                        modifier = Modifier
+                            .padding(start = if (isPlaying) 0.dp else 1.dp)
+                            .size(18.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Icon(
-                painter = painterResource(R.drawable.add_icon),
-                contentDescription = "Add Icon",
-                tint = colorResource(R.color.off_white),
+            Box(
                 modifier = Modifier
+                    .size(36.dp)
                     .align(Alignment.CenterVertically)
-                    .padding(end = 6.dp)
-                    .size(28.dp)
+                    .clip(RoundedCornerShape(80.dp))
+                    .background(colorResource(R.color.off_white).copy(alpha = 0.08f))
+                    .border(
+                        width = 0.90.dp,
+                        color = colorResource(R.color.off_white).copy(alpha = 0.10f),
+                        shape = RoundedCornerShape(80.dp)
+                    )
                     .clickable(
                         interactionSource = addInteraction,
                         indication = null
                     ) {
                         onAddClick()
-                    }
-                    .graphicsLayer {
-                        scaleX = addScale
-                        scaleY = addScale
-                    }
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.add_icon),
+                    contentDescription = "Add Icon",
+                    tint = colorResource(R.color.off_white),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer {
+                            scaleX = addScale
+                            scaleY = addScale
+                        }
+                )
+            }
+
+            Spacer(modifier = Modifier.width(5.dp))
         }
 
         val animatedProgress = remember { Animatable(0f) }
@@ -1300,138 +1252,6 @@ fun MiniPlayer(
                     .fillMaxWidth(animatedProgress.value)
                     .background(colorResource(R.color.theme_color))
             )
-        }
-    }
-}
-
-@Composable
-private fun BottomNavBar(navController: NavController) {
-    val currentRoute =
-        navController.currentBackStackEntryAsState().value?.destination?.route
-
-    val items = listOf(
-        BottomItem(
-            BottomNavRoute.Home.route,
-            "Home",
-            R.drawable.home_filled,
-            R.drawable.home_outline
-        ),
-        BottomItem(
-            BottomNavRoute.Discover.route,
-            "Discover",
-            R.drawable.discover_filled,
-            R.drawable.discover_outline
-        ),
-        BottomItem(
-            BottomNavRoute.Search.route,
-            "Search",
-            R.drawable.search_filled,
-            R.drawable.search_outline
-        ),
-        BottomItem(
-            BottomNavRoute.Library.route,
-            "Library",
-            R.drawable.library_filled,
-            R.drawable.library_outline
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
-            .navigationBarsPadding().height(68.dp)
-            .shadow(
-                elevation = 28.dp,
-                shape = RoundedCornerShape(22.dp),
-                ambientColor = Color(0xFF2C2C2C).copy(alpha = 0.2f),
-                spotColor = Color(0xFF2C2C2C).copy(alpha = 0.4f)
-            ).background(
-                color = Color(0xFF2C2C2C),
-                shape = RoundedCornerShape(22.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEach { item ->
-                val selected = currentRoute?.startsWith(item.route) == true
-                val weight by animateFloatAsState(
-                    targetValue = if (selected) 1.6f else 1f,
-                    animationSpec = tween(800),
-                    label = "tabWeight"
-                )
-
-                Row(
-                    modifier = Modifier
-                        .weight(weight)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            brush = if (selected)
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        colorResource(R.color.off_white).copy(alpha = 0.2F),
-                                        colorResource(R.color.off_white).copy(alpha = 0.2F)
-                                    )
-                                )
-                            else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
-                        )
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) {
-                            if (!selected) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.startDestinationId)
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        }
-                        .padding(vertical = 9.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            if (selected) item.filledIcon else item.outlineIcon
-                        ),
-                        contentDescription = item.label,
-                        tint = if (selected) Color(0xFFF6F6F6) else Color(0xFF797979),
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = expandHorizontally(
-                            expandFrom = Alignment.Start,
-                            animationSpec = tween(
-                                durationMillis = 400,
-                                easing = FastOutSlowInEasing
-                            )
-                        ) + fadeIn(),
-                        exit = shrinkHorizontally(
-                            shrinkTowards = Alignment.Start,
-                            animationSpec = tween(
-                                durationMillis = 300,
-                                easing = FastOutSlowInEasing
-                            )
-                        ) + fadeOut()
-                    ) {
-                        Text(
-                            text = item.label,
-                            modifier = Modifier.padding(start = 6.dp),
-                            color = Color(0xFFF6F6F6),
-                            fontSize = 14.sp,
-                            lineHeight = 16.sp,
-                            fontFamily = fonts,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
         }
     }
 }
