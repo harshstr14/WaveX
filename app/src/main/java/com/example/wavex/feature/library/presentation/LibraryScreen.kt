@@ -187,15 +187,15 @@ fun LibraryScreen(
                     .size(36.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .border(
-                        width = 1.5.dp,
-                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        width = 1.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
                         interactionSource = backInteraction,
                         indication = ripple(
                             bounded = true,
-                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                         )
                     ) {
                        onClickBack()
@@ -225,15 +225,15 @@ fun LibraryScreen(
                     .size(36.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .border(
-                        width = 1.5.dp,
-                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        width = 1.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
                         interactionSource = addInteraction,
                         indication = ripple(
                             bounded = true,
-                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                         )
                     ) {
                         onOpenSheet(
@@ -265,15 +265,15 @@ fun LibraryScreen(
                     .size(36.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .border(
-                        width = 1.5.dp,
-                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                        width = 1.dp,
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
                         interactionSource = spotifyInteraction,
                         indication = ripple(
                             bounded = true,
-                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                         )
                     ) {
                         menuExpanded = true
@@ -879,7 +879,7 @@ private fun ErrorState(message: String) {
         Text(
             text = message,
             fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
-            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }

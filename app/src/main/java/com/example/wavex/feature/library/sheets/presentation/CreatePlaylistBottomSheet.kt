@@ -261,7 +261,7 @@ fun CreatePlaylistBottomSheet(
                     .weight(1f)
                     .padding(top = 25.dp)
                     .clip(RoundedCornerShape(22.dp))
-                    .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                    .background(Color(0xFFe4e4e4))
                     .clickable { onClose() }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center

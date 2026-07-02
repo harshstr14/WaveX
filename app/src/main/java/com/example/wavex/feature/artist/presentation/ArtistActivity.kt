@@ -37,7 +37,7 @@ class ArtistActivity : ComponentActivity() {
 
         val artistId = intent.getStringExtra("artist_id")
         val artistImageUrl = intent.getStringExtra("artist_imageUrl")
-        val artistSource = intent.getStringExtra("artist_source") ?: "unknown"
+        val artistSource = intent.getStringExtra("artist_source") ?: "Unknown"
 
         setContent {
             WaveXTheme {

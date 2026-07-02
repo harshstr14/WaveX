@@ -182,19 +182,19 @@ fun SongBottomSheet(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                         .shadow(
                             elevation = 8.dp,
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
                         ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(
@@ -232,9 +232,11 @@ fun SongBottomSheet(
     }
 
     if (showArtistsDialog) {
-        Dialog(onDismissRequest = { showArtistsDialog = false}) {
+        Dialog(
+            onDismissRequest = { showArtistsDialog = false}
+        ) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = colorResource(R.color.off_white)
             ) {
                 Column(
@@ -252,21 +254,20 @@ fun SongBottomSheet(
                             modifier = Modifier.size(24.dp)
                         )
 
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Text(
                             text = "Artists",
                             fontFamily = fonts,
                             fontSize = 18.sp, lineHeight = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            modifier = Modifier.padding(start = 8.dp)
+                            color = colorResource(R.color.primary_text_color)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                        modifier = Modifier.padding(vertical = 12.dp),
                         thickness = 1.dp,
                         color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
                     )
@@ -332,8 +333,10 @@ fun SongBottomSheet(
                                 Text(
                                     modifier = Modifier.width(78.dp),
                                     text = artistName,
-                                    fontSize = 13.sp, lineHeight = 15.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                    color = colorResource(R.color.primary_text_color), maxLines = 2, textAlign = TextAlign.Center,
+                                    fontSize = 13.sp, lineHeight = 18.sp, fontFamily = fonts,
+                                    fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
+                                    color = colorResource(R.color.primary_text_color),
+                                    maxLines = 2, textAlign = TextAlign.Center,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
@@ -369,9 +372,11 @@ fun SongBottomSheet(
     }
 
     if (showPlaylistDialog) {
-        Dialog(onDismissRequest = { showPlaylistDialog = false }) {
+        Dialog(
+            onDismissRequest = { showPlaylistDialog = false }
+        ) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = colorResource(R.color.off_white)
             ) {
                 Column(
@@ -389,21 +394,20 @@ fun SongBottomSheet(
                             modifier = Modifier.size(24.dp)
                         )
 
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Text(
                             text = "Select Playlist",
                             fontFamily = fonts,
                             fontSize = 18.sp, lineHeight = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Normal,
-                            color = colorResource(R.color.primary_text_color),
-                            modifier = Modifier.padding(start = 8.dp)
+                            color = colorResource(R.color.primary_text_color)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                        modifier = Modifier.padding(vertical = 12.dp),
                         thickness = 1.2.dp,
                         color = colorResource(R.color.secondary_text_color).copy(alpha = 0.2f)
                     )
@@ -418,8 +422,8 @@ fun SongBottomSheet(
                             Text(
                                 text = playlist.playlistName,
                                 fontFamily = fonts,
-                                fontSize = 14.sp, lineHeight = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp, lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium,
                                 fontStyle = FontStyle.Normal,
                                 color = colorResource(R.color.secondary_text_color),
                                 maxLines = 2,

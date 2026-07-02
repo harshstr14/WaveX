@@ -1,7 +1,6 @@
 package com.example.wavex.feature.album.presentation
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -45,9 +44,7 @@ class AlbumActivity : ComponentActivity() {
 
         val albumId = intent.getStringExtra("album_id")
         val albumImageUrl = intent.getStringExtra("album_imageUrl")
-        val albumSource = intent.getStringExtra("album_source") ?: "unknown"
-
-        Log.d("ALBUM_ID", "$albumId")
+        val albumSource = intent.getStringExtra("album_source") ?: "Unknown"
 
         setContent {
             WaveXTheme {

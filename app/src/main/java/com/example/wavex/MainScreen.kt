@@ -544,17 +544,22 @@ fun Main_Screen(
             }
         },
         snackbarHost = {
-            SnackbarHost(hostState = snackBarHostState) { data ->
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 8.dp).shadow(
-                            elevation = 12.dp,
-                            shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF2C2C2C),
-                            spotColor = Color(0xFF2C2C2C)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
                         ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically

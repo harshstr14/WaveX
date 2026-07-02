@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -372,7 +373,7 @@ fun IOSStyleBottomDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(22.dp))
-                                .background(colorResource(R.color.secondary_text_color).copy(alpha = 0.2f))
+                                .background(Color(0xFFe4e4e4))
                                 .clickable { onDismiss() }
                                 .padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center

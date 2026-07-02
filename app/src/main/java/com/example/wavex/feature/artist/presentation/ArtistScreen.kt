@@ -181,7 +181,7 @@ fun ArtistScreen(
     val (backInteraction, backScale) = pressScale()
     val (shareInteraction, shareScale) = pressScale()
 
-    val isTitleVisible = !isLoading && !artists.isError
+    val isTitleVisible = !isLoading && !artists.isError && artistSource != "Unknown"
 
     var showSongSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
@@ -236,14 +236,14 @@ fun ArtistScreen(
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                    width = 1.dp,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
                                     indication = ripple(
                                         bounded = true,
-                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                     )
                                 ) {
                                     activity?.finish()
@@ -273,14 +273,14 @@ fun ArtistScreen(
                                     .size(36.dp)
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                        width = 1.dp,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
                                         indication = ripple(
                                             bounded = true,
-                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                         )
                                     ) {
                                         showShareSheet = true
@@ -306,14 +306,14 @@ fun ArtistScreen(
                                     .size(36.dp)
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                        width = 1.dp,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = heartInteraction,
                                         indication = ripple(
                                             bounded = true,
-                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                         )
                                     ) {
                                         onToggleFavourite(
@@ -357,51 +357,45 @@ fun ArtistScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) { data ->
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                Snackbar(
+                    modifier = Modifier.fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
+                        ),
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Snackbar(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(10.dp),
-                                ambientColor = Color(0xFF2C2C2C),
-                                spotColor = Color(0xFF2C2C2C)
-                            ),
-                        containerColor = Color(0xFF2C2C2C),
-                        shape = RoundedCornerShape(9.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(painter = painterResource(when {
-                                data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
-                                data.visuals.message.contains("downloads") ||
-                                        data.visuals.message.contains("Downloading") -> R.drawable.download_icon
-                                data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
-                                data.visuals.message.contains("failed") -> R.drawable.alert_icon
-                                else -> {
-                                    R.drawable.alert_icon
-                                }
-                            } ), contentDescription = "Icons",
-                                tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
-                            )
+                        Icon(painter = painterResource(when {
+                            data.visuals.message.contains("Favourite") -> R.drawable.heart_outline
+                            data.visuals.message.contains("downloads") ||
+                                    data.visuals.message.contains("Downloading") -> R.drawable.download_icon
+                            data.visuals.message.contains("downloaded") -> R.drawable.downloaded_icon
+                            data.visuals.message.contains("failed") -> R.drawable.alert_icon
+                            else -> {
+                                R.drawable.alert_icon
+                            }
+                        } ), contentDescription = "Icons",
+                            tint = colorResource(R.color.theme_color), modifier = Modifier.size(24.dp)
+                        )
 
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                            Text(
-                                text = data.visuals.message,
-                                fontFamily = fonts,
-                                fontWeight = FontWeight.SemiBold,
-                                fontStyle = FontStyle.Normal,
-                                fontSize = 13.sp,
-                                color = colorResource(R.color.off_white)
-                            )
-                        }
+                        Text(
+                            text = data.visuals.message,
+                            fontFamily = fonts,
+                            fontWeight = FontWeight.SemiBold,
+                            fontStyle = FontStyle.Normal,
+                            fontSize = 13.sp,
+                            color = colorResource(R.color.off_white)
+                        )
                     }
                 }
             }
@@ -430,7 +424,7 @@ fun ArtistScreen(
                     LoadingEffect()
                 }
 
-                artistSource == "unknown" -> {
+                artistSource == "Unknown" -> {
                     ErrorState(
                         message = "Invalid artist source",
                         onRetry = {
@@ -1378,7 +1372,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Text(
             text = message,
             fontSize = 16.sp, lineHeight = 20.sp, fontFamily = fonts,
-            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
 

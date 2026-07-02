@@ -461,7 +461,7 @@ fun ShareAlbum_Playlist(
                             .width(1.8.dp)
                             .height(16.dp)
                             .background(
-                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.4f),
+                                color = colorResource(R.color.background_color).copy(alpha = 0.20f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                     )
@@ -597,17 +597,18 @@ fun ShareAlbum_Playlist(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                         .shadow(
                             elevation = 8.dp,
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
                         ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(

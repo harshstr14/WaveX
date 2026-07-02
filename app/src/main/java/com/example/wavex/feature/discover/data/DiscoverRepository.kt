@@ -8,6 +8,7 @@ import com.example.wavex.core.model.Image
 import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.network.requestWithFallback
 import com.example.wavex.core.model.Quality
+import com.example.wavex.feature.search.presentation.SearchSource
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -85,7 +86,7 @@ class DiscoverRepository @Inject constructor() {
                     duration = song.optInt("duration"),
                     playCount = song.optInt("playCount"),
                     downloadUrl = downloads.toMutableList(),
-                    songSource = "jiosaavn"
+                    songSource = SearchSource.JIOSAAVN.name
                 )
             )
         }
@@ -114,7 +115,7 @@ class DiscoverRepository @Inject constructor() {
                     name = playlist.optString("name"),
                     artist = artists.toMutableList(),
                     image = images.toMutableList(),
-                    searchSource = "jiosaavn"
+                    searchSource = SearchSource.JIOSAAVN.name
                 )
             )
         }
@@ -143,7 +144,8 @@ class DiscoverRepository @Inject constructor() {
                     name = artist.optString("name"),
                     role = artist.optString("role"),
                     image = imageUrl,
-                    type = artist.optString("type")
+                    type = artist.optString("type"),
+                    searchSource = SearchSource.JIOSAAVN.name
                 )
             )
         }
@@ -172,7 +174,7 @@ class DiscoverRepository @Inject constructor() {
                     name = album.optString("name"),
                     artist = artists.toMutableList(),
                     image = images.toMutableList(),
-                    searchSource = "jiosaavn"
+                    searchSource = SearchSource.JIOSAAVN.name
                 )
             )
         }

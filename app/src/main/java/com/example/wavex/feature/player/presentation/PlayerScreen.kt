@@ -264,7 +264,7 @@ fun PlayerScreen(
 
     val tintColor = when (repeatMode) {
         Player.REPEAT_MODE_OFF ->
-            colorResource(R.color.primary_text_color)
+            colorResource(R.color.primary_text_color).copy(alpha = 0.80f)
 
         Player.REPEAT_MODE_ALL ->
             colorResource(R.color.theme_color)
@@ -343,13 +343,13 @@ fun PlayerScreen(
         alphaAnim.snapTo(0f)
 
         blurAnim.animateTo(
-            targetValue = 50f,
-            animationSpec = tween(700, easing = FastOutSlowInEasing)
+            targetValue = 30f,
+            animationSpec = tween(900, easing = FastOutSlowInEasing)
         )
 
         alphaAnim.animateTo(
-            targetValue = 0.8f,
-            animationSpec = tween(700, easing = FastOutSlowInEasing)
+            targetValue = 0.6f,
+            animationSpec = tween(900, easing = FastOutSlowInEasing)
         )
     }
 
@@ -402,14 +402,14 @@ fun PlayerScreen(
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .border(
-                                    width = 1.5.dp,
-                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                    width = 1.dp,
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                     shape = RoundedCornerShape(20.dp)
                                 ).clickable(
                                     interactionSource = backInteraction,
                                     indication = ripple(
                                         bounded = true,
-                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                     )
                                 ) {
                                     activity?.finish()
@@ -441,16 +441,14 @@ fun PlayerScreen(
                                     .size(36.dp)
                                     .clip(RoundedCornerShape(20.dp))
                                     .border(
-                                        width = 1.5.dp,
-                                        color = colorResource(R.color.secondary_text_color).copy(
-                                            alpha = 0.6f
-                                        ),
+                                        width = 1.dp,
+                                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                         shape = RoundedCornerShape(20.dp)
                                     ).clickable(
                                         interactionSource = shareInteraction,
                                         indication = ripple(
                                             bounded = true,
-                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                            color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                         )
                                     ) {
                                         showShareSheet = true
@@ -481,18 +479,18 @@ fun PlayerScreen(
                     hostState = snackBarHostState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp)
+                        .padding(horizontal = 18.dp, vertical = 18.dp)
                 ) { data ->
                     Snackbar(
                         modifier = Modifier.fillMaxWidth()
                             .shadow(
                                 elevation = 8.dp,
-                                shape = RoundedCornerShape(10.dp),
-                                ambientColor = Color(0xFF2C2C2C),
-                                spotColor = Color(0xFF2C2C2C)
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = Color(0xFF414141),
+                                spotColor = Color(0xFF414141)
                             ),
-                        containerColor = Color(0xFF2C2C2C),
-                        shape = RoundedCornerShape(9.dp)
+                        containerColor = Color(0xFF414141),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -656,7 +654,7 @@ fun PlayerScreen(
                                     .width(30.dp)
                                     .height(180.dp)
                                     .clip(RoundedCornerShape(24.dp))
-                                    .background(Color(0xFF3a3a3a)),
+                                    .background(Color(0xFF303030)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 val animatedProgress by animateFloatAsState(
@@ -684,7 +682,7 @@ fun PlayerScreen(
                             Box(
                                 modifier = Modifier.size(35.dp)
                                     .clip(RoundedCornerShape(15.dp))
-                                    .background(Color(0xFF3a3a3a)),
+                                    .background(Color(0xFF303030)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -812,7 +810,7 @@ fun PlayerScreen(
                         Icon(
                             painter = painterResource(R.drawable.notificationshufflebutton),
                             contentDescription = "Shuffle Icon",
-                            tint = if (isShuffle) colorResource(R.color.theme_color) else colorResource(R.color.primary_text_color),
+                            tint = if (isShuffle) colorResource(R.color.theme_color) else colorResource(R.color.primary_text_color).copy(alpha = 0.80f),
                             modifier = Modifier
                                 .size(26.dp)
                                 .clickable(
@@ -832,7 +830,7 @@ fun PlayerScreen(
                         Icon(
                             painter = painterResource(R.drawable.notificationprevbutton),
                             contentDescription = "Previous Icon",
-                            tint = colorResource(R.color.primary_text_color),
+                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.80f),
                             modifier = Modifier
                                 .size(26.dp)
                                 .clickable(
@@ -886,7 +884,7 @@ fun PlayerScreen(
                                     .clip(RoundedCornerShape(80.dp))
                                     .background(
                                         if (isPlaying) colorResource(R.color.theme_color)
-                                        else colorResource(R.color.secondary_text_color)
+                                        else colorResource(R.color.primary_text_color).copy(alpha = 0.50f)
                                     )
                                     .clickable(
                                         interactionSource = playInteraction,
@@ -938,7 +936,7 @@ fun PlayerScreen(
                         Icon(
                             painter = painterResource(R.drawable.notificationnextbutton),
                             contentDescription = "Next Icon",
-                            tint = colorResource(R.color.primary_text_color),
+                            tint = colorResource(R.color.primary_text_color).copy(alpha = 0.80f),
                             modifier = Modifier
                                 .size(26.dp)
                                 .clickable(
@@ -1314,9 +1312,9 @@ fun UpNextSheetContent(
                     modifier = Modifier.padding(start = 15.dp),
                     text = "${songLists.size} Songs in Queue",
                     fontSize = 13.sp,
-                    lineHeight = 14.sp,
+                    lineHeight = 18.sp,
                     fontFamily = fonts,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     fontStyle = FontStyle.Normal,
                     color = colorResource(R.color.primary_text_color),
                     maxLines = 1
@@ -1615,19 +1613,19 @@ fun UpNextSheetContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp, vertical = 12.dp)
+                .padding(horizontal = 18.dp, vertical = 18.dp)
         ) { data ->
             Snackbar(
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
                     .shadow(
                         elevation = 8.dp,
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        ambientColor = Color(0xFF414141),
+                        spotColor = Color(0xFF414141)
                     ),
-                containerColor = Color(0xFF2C2C2C),
-                shape = RoundedCornerShape(9.dp)
+                containerColor = Color(0xFF414141),
+                shape = RoundedCornerShape(16.dp)
             ) {
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(

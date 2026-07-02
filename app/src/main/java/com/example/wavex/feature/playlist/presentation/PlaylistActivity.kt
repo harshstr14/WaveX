@@ -37,7 +37,7 @@ class PlaylistActivity : ComponentActivity() {
 
         val playlistId = intent.getStringExtra("playlist_id")
         val playlistImageUrl = intent.getStringExtra("playlist_imageUrl")
-        val playlistSource = intent.getStringExtra("playlist_source") ?: "unknown"
+        val playlistSource = intent.getStringExtra("playlist_source") ?: "Unknown"
         val gradientColors = intent.getIntegerArrayListExtra("playlist_gradient")
         val rectangularImage = intent.getBooleanExtra("rectangular_image", false)
 

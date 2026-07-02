@@ -6,6 +6,7 @@ import com.example.wavex.core.model.Download
 import com.example.wavex.core.model.Image
 import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.model.Quality
+import com.example.wavex.feature.search.presentation.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -88,7 +89,17 @@ object SongParser {
             )
 
             parsedSongs.add(
-                SongItem(id, name, primaryArtists, album, image, duration, playCount, download)
+                SongItem(
+                    id = id,
+                    name = name,
+                    artist = primaryArtists,
+                    album = album,
+                    image = image,
+                    duration = duration,
+                    playCount = playCount,
+                    downloadUrl = download,
+                    songSource = SearchSource.JIOSAAVN.name
+                )
             )
         }
 

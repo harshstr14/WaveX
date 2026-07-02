@@ -49,6 +49,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -136,15 +138,15 @@ fun SettingsScreen(
                             .size(36.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .border(
-                                width = 1.5.dp,
-                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                width = 1.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                 shape = RoundedCornerShape(20.dp)
                             )
                             .clickable(
                                 interactionSource = backInteraction,
                                 indication = ripple(
                                     bounded = true,
-                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                 )
                             ) {
                                 activity?.finish()
@@ -186,18 +188,18 @@ fun SettingsScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 15.dp)
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
                         .shadow(
                             elevation = 8.dp,
-                            shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF2C2C2C),
-                            spotColor = Color(0xFF2C2C2C)
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
                         ),
-                    containerColor = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(9.dp)
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -242,9 +244,8 @@ fun SettingsScreen(
                     .background(Color(0xFFFEFEFE))
             ) {
                 SettingsItem(
-                    modifier = Modifier
-                        .padding(top = 10.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    topPadding = true,
+                    shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
                     icon = R.drawable.update_icon,
                     title = "Updates",
                     subtitle = "Check for New Updates",
@@ -527,8 +528,6 @@ fun SettingsScreen(
                 )
 
                 SettingsItem(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.delete_icon,
                     title = "Reset waveX App",
                     subtitle = "Clear all your data and reset the app to its default state",
@@ -546,8 +545,6 @@ fun SettingsScreen(
                 )
 
                 SettingsItem(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.delete_account_icon,
                     title = "Delete Account",
                     subtitle = "Permanently delete your account from the \nwaveX app",
@@ -565,8 +562,6 @@ fun SettingsScreen(
                 )
 
                 SettingsItem(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     icon = R.drawable.logout_icon,
                     title = "Log Out",
                     subtitle = "Sign out of your WaveX account",
@@ -584,9 +579,8 @@ fun SettingsScreen(
                 )
 
                 SettingsItem(
-                    modifier = Modifier
-                        .padding(bottom = 10.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    bottomPadding = true,
+                    shape = RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp),
                     icon = R.drawable.github_icon,
                     title = "Git Hub",
                     subtitle = "For more information about waveX app",
@@ -737,6 +731,9 @@ fun SettingsScreen(
 @Composable
 private fun SettingsItem(
     modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    topPadding: Boolean = false,
+    bottomPadding: Boolean = false,
     icon: Int,
     title: String,
     subtitle: String,
@@ -747,12 +744,18 @@ private fun SettingsItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null
+                indication = ripple(
+                    bounded = true,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                )
             ) {
                 onClick()
-            },
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(top = if (topPadding) 5.dp else 0.dp, bottom = if (bottomPadding) 5.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -788,7 +791,7 @@ private fun SettingsItem(
                 text = subtitle,
                 fontSize = 13.sp,
                 fontFamily = fonts,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 fontStyle = FontStyle.Normal,
                 color = colorResource(R.color.secondary_text_color),
                 lineHeight = 16.sp

@@ -204,15 +204,15 @@ fun DiscoverScreen(
                 }
                 .size(36.dp).clip(RoundedCornerShape(20.dp))
                 .border(
-                    width = 1.5.dp,
-                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                    width = 1.dp,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                     shape = RoundedCornerShape(20.dp)
                 )
                 .clickable(
                     interactionSource = backInteraction,
                     indication = ripple(
                         bounded = true,
-                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                        color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                     )
                 ) {
                    onClickBack()
@@ -789,8 +789,17 @@ fun ExploreSongs(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             AsyncImage(
-                                model = if (song.songSource == "jiosaavn") song.image.getOrNull(2)?.url
-                                else song.image.getOrNull(0)?.url,
+                                model = when (song.songSource) {
+                                    SearchSource.YTMUSIC.name ->
+                                        song.image.getOrNull(0)?.url
+
+                                    SearchSource.JIOSAAVN.name ->
+                                        song.image.getOrNull(2)?.url
+                                            ?: song.image.lastOrNull()?.url
+
+                                    else ->
+                                        song.image.lastOrNull()?.url
+                                },
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(64.dp)
@@ -1023,6 +1032,7 @@ fun ExploreArtists(
                             val intent = Intent(context, ArtistActivity::class.java).apply {
                                 putExtra("artist_id", artist.id)
                                 putExtra("artist_imageUrl", artist.image)
+                                putExtra("artist_source", artist.searchSource)
                                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                             }
                             context.startActivity(intent)
@@ -1099,8 +1109,32 @@ fun ExploreAlbums(
                             ) {
                                 val intent = Intent(context, AlbumActivity::class.java).apply {
                                     putExtra("album_id", album.id)
-                                    putExtra("album_imageUrl", if (album.searchSource == "ytmusic") album.image.getOrNull(0)?.url
-                                                else album.image.getOrNull(2)?.url
+                                    putExtra("album_imageUrl",
+                                        when (album.searchSource) {
+                                            SearchSource.YTMUSIC.name ->
+                                                album.image.getOrNull(0)?.url
+
+                                            SearchSource.JIOSAAVN.name ->
+                                                album.image.getOrNull(2)?.url
+                                                    ?: album.image.lastOrNull()?.url
+
+                                            else ->
+                                                album.image.lastOrNull()?.url
+                                        }
+                                    )
+                                    putExtra("album_source",
+                                        when(album.searchSource) {
+                                            SearchSource.YTMUSIC.name -> {
+                                                SearchSource.YTMUSIC.name
+                                            }
+                                            SearchSource.JIOSAAVN.name -> {
+                                                SearchSource.JIOSAAVN.name
+                                            }
+
+                                            else -> {
+                                                "Unknown"
+                                            }
+                                        }
                                     )
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
@@ -1108,8 +1142,17 @@ fun ExploreAlbums(
                             }
                     ) {
                         AsyncImage(
-                            model = if (album.searchSource == "jiosaavn") album.image.getOrNull(2)?.url
-                            else album.image.getOrNull(0)?.url,
+                            model = when (album.searchSource) {
+                                SearchSource.YTMUSIC.name ->
+                                    album.image.getOrNull(0)?.url
+
+                                SearchSource.JIOSAAVN.name ->
+                                    album.image.getOrNull(2)?.url
+                                        ?: album.image.lastOrNull()?.url
+
+                                else ->
+                                    album.image.lastOrNull()?.url
+                            },
                             contentDescription = album.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),
@@ -1193,17 +1236,37 @@ fun ExplorePlaylist(
                             ) {
                                 val intent = Intent(context, PlaylistActivity::class.java).apply {
                                     putExtra("playlist_id", playlist.id)
-                                    putExtra("playlist_imageUrl", if (playlist.searchSource == "jiosaavn") playlist.image[2].url
-                                                else playlist.image.getOrNull(0)?.url
+                                    putExtra("playlist_imageUrl",
+                                        when (playlist.searchSource) {
+                                            SearchSource.YTMUSIC.name ->
+                                                playlist.image.getOrNull(0)?.url
+
+                                            SearchSource.JIOSAAVN.name ->
+                                                playlist.image.getOrNull(2)?.url
+                                                    ?: playlist.image.lastOrNull()?.url
+
+                                            else ->
+                                                playlist.image.lastOrNull()?.url
+                                        }
                                     )
+                                    putExtra("playlist_source", playlist.searchSource)
                                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 }
                                 context.startActivity(intent)
                             }
                     ) {
                         AsyncImage(
-                            model = if (playlist.searchSource == "jiosaavn") playlist.image.getOrNull(2)?.url
-                            else playlist.image.getOrNull(0)?.url,
+                            model = when (playlist.searchSource) {
+                                SearchSource.YTMUSIC.name ->
+                                    playlist.image.getOrNull(0)?.url
+
+                                SearchSource.JIOSAAVN.name ->
+                                    playlist.image.getOrNull(2)?.url
+                                        ?: playlist.image.lastOrNull()?.url
+
+                                else ->
+                                    playlist.image.lastOrNull()?.url
+                            },
                             contentDescription = playlist.name,
                             contentScale = ContentScale.Crop,
                             error = painterResource(R.drawable.default_image),
@@ -1291,7 +1354,7 @@ private fun ErrorState() {
         Text(
             text = "No results found",
             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = fonts,
-            fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Normal,
+            fontWeight = FontWeight.Medium, fontStyle = FontStyle.Normal,
             color = colorResource(R.color.secondary_text_color), maxLines = 2
         )
     }

@@ -49,6 +49,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -138,14 +140,14 @@ fun ProfileScreen(
                             .size(36.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .border(
-                                width = 1.5.dp,
-                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.6f),
+                                width = 1.dp,
+                                color = colorResource(R.color.secondary_text_color).copy(alpha = 0.40f),
                                 shape = RoundedCornerShape(20.dp)
                             ).clickable(
                                 interactionSource = backInteraction,
                                 indication = ripple(
                                     bounded = true,
-                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.25f)
                                 )
                             ) {
                                 activity?.finish()
@@ -182,17 +184,22 @@ fun ProfileScreen(
             )
         },
         snackbarHost = {
-            SnackbarHost(hostState = snackBarHostState) { data ->
+            SnackbarHost(
+                hostState = snackBarHostState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            ) { data ->
                 Snackbar(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 15.dp).shadow(
-                            elevation = 12.dp,
-                            shape = RoundedCornerShape(10.dp),
-                            ambientColor = Color(0xFF1C1C1C),
-                            spotColor = Color(0xFF1C1C1C)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = Color(0xFF414141),
+                            spotColor = Color(0xFF414141)
                         ),
-                    containerColor = Color(0xFF1C1C1C),
-                    shape = RoundedCornerShape(9.dp)
+                    containerColor = Color(0xFF414141),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -361,9 +368,8 @@ fun ProfileScreen(
                             .background(Color(0xFFfefefe))
                     ) {
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(top = 10.dp)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            topPadding = true,
+                            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
                             icon = R.drawable.user_icon,
                             title = "Your Profile",
                             scale = userScale,
@@ -385,8 +391,6 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             icon = R.drawable.song_icon,
                             title = "Favourite Songs",
                             scale = songScale,
@@ -408,8 +412,6 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             icon = R.drawable.mic_icon,
                             title = "Artists",
                             scale = artistsScale,
@@ -431,8 +433,6 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             icon = R.drawable.album_icon,
                             title = "Albums",
                             scale = albumsScale,
@@ -453,8 +453,6 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             icon = R.drawable.playlist_icon,
                             title = "Playlists",
                             scale = playlistsScale,
@@ -476,8 +474,6 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             icon = R.drawable.downloaded_icon,
                             title = "Downloaded Songs",
                             scale = downloadedScale,
@@ -499,9 +495,8 @@ fun ProfileScreen(
                         )
 
                         ProfileItem(
-                            modifier = Modifier
-                                .padding(bottom = 10.dp)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            bottomPadding = true,
+                            shape = RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp),
                             icon = R.drawable.setting_icon,
                             title = "Settings",
                             scale = settingScale,
@@ -525,6 +520,9 @@ fun ProfileScreen(
 @Composable
 private fun ProfileItem(
     modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    topPadding: Boolean = false,
+    bottomPadding: Boolean = false,
     icon: Int,
     title: String,
     scale: Float,
@@ -534,12 +532,18 @@ private fun ProfileItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null
+                indication = ripple(
+                    bounded = true,
+                    color = colorResource(R.color.secondary_text_color).copy(alpha = 0.15f)
+                )
             ) {
                 onClick()
-            },
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(top = if (topPadding) 5.dp else 0.dp, bottom = if (bottomPadding) 5.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
