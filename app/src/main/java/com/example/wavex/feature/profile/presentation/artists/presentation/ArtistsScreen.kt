@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,9 +71,9 @@ import com.example.wavex.feature.artist.presentation.ArtistActivity
 import com.example.wavex.feature.auth.presentation.signup.fonts
 import com.example.wavex.feature.home.presentation.htmlToText
 import com.example.wavex.feature.profile.presentation.artists.model.FavouriteArtistUiState
+import com.example.wavex.feature.profile.presentation.settings.presentation.IOSStyleBottomDialog
 import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.pressScale
-import com.example.wavex.feature.profile.presentation.settings.presentation.IOSStyleBottomDialog
 import com.example.wavex.ui.theme.WaveXTheme
 import kotlinx.coroutines.launch
 
@@ -203,16 +202,10 @@ fun ArtistsScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier.fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            ambientColor = Color(0xFF414141),
-                            spotColor = Color(0xFF414141)
-                        ),
+                    modifier = Modifier.fillMaxWidth(),
                     containerColor = Color(0xFF414141),
                     shape = RoundedCornerShape(16.dp)
                 ) {

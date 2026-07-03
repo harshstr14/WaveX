@@ -287,16 +287,10 @@ fun FavouriteSongScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier.fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            ambientColor = Color(0xFF414141),
-                            spotColor = Color(0xFF414141)
-                        ),
+                    modifier = Modifier.fillMaxWidth(),
                     containerColor = Color(0xFF414141),
                     shape = RoundedCornerShape(16.dp)
                 ) {

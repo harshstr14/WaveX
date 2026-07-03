@@ -86,7 +86,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -143,9 +142,9 @@ import com.example.wavex.feature.library.model.LibraryUiState
 import com.example.wavex.feature.player.model.PlayerUiState
 import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.pressScale
+import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.uiComponent.ShareSong
 import com.example.wavex.uiComponent.ShareSongItem
-import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -480,16 +479,10 @@ fun PlayerScreen(
                     hostState = snackBarHostState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 18.dp)
+                        .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) { data ->
                     Snackbar(
-                        modifier = Modifier.fillMaxWidth()
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                ambientColor = Color(0xFF414141),
-                                spotColor = Color(0xFF414141)
-                            ),
+                        modifier = Modifier.fillMaxWidth(),
                         containerColor = Color(0xFF414141),
                         shape = RoundedCornerShape(16.dp)
                     ) {
@@ -1614,16 +1607,10 @@ fun UpNextSheetContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp, vertical = 18.dp)
+                .padding(horizontal = 18.dp, vertical = 14.dp)
         ) { data ->
             Snackbar(
-                modifier = Modifier.fillMaxWidth()
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = Color(0xFF414141),
-                        spotColor = Color(0xFF414141)
-                    ),
+                modifier = Modifier.fillMaxWidth(),
                 containerColor = Color(0xFF414141),
                 shape = RoundedCornerShape(16.dp)
             ) {

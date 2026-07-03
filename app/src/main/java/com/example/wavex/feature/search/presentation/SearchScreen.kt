@@ -799,7 +799,7 @@ private fun SearchTabs(
 
     val scope = rememberCoroutineScope()
     val tabs = remember {
-        listOf("Artists", "Songs", "Albums", "Playlists")
+        listOf("Songs", "Artists", "Albums", "Playlists")
     }
 
     val pagerState = rememberPagerState(
@@ -894,24 +894,7 @@ private fun SearchTabs(
             flingBehavior = PagerDefaults.flingBehavior(pagerState)
         ) { page ->
             when(page) {
-                0 -> SearchArtists(
-                        query = searchText,
-                        source = source,
-                        modifier = Modifier,
-                        gridState = artistsGridState,
-                        artists = artists,
-                        artistsUiSate = artistsUiSate,
-                        onSearchArtists = { query ->
-                            onSearchArtists(query)
-                        },
-                        onSearchYTArtists = { query ->
-                            onSearchYTArtists(query)
-                        },
-                        onArtistsClearResult = onArtistsClearResult,
-                        onArtistsIdeal = onArtistsIdeal
-                    )
-
-                1 -> SearchSongs(
+                0 -> SearchSongs(
                         query = searchText,
                         source = source,
                         modifier = Modifier,
@@ -931,6 +914,23 @@ private fun SearchTabs(
                         },
                         onSongsClearResult = onSongsClearResult,
                         onSongsIdeal = onSongsIdeal
+                    )
+
+                1 -> SearchArtists(
+                        query = searchText,
+                        source = source,
+                        modifier = Modifier,
+                        gridState = artistsGridState,
+                        artists = artists,
+                        artistsUiSate = artistsUiSate,
+                        onSearchArtists = { query ->
+                            onSearchArtists(query)
+                        },
+                        onSearchYTArtists = { query ->
+                            onSearchYTArtists(query)
+                        },
+                        onArtistsClearResult = onArtistsClearResult,
+                        onArtistsIdeal = onArtistsIdeal
                     )
 
                 2 -> SearchAlbums(

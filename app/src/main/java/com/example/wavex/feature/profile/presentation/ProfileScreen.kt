@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -72,14 +71,14 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.wavex.R
 import com.example.wavex.feature.auth.presentation.signup.fonts
-import com.example.wavex.pressScale
 import com.example.wavex.feature.profile.presentation.albums.presentation.AlbumsActivity
 import com.example.wavex.feature.profile.presentation.artists.presentation.ArtistsActivity
 import com.example.wavex.feature.profile.presentation.downloads.presentation.DownloadedSongActivity
-import com.example.wavex.feature.profile.presentation.songs.presentation.FavouriteSongsActivity
 import com.example.wavex.feature.profile.presentation.playlists.presentation.PlaylistsActivity
 import com.example.wavex.feature.profile.presentation.settings.presentation.SettingsActivity
+import com.example.wavex.feature.profile.presentation.songs.presentation.FavouriteSongsActivity
 import com.example.wavex.feature.profile.user.presentation.YourProfileActivity
+import com.example.wavex.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,16 +187,10 @@ fun ProfileScreen(
                 hostState = snackBarHostState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
             ) { data ->
                 Snackbar(
-                    modifier = Modifier.fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            ambientColor = Color(0xFF414141),
-                            spotColor = Color(0xFF414141)
-                        ),
+                    modifier = Modifier.fillMaxWidth(),
                     containerColor = Color(0xFF414141),
                     shape = RoundedCornerShape(16.dp)
                 ) {
