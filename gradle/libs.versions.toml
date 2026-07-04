@@ -3,37 +3,37 @@ agp = "9.0.0"
 animatedsmoothbottomnavigationJetpackcomposeVersion = "1.1.2"
 coreKtx = "1.18.0"
 constraintlayoutCompose = "1.1.1"
-hiltCompiler = "2.59.2"
+hiltCompiler = "2.60"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.3.21"
-composeBom = "2026.05.01"
-foundation = "1.11.2"
-googleGmsGoogleServices = "4.4.4"
+composeBom = "2026.06.01"
+foundation = "1.11.4"
+googleGmsGoogleServices = "4.5.0"
 firebaseDatabase = "22.0.1"
 firebaseAuth = "24.1.0"
-firebaseBom = "34.14.1"
+firebaseBom = "34.15.0"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 googleid = "1.2.0"
 media3Ui = "1.10.1"
 newpipeextractor = "v0.26.2"
-okhttp = "5.3.2"
+okhttp = "5.4.0"
 paletteKtx = "1.0.0"
 playServicesAuth = "21.6.0"
-firebaseFirestore = "26.3.0"
+firebaseFirestore = "26.4.0"
 lottieCompose = "6.7.1"
 navigationCompose = "2.9.8"
 roomRuntime = "2.8.4"
-ui = "1.11.2"
-animation = "1.11.2"
+ui = "1.11.4"
+animation = "1.11.4"
 coilCompose = "2.7.0"
 lifecycleViewmodelKtx = "2.10.0"
-foundationLayout = "1.11.2"
-uiUnit = "1.11.2"
+foundationLayout = "1.11.4"
+uiUnit = "1.11.4"
 material3 = "1.4.0"
 media3Exoplayer = "1.10.1"
 lifecycleService = "2.10.0"
@@ -45,9 +45,21 @@ ucrop = "2.2.8"
 ksp = "2.0.21-1.0.27"
 workRuntimeKtx = "2.11.2"
 runtimeLivedata = "1.11.2"
-hilt = "2.59.2"
+hilt = "2.60"
+kotlinSerialization = "2.4.0"
+ktor = "3.5.1"
+timber = "5.0.1"
 
 [libraries]
+timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.11.0" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+ktor-client-encoding = { module = "io.ktor:ktor-client-encoding", version.ref = "ktor" }
+ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "media3Ui" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3Ui" }
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3Ui" }
@@ -113,3 +125,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization" }

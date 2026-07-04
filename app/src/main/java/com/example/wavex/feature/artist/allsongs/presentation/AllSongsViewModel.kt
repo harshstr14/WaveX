@@ -1,6 +1,5 @@
 package com.example.wavex.feature.artist.allsongs.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.feature.artist.allsongs.data.AllSongsRepository
@@ -8,6 +7,7 @@ import com.example.wavex.feature.artist.allsongs.model.AllSongsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class AllSongsViewModel(
     private val repository: AllSongsRepository = AllSongsRepository()
@@ -51,7 +51,7 @@ class AllSongsViewModel(
                     isError = true,
                     errorMessage = "Something went wrong"
                 )
-                Log.e("SAAVN", "Songs fetch failed", e)
+                Timber.tag("SAAVN").e(e, "Songs fetch failed")
             } finally {
                 _isLoading.value = false
             }

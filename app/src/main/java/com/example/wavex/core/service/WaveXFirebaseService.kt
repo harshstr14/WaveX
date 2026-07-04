@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -12,12 +11,13 @@ import com.example.wavex.MainActivity
 import com.example.wavex.R
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import timber.log.Timber
 
 class WaveXFirebaseService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
 
-        Log.d("FCM_TOKEN", token)
+        Timber.tag("FCM_TOKEN").d(token)
 
         //uploadTokenToBackend(token)
     }

@@ -1,6 +1,5 @@
 package com.example.wavex.feature.artist.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.BuildConfig
@@ -11,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -94,7 +94,7 @@ class ArtistViewModel @Inject constructor(
                             "Something went wrong"
                     )
 
-                Log.e(TAG,"Artist load failed",e)
+                Timber.tag(TAG).e(e, "Artist load failed")
             } finally {
                 _isLoading.value = false
             }
@@ -124,7 +124,7 @@ class ArtistViewModel @Inject constructor(
                             "Something went wrong"
                     )
 
-                Log.e(TAG,"YT Artist load failed",e)
+                Timber.tag(TAG).e(e, "YT Artist load failed")
             } finally {
                 _isLoading.value = false
             }

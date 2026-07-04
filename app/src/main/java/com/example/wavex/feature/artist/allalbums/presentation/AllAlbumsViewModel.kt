@@ -1,6 +1,5 @@
 package com.example.wavex.feature.artist.allalbums.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.feature.artist.allalbums.data.AllAlbumsRepository
@@ -8,6 +7,7 @@ import com.example.wavex.feature.artist.allalbums.model.AllAlbumsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class AllAlbumsViewModel(
     private val repository: AllAlbumsRepository =
@@ -52,7 +52,7 @@ class AllAlbumsViewModel(
                     isError = true,
                     errorMessage = "Something went wrong"
                 )
-                Log.e("SAAVN", "Album fetch failed", e)
+                Timber.tag("SAAVN").e(e, "Album fetch failed")
             } finally {
                 _isLoading.value = false
             }

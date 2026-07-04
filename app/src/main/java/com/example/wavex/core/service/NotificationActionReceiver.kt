@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
+import timber.log.Timber
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -14,7 +15,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val serviceIntent = Intent(context, MusicPlayerService::class.java).apply {
             this.action = action
         }
-        Log.d("NotificationReceiver", "Action received: $action")
+        Timber.tag("NotificationReceiver").d("Action received: $action")
 
         ContextCompat.startForegroundService(context, serviceIntent)
     }

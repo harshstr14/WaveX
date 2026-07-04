@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -100,6 +99,7 @@ import com.example.wavex.pressScale
 import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -458,7 +458,7 @@ fun AllSongsScreen(
                                                         )
 
                                                     val downloadUrl = selectedDownload?.url
-                                                    Log.d("DOWNLOAD_DEBUG", "URL: $downloadUrl")
+                                                    Timber.tag("DOWNLOAD_DEBUG").d("URL: $downloadUrl")
 
                                                     when {
                                                         isDownloaded -> {

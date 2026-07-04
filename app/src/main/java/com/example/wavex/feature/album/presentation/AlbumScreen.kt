@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -109,11 +108,12 @@ import com.example.wavex.feature.player.presentation.PlayerActivityScreen
 import com.example.wavex.feature.playlist.presentation.formatTotalDuration
 import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.pressScale
+import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.uiComponent.ShareAlbumPlaylistItem
 import com.example.wavex.uiComponent.ShareAlbum_Playlist
-import com.example.wavex.ui.theme.WaveXTheme
 import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,8 +152,8 @@ fun AlbumScreen(
         albumImageUrl
     }
 
-    Log.d("ALBUM_ID", "$albumId")
-    Log.d("ALBUM_SOURCE", "$albumSource")
+    Timber.tag("ALBUM_ID").d("$albumId")
+    Timber.tag("ALBUM_SOURCE").d("$albumSource")
 
     var selectedSong by remember { mutableStateOf<SongItem?>(null) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
@@ -164,7 +164,7 @@ fun AlbumScreen(
 
     LaunchedEffect(albumId, albumSource) {
         if (albumId.isNullOrBlank()) {
-            Log.d("ALBUM_ID", "Album ID is null or blank")
+            Timber.tag("ALBUM_ID").d("Album ID is null or blank")
             return@LaunchedEffect
         }
 
@@ -995,7 +995,7 @@ fun AlbumScreen(
                                                             )
 
                                                         val downloadUrl = selectedDownload?.url
-                                                        Log.d("DOWNLOAD_DEBUG", "URL: $downloadUrl")
+                                                        Timber.tag("DOWNLOAD_DEBUG").d("URL: $downloadUrl")
 
                                                         when {
                                                             isDownloaded -> {

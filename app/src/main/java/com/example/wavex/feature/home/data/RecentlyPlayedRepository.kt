@@ -1,12 +1,12 @@
 package com.example.wavex.feature.home.data
 
-import android.util.Log
 import com.example.wavex.BuildConfig
-import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.database.dao.RecentlyPlayedDao
 import com.example.wavex.core.database.entity.RecentlyPlayedEntity
+import com.example.wavex.core.model.SongItem
 import com.example.wavex.feature.home.presentation.toSongItem
 import com.example.wavex.feature.search.data.SearchSongsRepository
+import timber.log.Timber
 import javax.inject.Inject
 
 class RecentlyPlayedRepository @Inject constructor(
@@ -49,8 +49,7 @@ class RecentlyPlayedRepository @Inject constructor(
     suspend fun getPlayableSong(
         clickedSong: SongItem
     ): SongItem {
-        Log.d(
-            "PLAY_FLOW",
+        Timber.tag("PLAY_FLOW").d(
             """
             Clicked Song
             Id     : ${clickedSong.id}
@@ -59,18 +58,12 @@ class RecentlyPlayedRepository @Inject constructor(
             """.trimIndent()
         )
 
-        Log.d(
-            "PLAY_FLOW",
-            "Checking cache for song: ${clickedSong.id}"
-        )
+        Timber.tag("PLAY_FLOW").d("Checking cache for song: ${clickedSong.id}")
 
         val cached = dao.getSong(clickedSong.id)
 
         if (cached == null) {
-            Log.d(
-                "PLAY_FLOW",
-                "Song not cached -> Fetching fresh stream data"
-            )
+            Timber.tag("PLAY_FLOW").d("Song not cached -> Fetching fresh stream data")
 
             val fresh = searchSongsRepository.fetchYTStreamData(
                 clickedSong.id,
@@ -78,12 +71,9 @@ class RecentlyPlayedRepository @Inject constructor(
             )
 
             return fresh?.let {
-                Log.d(
-                    "PLAY_FLOW",
-                    "Fresh streams fetched: ${it.downloadUrl.size}"
-                )
+                Timber.tag("PLAY_FLOW").d("Fresh streams fetched: ${it.downloadUrl.size}")
 
-                Log.d("Duration","${it.duration}")
+                Timber.tag("Duration").d("${it.duration}")
 
                 clickedSong.copy(
                     duration = it.duration,
@@ -92,8 +82,7 @@ class RecentlyPlayedRepository @Inject constructor(
             } ?: clickedSong
         }
 
-        Log.d(
-            "PLAY_FLOW",
+        Timber.tag("PLAY_FLOW").d(
             """
             Cached song found
             Streams : ${cached.downloadUrl.size}
@@ -103,8 +92,7 @@ class RecentlyPlayedRepository @Inject constructor(
         val now = System.currentTimeMillis() / 1000
 
         cached.downloadUrl.forEachIndexed { index, stream ->
-            Log.d(
-                "PLAY_FLOW",
+            Timber.tag("PLAY_FLOW").d(
                 """
             Stream[$index]
             Quality  : ${stream.quality}
@@ -120,19 +108,13 @@ class RecentlyPlayedRepository @Inject constructor(
                         it.expiresAt == null || it.expiresAt > now
             }
 
-        Log.d(
-            "PLAY_FLOW",
-            "All Streams Valid = $allStreamsValid"
-        )
+        Timber.tag("PLAY_FLOW").d("All Streams Valid = $allStreamsValid")
 
         if (allStreamsValid) {
             return cached.toSongItem()
         }
 
-        Log.d(
-            "PLAY_FLOW",
-            "URLs expired -> Fetching fresh URLs"
-        )
+        Timber.tag("PLAY_FLOW").d("URLs expired -> Fetching fresh URLs")
 
         val fresh = searchSongsRepository.fetchYTStreamData(
             clickedSong.id,
@@ -140,10 +122,7 @@ class RecentlyPlayedRepository @Inject constructor(
         )
 
         return fresh?.let {
-            Log.d(
-                "PLAY_FLOW",
-                "Fresh streams fetched: ${it.downloadUrl.size}"
-            )
+            Timber.tag("PLAY_FLOW").d("Fresh streams fetched: ${it.downloadUrl.size}")
 
             cached.toSongItem().copy(
                 duration = it.duration,

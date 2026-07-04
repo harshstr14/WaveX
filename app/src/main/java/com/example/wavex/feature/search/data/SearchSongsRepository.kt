@@ -1,22 +1,22 @@
 package com.example.wavex.feature.search.data
 
-import android.util.Log
 import androidx.core.net.toUri
 import com.example.wavex.HttpClientProvider
-import com.example.wavex.core.model.SongItem
-import com.example.wavex.requestWithFallback
-import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.core.model.Album
 import com.example.wavex.core.model.Artists
 import com.example.wavex.core.model.Download
 import com.example.wavex.core.model.Image
 import com.example.wavex.core.model.Quality
+import com.example.wavex.core.model.SongItem
+import com.example.wavex.feature.search.presentation.SearchSource
+import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 import java.net.URLEncoder
 import javax.inject.Inject
 
@@ -40,7 +40,7 @@ class SearchSongsRepository @Inject constructor() {
 
             parseSongs(response)
         } catch (e: Exception) {
-            Log.e(TAG, "searchSongs failed", e)
+            Timber.tag(TAG).e(e, "searchSongs failed")
             emptyList()
         }
     }
@@ -57,7 +57,7 @@ class SearchSongsRepository @Inject constructor() {
 
             parseSuggestionSongs(response)
         } catch (e: Exception) {
-            Log.e(TAG, "fetchSuggestionSongs failed", e)
+            Timber.tag(TAG).e(e, "fetchSuggestionSongs failed")
             emptyList()
         }
     }
@@ -92,7 +92,7 @@ class SearchSongsRepository @Inject constructor() {
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "ytMusicSearch failed", e)
+            Timber.tag(TAG).e(e, "ytMusicSearch failed")
             emptyList()
         }
     }
@@ -319,8 +319,7 @@ class SearchSongsRepository @Inject constructor() {
                         return@withContext null
                     }
 
-                    Log.d(
-                        "YT_STREAM",
+                    Timber.tag("YT_STREAM").d(
                         """
                         Response Length: ${body.length}
                         Response:
@@ -332,7 +331,7 @@ class SearchSongsRepository @Inject constructor() {
                 }
 
         } catch (e: Exception) {
-            Log.e(TAG, "fetchYTStreamData failed", e)
+            Timber.tag(TAG).e(e, "fetchYTStreamData failed")
             null
         }
     }
@@ -344,26 +343,17 @@ class SearchSongsRepository @Inject constructor() {
             return null
         }
 
-        Log.d(
-            "YT_STREAM",
-            "Success = ${json.optBoolean("success")}"
-        )
+        Timber.tag("YT_STREAM").d("Success = ${json.optBoolean("success")}")
 
         val metadata = json.optJSONObject("metadata")
             ?: return null
 
-        Log.d(
-            "YT_STREAM",
-            "Metadata null = ${metadata == null}"
-        )
+        Timber.tag("YT_STREAM").d("Metadata null = ${metadata == null}")
 
         val streams = json.optJSONArray("streamingUrls")
             ?: JSONArray()
 
-        Log.d(
-            "YT_STREAM",
-            "StreamingUrls Count = ${streams?.length() ?: 0}"
-        )
+        Timber.tag("YT_STREAM").d("StreamingUrls Count = ${streams?.length() ?: 0}")
 
         return SongItem(
             duration = metadata.optInt("lengthSeconds"),
@@ -383,8 +373,7 @@ class SearchSongsRepository @Inject constructor() {
 
                 val mimeType = obj.optString("type")
 
-                Log.d(
-                    "YT_STREAM",
+                Timber.tag("YT_STREAM").d(
                     """
                     Stream[$i]
                     MimeType : $mimeType
@@ -393,10 +382,7 @@ class SearchSongsRepository @Inject constructor() {
                 )
 
                 if (!mimeType.contains("audio")) {
-                    Log.d(
-                        "YT_STREAM",
-                        "Skipping non-audio stream: $mimeType"
-                    )
+                    Timber.tag("YT_STREAM").d("Skipping non-audio stream: $mimeType")
                     continue
                 }
 
@@ -417,8 +403,7 @@ class SearchSongsRepository @Inject constructor() {
                     else -> Quality.MEDIUM
                 }
 
-                Log.d(
-                    "YT_STREAM",
+                Timber.tag("YT_STREAM").d(
                     """
                     Added stream
                     Itag    : $itag

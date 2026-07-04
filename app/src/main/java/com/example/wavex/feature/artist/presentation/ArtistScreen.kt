@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -111,6 +110,7 @@ import com.example.wavex.uiComponent.ShareArtist
 import com.example.wavex.uiComponent.ShareArtistItem
 import com.example.wavex.uiComponent.SongBottomSheet
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -788,7 +788,7 @@ fun ArtistScreen(
                                                             )
 
                                                         val downloadUrl = selectedDownload?.url
-                                                        Log.d("Download_url","$downloadUrl")
+                                                        Timber.tag("Download_url").d("$downloadUrl")
 
                                                         when {
                                                             isDownloaded -> {
@@ -1040,9 +1040,19 @@ fun ArtistScreen(
                             if (artists.singles.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = "Singles", modifier = Modifier.padding(start = 24.dp, top = 18.dp, bottom = 5.dp)
-                                        , fontSize = 18.sp, fontFamily = fonts, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Normal,
-                                        color = colorResource(R.color.primary_text_color), lineHeight = 20.sp, letterSpacing = 1.sp,
+                                        text = "Singles",
+                                        modifier = Modifier.padding(
+                                            start = 24.dp,
+                                            top = 18.dp,
+                                            bottom = 5.dp
+                                        ),
+                                        fontSize = 18.sp,
+                                        fontFamily = fonts,
+                                        fontWeight = FontWeight.Bold,
+                                        fontStyle = FontStyle.Normal,
+                                        color = colorResource(R.color.primary_text_color),
+                                        lineHeight = 20.sp,
+                                        letterSpacing = 1.sp,
                                     )
                                 }
 
@@ -1226,7 +1236,7 @@ fun ArtistScreen(
                 val song = selectedSong!!
                 val isFavourite = likedSongs.contains(song.id)
                 val isDownloaded = downloadedIds.contains(song.id)
-                Log.d("Song", "${song.playCount}")
+                Timber.tag("Song").d("${song.playCount}")
 
                 SongBottomSheet(
                     song = song,

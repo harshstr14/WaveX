@@ -21,7 +21,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.text.Html
-import android.util.Log
 import android.util.LruCache
 import androidx.annotation.OptIn
 import androidx.core.app.ActivityCompat
@@ -52,22 +51,22 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.wavex.R
-import com.example.wavex.feature.home.presentation.PlayerManager
-import com.example.wavex.core.model.SongItem
 import com.example.wavex.app.WaveXApplication.Companion.MUSIC_CHANNEL_ID
-import com.example.wavex.feature.home.presentation.htmlToText
 import com.example.wavex.core.database.entity.DownloadedSongEntity
 import com.example.wavex.core.model.AudioStreamQualityPreference
+import com.example.wavex.core.model.SongItem
 import com.example.wavex.core.util.StreamQualitySelector
 import com.example.wavex.feature.home.data.RecentlyPlayedRepository
+import com.example.wavex.feature.home.presentation.PlayerManager
+import com.example.wavex.feature.home.presentation.htmlToText
 import com.example.wavex.feature.home.presentation.toRecentlyPlayedEntity
 import com.example.wavex.feature.player.presentation.PlayerActivityScreen
 import com.example.wavex.feature.profile.presentation.downloads.data.DownloadRepository
 import com.example.wavex.feature.profile.presentation.settings.data.SettingsRepository
+import com.example.wavex.feature.search.data.SearchSongsRepository
+import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.recommendation.MusicHistoryRepository
 import com.example.wavex.recommendation.dataClass.PlayedSong
-import com.example.wavex.feature.search.presentation.SearchSource
-import com.example.wavex.feature.search.data.SearchSongsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,6 +82,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
@@ -318,7 +318,7 @@ class  MusicPlayerService : LifecycleService() {
                     updateUpNext()
                 }
             } catch (e: Exception) {
-                Log.e("Suggestion", "Failed: ${e.message}")
+                Timber.tag("Suggestion").e("Failed: ${e.message}")
             }
         }
     }
@@ -426,8 +426,7 @@ class  MusicPlayerService : LifecycleService() {
 
         player.addListener(object : Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                Log.d(
-                    "PLAYER_STATE",
+                Timber.tag("PLAYER_STATE").d(
                     when (state) {
                         Player.STATE_IDLE -> "IDLE"
                         Player.STATE_BUFFERING -> "BUFFERING"
@@ -490,15 +489,13 @@ class  MusicPlayerService : LifecycleService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                Log.e(
-                    "PLAYER_ERROR",
-                    """
+                Timber.tag("PLAYER_ERROR").e(
+                    error, """
                 Message : ${error.message}
                 Code    : ${error.errorCode}
                 Name    : ${error.errorCodeName}
                 Cause   : ${error.cause}
-                """.trimIndent(),
-                    error
+                """.trimIndent()
                 )
 
                 val currentSong = _currentSong.value ?: return
@@ -585,7 +582,7 @@ class  MusicPlayerService : LifecycleService() {
                     val songId = intent.getStringExtra("songId") ?: return START_NOT_STICKY
 
                     serviceScope.launch {
-                        Log.d("DOWNLOAD_DEBUG", "Service download start: $songId")
+                        Timber.tag("DOWNLOAD_DEBUG").d("Service download start: $songId")
 
                         ParallelDownloader.start(
                             scope = serviceScope,
@@ -638,7 +635,7 @@ class  MusicPlayerService : LifecycleService() {
                     val songId = intent.getStringExtra("songId") ?: return START_NOT_STICKY
 
                     serviceScope.launch {
-                        Log.d("DOWNLOAD_DEBUG", "Service download start: $songId")
+                        Timber.tag("DOWNLOAD_DEBUG").d("Service download start: $songId")
 
                         ParallelDownloader.resume(
                             scope = serviceScope,
@@ -705,8 +702,7 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     fun SongItem.getBestUri(isOnline: Boolean): Uri {
-        Log.d(
-            "PLAY_FLOW",
+        Timber.tag("PLAY_FLOW").d(
             """
         ========= GET BEST URI =========
         Online     : $isOnline
@@ -717,8 +713,7 @@ class  MusicPlayerService : LifecycleService() {
         )
 
         downloadUrl.forEachIndexed { index, stream ->
-            Log.d(
-                "PLAY_FLOW",
+            Timber.tag("PLAY_FLOW").d(
                 """
             Stream[$index]
             Quality : ${stream.quality}
@@ -732,17 +727,14 @@ class  MusicPlayerService : LifecycleService() {
 
         return when {
             localFile != null && localFile.exists() -> {
-                Log.d(
-                    "PLAY_FLOW",
-                    "Using local file"
-                )
+                Timber.tag("PLAY_FLOW").d("Using local file")
 
                 localFile.toUri()
             }
 
             isOnline -> {
                 if (downloadUrl.isEmpty()) {
-                    Log.d("URL", "Empty url")
+                    Timber.tag("URL").d("Empty url")
                     return Uri.EMPTY
                 }
 
@@ -752,9 +744,7 @@ class  MusicPlayerService : LifecycleService() {
                         preference = streamQualityPreference
                     )
 
-                Log.d(
-                    "PLAY_FLOW",
-                    """
+                Timber.tag("PLAY_FLOW").d("""
                 Selected Stream
                 Quality : ${selectedStream?.quality}
                 Url     : ${selectedStream?.url?.take(150)}
@@ -764,10 +754,7 @@ class  MusicPlayerService : LifecycleService() {
                 selectedStream?.url?.toUri() ?: Uri.EMPTY
             }
             else -> {
-                Log.d(
-                    "PLAY_FLOW",
-                    "Offline and no local file"
-                )
+                Timber.tag("PLAY_FLOW").d("Offline and no local file")
 
                 Uri.EMPTY
             }
@@ -844,9 +831,7 @@ class  MusicPlayerService : LifecycleService() {
         _isBuffering.value = true
         playJob?.cancel()
 
-        Log.d(
-            "PLAY_FLOW",
-            """
+        Timber.tag("PLAY_FLOW").d("""
         ========= PLAY REQUEST =========
         Song Id   : ${song.id}
         Title     : ${song.name}
@@ -864,9 +849,7 @@ class  MusicPlayerService : LifecycleService() {
                     song
                 }
 
-            Log.d(
-                "PLAY_FLOW",
-                """
+            Timber.tag("PLAY_FLOW").d("""
             ========= PLAYABLE SONG =========
             Song Id   : ${playableSong.id}
             Duration  : ${playableSong.duration}
@@ -882,10 +865,7 @@ class  MusicPlayerService : LifecycleService() {
                     downloadedSong != null &&
                     File(downloadedSong.localPath).exists()
                 ) {
-                    Log.d(
-                        "PLAY_FLOW",
-                        "Using downloaded file: ${downloadedSong.localPath}"
-                    )
+                    Timber.tag("PLAY_FLOW").d("Using downloaded file: ${downloadedSong.localPath}")
 
                     Uri.fromFile(File(downloadedSong.localPath))
                 } else {
@@ -907,9 +887,7 @@ class  MusicPlayerService : LifecycleService() {
 //                    """.trimIndent()
 //            )
 
-            Log.d(
-                "PLAY_FLOW",
-                """
+            Timber.tag("PLAY_FLOW").d("""
             ========= FINAL URI =========
             Uri     : $uri
             Scheme  : ${uri.scheme}
@@ -922,20 +900,18 @@ class  MusicPlayerService : LifecycleService() {
             )
 
             if (uri == Uri.EMPTY) {
-                Log.e("PLAY_FLOW", "URI EMPTY - Playback aborted")
+                Timber.tag("PLAY_FLOW").e("URI EMPTY - Playback aborted")
                 _isBuffering.value = false
                 return@launch
             }
 
-            Log.d(
-                "PLAY_FLOW",
+            Timber.tag("PLAY_FLOW").d(
                 """
                 Saving song
                 Id    : ${playableSong.id}
                 Title : ${playableSong.name}
                 Duration : ${playableSong.duration}
-                """.trimIndent()
-            )
+                """.trimIndent())
 
             recentlyPlayedRepository.addSong(
                 playableSong.toRecentlyPlayedEntity()
@@ -952,11 +928,11 @@ class  MusicPlayerService : LifecycleService() {
                     .build()
             )
 
-            Log.d("PLAY_FLOW", "Calling player.prepare()")
+            Timber.tag("PLAY_FLOW").d("Calling player.prepare()")
 
             player.prepare()
 
-            Log.d("PLAY_FLOW", "Setting playWhenReady=true")
+            Timber.tag("PLAY_FLOW").d("Setting playWhenReady=true")
             player.playWhenReady = true
         }
     }
@@ -1357,7 +1333,7 @@ class  MusicPlayerService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        Log.w("MusicPlayerService", "Service destroyed by system")
+        Timber.tag("MusicPlayerService").w("Service destroyed by system")
         handler.removeCallbacks(progressRunnable)
         if (::player.isInitialized) player.release()
         if (::mediaSession.isInitialized) mediaSession.release()
@@ -1647,7 +1623,7 @@ class  MusicPlayerService : LifecycleService() {
                     .orEmpty()
             )
 
-            Log.d("IMAGE_URL", imageUrl)
+            Timber.tag("IMAGE_URL").d(imageUrl)
 
             if (imageUrl.isBlank()) {
                 return placeholder
@@ -1678,7 +1654,7 @@ class  MusicPlayerService : LifecycleService() {
 
             rounded
         } catch (e: Exception) {
-            Log.e("AlbumArt", "Load failed for ${song.name}", e)
+            Timber.tag("AlbumArt").e(e, "Load failed for ${song.name}")
             placeholder
         }
     }

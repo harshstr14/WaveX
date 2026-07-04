@@ -2,5 +2,4 @@
 /app/release/
 /build
 /app/google-services.json
-/app/src/main/java/com/example/wavex/app/WaveXApplication.kt
 /app/src/main/java/com/example/wavex/core/util/CryptoUtils.kt

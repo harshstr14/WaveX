@@ -1,6 +1,5 @@
 package com.example.wavex.feature.playlist.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.BuildConfig
@@ -12,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
@@ -102,7 +102,7 @@ class PlaylistViewModel @Inject constructor(
                         errorMessage = "Something went wrong"
                     )
 
-                Log.e(TAG,"Playlist load failed",e)
+                Timber.tag(TAG).e(e, "Playlist load failed")
             } finally {
                 _isLoading.value = false
             }
@@ -131,7 +131,7 @@ class PlaylistViewModel @Inject constructor(
                         errorMessage = "Something went wrong"
                     )
 
-                Log.e(TAG,"YT Playlist load failed",e)
+                Timber.tag(TAG).e(e, "YT Playlist load failed")
             } finally {
                 _isLoading.value = false
             }

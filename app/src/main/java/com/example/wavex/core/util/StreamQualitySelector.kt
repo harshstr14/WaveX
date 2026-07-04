@@ -1,10 +1,10 @@
 package com.example.wavex.core.util
 
-import android.util.Log
 import androidx.core.net.toUri
 import com.example.wavex.core.model.AudioStreamQualityPreference
 import com.example.wavex.core.model.Download
 import com.example.wavex.core.model.Quality
+import timber.log.Timber
 
 object StreamQualitySelector {
     private val playbackFallbackOrder =
@@ -35,21 +35,14 @@ object StreamQualitySelector {
         streams: List<Download>,
         preference: AudioStreamQualityPreference
     ): Download? {
-        Log.d(
-            "PLAY_FLOW",
-            "Preferred Quality = $preference"
-        )
+        Timber.tag("PLAY_FLOW").d("Preferred Quality = $preference")
 
         val usable = streams.filter { isUsable(it) }
 
-        Log.d(
-            "PLAY_FLOW",
-            "Usable Streams = ${usable.size}"
-        )
+        Timber.tag("PLAY_FLOW").d("Usable Streams = ${usable.size}")
 
         usable.forEach {
-            Log.d(
-                "PLAY_FLOW",
+            Timber.tag("PLAY_FLOW").d(
                 """
             Quality : ${it.quality}
             Expire  : ${it.expiresAt}
@@ -58,10 +51,7 @@ object StreamQualitySelector {
         }
 
         if (usable.isEmpty()) {
-            Log.e(
-                "PLAY_FLOW",
-                "No usable streams found"
-            )
+            Timber.tag("PLAY_FLOW").e("No usable streams found")
             return null
         }
 
@@ -71,8 +61,7 @@ object StreamQualitySelector {
             usable.lastOrNull {
                 it.quality == quality
             }?.let {
-                Log.d(
-                    "PLAY_FLOW",
+                Timber.tag("PLAY_FLOW").d(
                     """
                 Selected Stream
                 Quality : ${it.quality}

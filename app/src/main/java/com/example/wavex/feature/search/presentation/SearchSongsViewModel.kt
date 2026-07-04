@@ -1,6 +1,5 @@
 package com.example.wavex.feature.search.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavex.BuildConfig
@@ -10,6 +9,7 @@ import com.example.wavex.feature.search.model.SearchSongsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 
 class SearchSongsViewModel(
@@ -87,7 +87,7 @@ class SearchSongsViewModel(
                         "Something went wrong"
                     )
 
-                Log.e(tag, "Search failed", e)
+                Timber.tag(tag).e(e, "Search failed")
             }
         }
     }

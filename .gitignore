@@ -15,5 +15,4 @@
 local.properties
 /app/google-services.json
 /wavex-hosting
-/app/src/main/java/com/example/wavex/app/WaveXApplication.kt
 /app/src/main/java/com/example/wavex/core/util/CryptoUtils.kt

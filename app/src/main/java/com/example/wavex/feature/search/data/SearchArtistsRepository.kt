@@ -1,15 +1,15 @@
 package com.example.wavex.feature.search.data
 
-import android.util.Log
 import com.example.wavex.HttpClientProvider
-import com.example.wavex.requestWithFallback
-import com.example.wavex.feature.search.presentation.SearchSource
 import com.example.wavex.core.model.Artists
+import com.example.wavex.feature.search.presentation.SearchSource
+import com.example.wavex.requestWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
+import timber.log.Timber
 import java.net.URLEncoder
 
 class SearchArtistsRepository {
@@ -32,7 +32,7 @@ class SearchArtistsRepository {
 
             parseArtists(response)
         } catch (e: Exception) {
-            Log.e(TAG, "searchArtists failed", e)
+            Timber.tag(TAG).e(e, "searchArtists failed")
             emptyList()
         }
     }
@@ -105,7 +105,7 @@ class SearchArtistsRepository {
                 parseYTMusicSearch(body)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "ytMusicSearch failed", e)
+            Timber.tag(TAG).e(e, "ytMusicSearch failed")
             emptyList()
         }
     }

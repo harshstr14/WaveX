@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -147,6 +146,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class SearchSource {
@@ -1466,7 +1466,7 @@ private fun SearchSongs(
 
                                             ContextCompat.startForegroundService(context, intent)
                                         } catch (e: Exception) {
-                                            Log.e("PLAYER_ERROR", "Failed to play song", e)
+                                            Timber.tag("PLAYER_ERROR").e(e, "Failed to play song")
                                         }
                                     }
                                 },

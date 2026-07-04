@@ -1,7 +1,6 @@
 package com.example.wavex.core.service
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import com.example.wavex.HttpClientProvider
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +14,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.cancellation.CancellationException
@@ -61,7 +61,7 @@ object ParallelDownloader {
         downloadStates[songId] = DownloadState.DOWNLOADING
 
         val job = scope.launch {
-            Log.d("DOWNLOAD_DEBUG", "Resume download for $songId")
+            Timber.tag("DOWNLOAD_DEBUG").d("Resume download for $songId")
 
             try {
                 val path = semaphore.withPermit {
@@ -76,7 +76,7 @@ object ParallelDownloader {
                 }
 
             } catch (e: CancellationException) {
-                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
+                Timber.tag("DOWNLOAD_DEBUG").d("Cancelled $songId")
                 throw e
 
             } finally {
@@ -105,7 +105,7 @@ object ParallelDownloader {
         downloadStates[songId] = DownloadState.DOWNLOADING
 
         val job = scope.launch {
-            Log.d("DOWNLOAD_DEBUG", "Start download for $songId")
+            Timber.tag("DOWNLOAD_DEBUG").d("Start download for $songId")
 
             try {
                 val path = semaphore.withPermit {
@@ -120,7 +120,7 @@ object ParallelDownloader {
                 }
 
             } catch (e: CancellationException) {
-                Log.d("DOWNLOAD_DEBUG", "Cancelled $songId")
+                Timber.tag("DOWNLOAD_DEBUG").d("Cancelled $songId")
                 throw e
 
             } finally {
@@ -137,7 +137,7 @@ object ParallelDownloader {
         context: Context
     ): String? = withContext(Dispatchers.IO) {
         val client = HttpClientProvider.client
-        Log.d("DOWNLOAD_DEBUG", "Download started for $fileName")
+        Timber.tag("DOWNLOAD_DEBUG").d("Download started for $fileName")
 
         try {
             val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
@@ -152,7 +152,7 @@ object ParallelDownloader {
             val initialResponse = client.newCall(initialRequest).execute()
 
             if (!initialResponse.isSuccessful) {
-                Log.e("DOWNLOAD_DEBUG", "Initial request failed: ${initialResponse.code}")
+                Timber.tag("DOWNLOAD_DEBUG").e("Initial request failed: ${initialResponse.code}")
                 return@withContext null
             }
 
@@ -167,7 +167,7 @@ object ParallelDownloader {
             val file = File(context.filesDir, "$safeFileName$extension")
 
             val downloadedBytes = if (file.exists()) file.length() else 0
-            Log.d("DOWNLOAD_DEBUG", "Resuming from byte: $downloadedBytes")
+            Timber.tag("DOWNLOAD_DEBUG").d("Resuming from byte: $downloadedBytes")
 
             initialResponse.close()
 
@@ -179,7 +179,7 @@ object ParallelDownloader {
 
             if (downloadedBytes > 0) {
                 requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
-                Log.d("DOWNLOAD_DEBUG", "Range header: bytes=$downloadedBytes-")
+                Timber.tag("DOWNLOAD_DEBUG").d("Range header: bytes=$downloadedBytes-")
             }
 
             val request = requestBuilder.build()
@@ -191,13 +191,13 @@ object ParallelDownloader {
 
             val response = call.execute()
 
-            Log.d("DOWNLOAD_DEBUG", "Response code: ${response.code}")
-            Log.d("DOWNLOAD_DEBUG", "Accept-Ranges: ${response.header("Accept-Ranges")}")
+            Timber.tag("DOWNLOAD_DEBUG").d("Response code: ${response.code}")
+            Timber.tag("DOWNLOAD_DEBUG").d("Accept-Ranges: ${response.header("Accept-Ranges")}")
 
             if (!response.isSuccessful) return@withContext null
 
             if (downloadedBytes > 0 && response.code != 206) {
-                Log.w("DOWNLOAD_DEBUG", "Server doesn't support resume. Restarting...")
+                Timber.tag("DOWNLOAD_DEBUG").w("Server doesn't support resume. Restarting...")
                 file.delete()
                 return@withContext downloadSong(url, fileName, context)
             }
@@ -225,16 +225,16 @@ object ParallelDownloader {
                 }
             }
 
-            Log.d("DOWNLOAD_DEBUG", "Saved: ${file.absolutePath}")
+            Timber.tag("DOWNLOAD_DEBUG").d("Saved: ${file.absolutePath}")
             file.absolutePath
 
         } catch (e: Exception) {
             if (e is CancellationException) {
-                Log.d("DOWNLOAD_DEBUG", "Download cancelled")
+                Timber.tag("DOWNLOAD_DEBUG").d("Download cancelled")
                 throw e
             }
 
-            Log.e("DOWNLOAD_DEBUG", "Error", e)
+            Timber.tag("DOWNLOAD_DEBUG").e(e, "Error")
             null
         }
     }

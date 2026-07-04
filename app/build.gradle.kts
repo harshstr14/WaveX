@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
 }
 
@@ -31,6 +32,15 @@ val ytStreamUrl = localProps.getProperty("YT_STREAM_URL")
 val musicAIApi = localProps.getProperty("MUSIC_AI_API_BASE_URL")
     ?: error("MUSIC_AI_API_BASE_URL missing in local.properties")
 
+val cloudName = localProps.getProperty("CLOUD_NAME")
+    ?: error("CLOUD_NAME missing in local.properties")
+
+val apiKey = localProps.getProperty("API_KEY")
+    ?: error("API_KEY missing in local.properties")
+
+val apiSecret = localProps.getProperty("API_SECRET")
+    ?: error("API_SECRET missing in local.properties")
+
 android {
     namespace = "com.example.wavex"
     compileSdk {
@@ -46,21 +56,25 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL1", "\"$apiUrl1\"")
+        buildConfigField("String", "API_BASE_URL1", "\"${apiUrl1.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "API_BASE_URL2", "\"$apiUrl2\"")
+        buildConfigField("String", "API_BASE_URL2", "\"${apiUrl2.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "API_BASE_URL3", "\"$apiUrl3\"")
+        buildConfigField("String", "API_BASE_URL3", "\"${apiUrl3.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"$spotifyApiUrl\"")
+        buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"${spotifyApiUrl.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "WAVEX_API_URL", "\"$waveXApiUrl\"")
+        buildConfigField("String", "WAVEX_API_URL", "\"${waveXApiUrl.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "YT_API_BASE_URL", "\"$ytApiUrl\"")
+        buildConfigField("String", "YT_API_BASE_URL", "\"${ytApiUrl.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "YT_STREAM_URL", "\"$ytStreamUrl\"")
+        buildConfigField("String", "YT_STREAM_URL", "\"${ytStreamUrl.removeSurrounding("\"")}\"")
 
-        buildConfigField("String", "MUSIC_AI_API_BASE_URL", "\"$musicAIApi\"")
+        buildConfigField("String", "MUSIC_AI_API_BASE_URL", "\"${musicAIApi.removeSurrounding("\"")}\"")
+
+        buildConfigField("String", "CLOUD_NAME", "\"${cloudName.removeSurrounding("\"")}\"")
+        buildConfigField("String", "API_KEY", "\"${apiKey.removeSurrounding("\"")}\"")
+        buildConfigField("String", "API_SECRET", "\"${apiSecret.removeSurrounding("\"")}\"")
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
@@ -99,6 +113,15 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.timber)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+    implementation(libs.ktor.client.encoding)
+    implementation(libs.ktor.client.auth)
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.newpipeextractor)

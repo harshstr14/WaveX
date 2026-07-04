@@ -1,16 +1,15 @@
 package com.example.wavex.feature.playlist.data
 
-import android.util.Log
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.core.model.Album
 import com.example.wavex.core.model.Artists
 import com.example.wavex.core.model.Download
 import com.example.wavex.core.model.Image
+import com.example.wavex.core.model.Quality
 import com.example.wavex.core.model.SongItem
 import com.example.wavex.feature.playlist.model.PlaylistDetailUiState
-import com.example.wavex.core.model.Quality
-import com.example.wavex.requestWithFallback
 import com.example.wavex.feature.search.presentation.SearchSource
+import com.example.wavex.requestWithFallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -22,6 +21,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 
 class PlaylistRepository @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
@@ -94,7 +94,7 @@ class PlaylistRepository @Inject constructor(
 
                 parsePlaylist(response)
             } catch (e: Exception) {
-                Log.e(TAG, "fetchPlaylistById failed", e)
+                Timber.tag(TAG).e(e, "fetchPlaylistById failed")
 
                 PlaylistDetailUiState(
                     isError = true,
@@ -212,7 +212,7 @@ class PlaylistRepository @Inject constructor(
                 parseYTMusicPlaylist(body)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "fetchYTMusicPlaylist failed", e)
+            Timber.tag(TAG).e(e, "fetchYTMusicPlaylist failed")
 
             PlaylistDetailUiState(
                 isError = true,
@@ -288,7 +288,7 @@ class PlaylistRepository @Inject constructor(
                 totalDuration = songs.sumOf { it.duration }
             )
         } catch (e: Exception) {
-            Log.e(TAG,"parseYTMusicPlaylist failed",e)
+            Timber.tag(TAG).e(e, "parseYTMusicPlaylist failed")
 
             PlaylistDetailUiState(
                 isError = true,

@@ -1,19 +1,19 @@
 package com.example.wavex.feature.home.data
 
-import android.util.Log
 import com.example.wavex.BuildConfig
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.core.database.dao.ArtistDao
-import com.example.wavex.core.datastore.CacheManager
 import com.example.wavex.core.database.entity.ArtistEntity
-import com.example.wavex.feature.search.presentation.SearchSource
+import com.example.wavex.core.datastore.CacheManager
 import com.example.wavex.core.model.Artists
+import com.example.wavex.feature.search.presentation.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
+import timber.log.Timber
 import javax.inject.Inject
 
 class TopArtistsRepository @Inject constructor(
@@ -45,7 +45,7 @@ class TopArtistsRepository @Inject constructor(
         val shouldRefresh = currentTime - lastRefresh > oneDay || !dao.hasData()
 
         if (!shouldRefresh) {
-            Log.d("FROM_CACHE","true")
+            Timber.tag("FROM_CACHE").d("true")
             return
         }
 
@@ -70,7 +70,7 @@ class TopArtistsRepository @Inject constructor(
                 currentTime
             )
         } catch (e: Exception) {
-            Log.e("TOP_ARTISTS","Refresh Error",e)
+            Timber.tag("TOP_ARTISTS").e(e, "Refresh Error")
         }
     }
 
@@ -88,7 +88,7 @@ class TopArtistsRepository @Inject constructor(
                     throw Exception("Network Error")
                 }
 
-                val body = response.body?.string().orEmpty()
+                val body = response.body.string()
 
                 parseMusicAiJson(body)
             }
@@ -132,7 +132,7 @@ class TopArtistsRepository @Inject constructor(
             }
             return parsedList
         } catch (e: Exception) {
-            Log.e("TOP_ARTISTS","Parse Error",e)
+            Timber.tag("TOP_ARTISTS").e(e, "Parse Error")
 
             return emptyList()
         }

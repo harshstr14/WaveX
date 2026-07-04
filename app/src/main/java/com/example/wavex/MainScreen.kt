@@ -4,9 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -80,6 +80,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -148,6 +149,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -193,7 +195,7 @@ suspend fun requestWithFallback(endpoint: String): String =
                     }
 
                     if (it.code in 500..599) {
-                        Log.w("API", "Server error ${it.code} on $baseUrl, trying next...")
+                        Timber.tag("API").w("Server error ${it.code} on $baseUrl, trying next...")
                         continue
                     }
 
@@ -207,7 +209,7 @@ suspend fun requestWithFallback(endpoint: String): String =
                     e is ConnectException ||
                     e is UnknownHostException
                 ) {
-                    Log.w("API", "Network error on $baseUrl, trying next...")
+                    Timber.tag("API").w("Network error on $baseUrl, trying next...")
                     continue
                 } else {
                     throw e
@@ -218,10 +220,14 @@ suspend fun requestWithFallback(endpoint: String): String =
         throw Exception("All APIs failed")
     }
 
+private lateinit var connectivityManager: ConnectivityManager
+
 @AndroidEntryPoint
 class MainScreen : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        connectivityManager = getSystemService()!!
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (
@@ -237,8 +243,8 @@ class MainScreen : ComponentActivity() {
             }
         }
 
-        Log.d("DeepLink", "onCreate")
-        Log.d("DeepLink", "MainScreen onCreate ${hashCode()}")
+        Timber.tag("DeepLink").d("onCreate")
+        Timber.tag("DeepLink").d("MainScreen onCreate ${hashCode()}")
         handleDeepLink(intent)
 
         apiUrl1 = BuildConfig.API_BASE_URL1
@@ -266,8 +272,8 @@ class MainScreen : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        Log.d("DeepLink", "onNewIntent")
-        Log.d("DeepLink", "MainScreen onNewIntent ${hashCode()}")
+        Timber.tag("DeepLink").d("onNewIntent")
+        Timber.tag("DeepLink").d("MainScreen onNewIntent ${hashCode()}")
         setIntent(intent)
         handleDeepLink(intent)
     }
@@ -284,7 +290,7 @@ class MainScreen : ComponentActivity() {
 
         DeepLinkManager.events.tryEmit(event)
 
-        Log.d("DeepLink", "Emitted: $deepLink")
+        Timber.tag("DeepLink").d("Emitted: $deepLink")
     }
 }
 
@@ -317,7 +323,7 @@ fun Main_Screen(
 
     LaunchedEffect(Unit) {
         DeepLinkManager.events.collectLatest { event ->
-            Log.d("DeepLink", "Received: ${event.deepLink}")
+            Timber.tag("DeepLink").d("Received: ${event.deepLink}")
 
             when (val deepLink = event.deepLink) {
                 is DeepLink.Song -> {
@@ -378,7 +384,7 @@ fun Main_Screen(
                 }
 
                 DeepLink.Unknown -> {
-                    Log.d("DeepLink", "Unknown")
+                    Timber.tag("DeepLink").d("Unknown")
                 }
             }
 

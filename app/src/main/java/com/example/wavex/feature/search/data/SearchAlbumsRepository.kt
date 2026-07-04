@@ -1,6 +1,5 @@
 package com.example.wavex.feature.search.data
 
-import android.util.Log
 import com.example.wavex.HttpClientProvider
 import com.example.wavex.core.model.DataItem
 import com.example.wavex.core.parser.ImageParser
@@ -14,6 +13,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
+import timber.log.Timber
 import java.net.URLEncoder
 
 class SearchAlbumsRepository {
@@ -35,7 +35,7 @@ class SearchAlbumsRepository {
 
             parseAlbumListJson(response)
         } catch (e: Exception) {
-            Log.e(TAG, "searchAlbums failed", e)
+            Timber.tag(TAG).e(e, "searchAlbums failed")
             emptyList()
         }
     }
@@ -70,7 +70,7 @@ class SearchAlbumsRepository {
                 parseYTMusicSearch(body)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "ytMusicSearch failed", e)
+            Timber.tag(TAG).e(e, "ytMusicSearch failed")
             emptyList()
         }
     }
